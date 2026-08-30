@@ -74,6 +74,9 @@ __status__      = 'Development'
 
 
 import concurrent.futures
+import os
+import uuid
+from json import dumps
 from time import sleep
 from urllib.parse import urlparse
 
@@ -135,6 +138,15 @@ POLL_INTERVAL = 15
 # How long to wait for an update service to come back before giving up on it. A BMC
 # that has just flashed itself is unreachable for a while, and that is not a failure.
 READY_DEADLINE = 300
+# how long to wait for a board to answer once an image has been pushed into it. A
+# push is the controller sending megabytes to a BMC that writes them as they come;
+# the ordinary read timeout is sized for an answer, not for that
+UPLOAD_TIMEOUT = 900
+# how long to keep asking a board what it runs after a flash, before deciding. A BMC
+# that has just flashed itself reboots, and while it does its inventory is absent or
+# incomplete - measured: the task reported Completed, and the component was 'not
+# there' for the minutes the service took to come back
+VERIFY_DEADLINE = 900
 # how long the restore waits for a BMC that setupbmc has just re-addressed to answer
 # Redfish with the stored credentials. The node holds its install for about this
 # long, so the two are sized together: see hold_for_daemon in the install template
@@ -144,6 +156,76 @@ RESTORE_READY_DEADLINE = 240
 # The restore's BMC wait above sits inside it. Fixed and bounded: the node is told at
 # render time and asks nothing afterwards
 HOLD_SECONDS = 600
+
+
+class MultipartBody():
+    """
+    A multipart/form-data body that streams a file rather than holding it.
+
+    Built by hand for one reason: the library would read the whole image into memory
+    to build the form, and a batch of pushes is that many images at once - a
+    four-hundred-megabyte board times ten is memory a controller does not have to
+    spare. This reads the preamble, then the file, then the closing boundary, and
+    knows its length up front so the transfer carries a Content-Length rather than
+    chunked encoding, which not every BMC accepts.
+    """
+
+    def __init__(self, parameters=None, filename=None, path=None, extra=None):
+        self.boundary = uuid.uuid4().hex
+        parts = {'UpdateParameters': parameters or {}}
+        parts.update(extra or {})
+        head = ''
+        for name, body in parts.items():
+            head += (f'--{self.boundary}\r\n'
+                     f'Content-Disposition: form-data; name="{name}"\r\n'
+                     'Content-Type: application/json\r\n\r\n'
+                     f'{dumps(body)}\r\n')
+        head += (f'--{self.boundary}\r\n'
+                 f'Content-Disposition: form-data; name="UpdateFile"; filename="{filename}"\r\n'
+                 'Content-Type: application/octet-stream\r\n\r\n')
+        self.head = head.encode()
+        self.tail = f'\r\n--{self.boundary}--\r\n'.encode()
+        self.path = path
+        self.size = os.path.getsize(path)
+        self.parts = None
+        self.handle = None
+
+    @property
+    def content_type(self):
+        return f'multipart/form-data; boundary={self.boundary}'
+
+    def __len__(self):
+        return len(self.head) + self.size + len(self.tail)
+
+    def read(self, size=-1):
+        """
+        Hands out the body in order; the file is opened on first read and closed
+        when it is exhausted, so a body that is never sent never opens it.
+        """
+        if self.parts is None:
+            self.handle = open(self.path, 'rb')
+            self.parts = [self.head, self.handle, self.tail]
+        while self.parts:
+            current = self.parts[0]
+            if isinstance(current, bytes):
+                chunk, rest = (current, b'') if size < 0 else (current[:size], current[size:])
+                if rest:
+                    self.parts[0] = rest
+                else:
+                    self.parts.pop(0)
+                if chunk:
+                    return chunk
+                continue
+            chunk = current.read(size)
+            if chunk:
+                return chunk
+            current.close()
+            self.parts.pop(0)
+        return b''
+
+    def close(self):
+        if self.handle:
+            self.handle.close()
 
 
 class FirmwarePush():
@@ -236,17 +318,25 @@ class FirmwarePush():
 
 
     def submit(self, redfish=None, kind=None, uri=None, action=None, image_url=None,
-               component=None, targets=None):
+               component=None, targets=None, image_path=None, service=None, plugin=None):
         """
         This method hands the board the image and returns (status, task or reason).
 
-        The image is named by URL rather than streamed from here, because the
-        caller staged it on the controller's own webserver: this module is not the
-        right place to decide which of a controller's addresses a BMC can reach.
+        SimpleUpdate names the image by URL and the board fetches it - one transfer
+        per board, in parallel, which is why it is preferred. The push transfers
+        send the staged file from here, for a board that will not or cannot fetch:
+        the controller is then the sender, and a batch of pushes is that many images
+        leaving this machine at once, so they are the tool for the boards that need
+        them and not the default.
         """
+        if kind == MULTIPART:
+            return self.push_multipart(redfish=redfish, uri=uri, image_path=image_path,
+                                       service=service, component=component, plugin=plugin)
+        if kind == HTTP:
+            return self.push_http(redfish=redfish, uri=uri, image_path=image_path,
+                                  service=service, component=component)
         if kind != SIMPLE:
-            return False, (f'{kind} transfer is not implemented yet; the board '
-                           'offers no SimpleUpdate')
+            return False, f'{kind} is not a transfer this daemon knows'
         status, body = self.payload(redfish=redfish, action=action,
                                     image_url=image_url, component=component,
                                     targets=targets)
@@ -262,6 +352,126 @@ class FirmwarePush():
         # a bare 202: the header was the only handle on the work, and without it a
         # perfectly ordinary flash looks like one that never started.
         return True, self.task_path(answer) or location
+
+
+    def taken(self, redfish=None, status=None, answer=None, headers=None):
+        """
+        This method turns a board's answer to a push into (status, task or reason),
+        the same way submit() reads a SimpleUpdate's: task in the body, else in the
+        Location header, else nothing to follow.
+        """
+        if not status:
+            return False, answer
+        location = (headers or {}).get('Location')
+        return True, self.task_path(answer) or location
+
+
+    def image_size_fits(self, image_path=None, service=None):
+        """
+        This method refuses an image the board has said it cannot take, before a
+        byte of it is sent.
+        """
+        limit = (service or {}).get('MaxImageSizeBytes')
+        size = os.path.getsize(image_path)
+        if limit and int(limit) and size > int(limit):
+            return False, (f'{os.path.basename(image_path)} is {size} bytes and the board '
+                           f'takes at most {limit}')
+        return True, size
+
+
+    def inventory_target(self, service=None, component=None):
+        """
+        This method names the firmware inventory member a push is for, from the
+        board's own inventory path - or nothing, where no component was named and
+        the board is left to tell from the image.
+        """
+        inventory = ((service or {}).get('FirmwareInventory') or {}).get('@odata.id')
+        if not component or not inventory:
+            return None
+        return f'{inventory.rstrip("/")}/{component}'
+
+
+    def push_multipart(self, redfish=None, uri=None, image_path=None, service=None,
+                       component=None, plugin=None):
+        """
+        This method sends the image to the board's MultipartHttpPushUri as the two
+        parts the standard names - UpdateParameters and UpdateFile - streamed, plus
+        whatever the board's vendor plugin says this board demands on top.
+
+        Targets is left empty where no component was named: the board then tells
+        from the image. No apply-time is sent - it is optional in the standard and
+        refused by a board that was measured, and the push is immediate anyway.
+        """
+        status, size = self.image_size_fits(image_path=image_path, service=service)
+        if not status:
+            return False, size
+        target = self.inventory_target(service=service, component=component)
+        parameters = {'Targets': [target] if target else []}
+        extra, filename = {}, os.path.basename(image_path)
+        if plugin is not None and hasattr(plugin, 'multipart'):
+            extra, filename = plugin.multipart(component=component, filename=filename)
+        body = MultipartBody(parameters=parameters, filename=filename, path=image_path,
+                             extra=extra)
+        try:
+            status, _, answer, headers = redfish.upload(path=uri, body=body,
+                                                       content_type=body.content_type,
+                                                       timeout=UPLOAD_TIMEOUT)
+        finally:
+            body.close()
+        return self.taken(redfish=redfish, status=status, answer=answer, headers=headers)
+
+
+    def push_http(self, redfish=None, uri=None, image_path=None, service=None,
+                  component=None):
+        """
+        This method sends the raw image to the board's HttpPushUri. Where the board
+        exposes HttpPushUriTargets, the component is named there first, as the
+        standard has it; a board without it is left to tell from the image.
+        """
+        status, size = self.image_size_fits(image_path=image_path, service=service)
+        if not status:
+            return False, size
+        target = self.inventory_target(service=service, component=component)
+        if target and 'HttpPushUriTargets' in (service or {}):
+            status, reason = redfish.patch(path=service.get('@odata.id') or '/redfish/v1/UpdateService',
+                                           payload={'HttpPushUriTargets': [target]})
+            if not status:
+                return False, f'the board refused the push target {target}: {reason}'
+        with open(image_path, 'rb') as handle:
+            status, _, answer, headers = redfish.upload(path=uri, body=handle,
+                                                       content_type='application/octet-stream',
+                                                       timeout=UPLOAD_TIMEOUT)
+        return self.taken(redfish=redfish, status=status, answer=answer, headers=headers)
+
+
+    def vendor_plugin(self, nodename=None):
+        """
+        This method returns the Redfish plugin for a node - node, group, then the
+        vendor its inventory names, then default - the same search path control
+        uses, so a vendor's quirk is written once and found by everything.
+        """
+        from utils.redfish import RedfishAccess
+        node = Database().get_record_join(['group.name as groupname'], ['group.id=node.groupid'],
+                                          [f'node.name="{nodename}"'])
+        groupname = node[0]['groupname'] if node else None
+        candidates, model = RedfishAccess().plugin_candidates(nodename=nodename,
+                                                              groupname=groupname)
+        plugins = Helper().plugin_finder(f"{CONSTANT['PLUGINS']['PLUGINS_DIRECTORY']}/redfish")
+        loaded = Helper().plugin_load(plugins, 'redfish', candidates, model)
+        # the loader hands back the class; every caller in the daemon instantiates it
+        return loaded() if loaded else None
+
+
+    def image_path(self, imagefile=None):
+        """
+        This method returns where the staged image is on this controller, for a
+        transfer that sends it from here, or why there is none.
+        """
+        if not imagefile:
+            return False, NO_IMAGEFILE
+        if imagefile not in FirmwareCatalog().staged_images():
+            return False, NO_IMAGE.format(imagefile=imagefile)
+        return True, os.path.join(CONSTANT['FILES']['IMAGE_FILES'], imagefile)
 
 
     def task_path(self, answer=None):
@@ -334,7 +544,7 @@ class FirmwarePush():
         return False, f'the board reports no component called {component}'
 
 
-    def verify(self, redfish=None, component=None, wanted=None):
+    def verify(self, redfish=None, component=None, wanted=None, deadline=VERIFY_DEADLINE):
         """
         This method decides whether the flash actually landed, and it is the only
         thing here that decides anything.
@@ -342,10 +552,22 @@ class FirmwarePush():
         A task said the service finished. This asks the board what it is running,
         which is the one question whose answer cannot be produced by an image that
         went into the slot the machine is not booting from.
+
+        It keeps asking while the board cannot answer: a BMC that has just flashed
+        itself is rebooting, and a read that lands in that window sees no service or
+        an inventory without the component - neither of which says anything about
+        the flash. Only an answer decides; the deadline only says how long to wait
+        for one.
         """
-        status, version = self.running_version(redfish=redfish, component=component)
+        waited = 0
+        while True:
+            status, version = self.running_version(redfish=redfish, component=component)
+            if status or waited >= deadline:
+                break
+            sleep(POLL_INTERVAL)
+            waited += POLL_INTERVAL
         if not status:
-            return False, version
+            return False, f'{version} (asked for {waited}s after the flash)'
         if str(version).strip() == str(wanted).strip():
             return True, version
         return False, (f'{component} still reports {version or "nothing"} rather '
@@ -784,12 +1006,20 @@ class FirmwarePush():
         kind, uri = self.push_target(service=service)
         if not kind:
             return False, f'{label}: {uri}'
-        status, url = self.image_url(nodename=nodename, imagefile=item.get('imagefile'))
+        # a board that fetches needs a URL it can reach; one that is sent the image
+        # needs the file here. Two questions with different failure modes, asked
+        # separately so the refusal names the right one
+        url, path = None, None
+        if kind == SIMPLE:
+            status, url = self.image_url(nodename=nodename, imagefile=item.get('imagefile'))
+        else:
+            status, path = self.image_path(imagefile=item.get('imagefile'))
         if not status:
-            return False, f'{label}: {url}'
+            return False, f'{label}: {url or path}'
         action = ((service.get('Actions') or {}).get('#UpdateService.SimpleUpdate')) or {}
         status, answer = self.submit(redfish=redfish, kind=kind, uri=uri, action=action,
-                                     image_url=url, component=component)
+                                     image_url=url, component=component, image_path=path,
+                                     service=service, plugin=self.vendor_plugin(nodename))
         if not status:
             return False, f'{label}: {answer}'
         state, reason = self.follow(redfish=redfish, task=answer)

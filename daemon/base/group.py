@@ -473,6 +473,9 @@ class Group():
                 data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()
                 if data['ipxe_kernel'] not in ['default', 'alternative']:
                     return False, 'Invalid request: ipxe_kernel must be default or alternative'
+            # every node in the group is named in the DHCP configuration with the iPXE
+            # binary the group gives it, so a change here is a rewrite of all of them
+            needs_rewrite = 'ipxe_kernel' in data
             if 'install_mode' in data and data['install_mode']:
                 data['install_mode'] = str(data['install_mode']).strip().lower()
                 if data['install_mode'] not in ['auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'legacy']:
@@ -634,6 +637,11 @@ class Group():
                                 self.delete_group(group_id)
                             return False, f"Invalid request for group: {if_response} for {interface_name} interface"
 
+                if needs_rewrite:
+                    Queue().add_task_to_queue(task='restart', param='dhcp',
+                                              subsystem='housekeeper', request_id='__group_update__')
+                    Queue().add_task_to_queue(task='restart', param='dhcp6',
+                                              subsystem='housekeeper', request_id='__group_update__')
                 # ---- we call the group plugin - maybe someone wants to run something after create/update?
                 Queue().add_task_to_queue(task='run_bulk', param='group:master', 
                                           subsystem='housekeeper', request_id='__group_update__')

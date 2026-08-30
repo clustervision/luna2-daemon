@@ -256,7 +256,7 @@ def test_a_component_the_board_does_not_publish_is_reported():
     # appear is the rebooting-BMC case, tested further down
     status, reason = FirmwarePush().verify(redfish=inventory('7.10'),
                                            component='CPLD', wanted='1.0', deadline=0)
-    assert status is False and 'no component called CPLD' in reason
+    assert status is None and 'no component called CPLD' in reason, 'no answer is not a verdict'
 
 
 def action_board(parameters=None, inline=None):
@@ -669,4 +669,4 @@ def test_verify_gives_up_after_the_deadline_and_says_how_long_it_asked(monkeypat
     monkeypatch.setattr(FirmwarePush, 'running_version',
                         lambda self, redfish=None, component=None: (False, 'connection refused'))
     status, reason = FirmwarePush().verify(redfish=object(), component='BMC', wanted='7.10', deadline=45)
-    assert status is False and 'connection refused' in reason and '45s' in reason
+    assert status is None and 'connection refused' in reason and '45s' in reason

@@ -370,13 +370,14 @@ def test_an_address_on_no_luna_network_is_ignored(db, monkeypatch):
 
 def test_the_reconfigure_note_fires_only_for_a_config_resetting_component():
     """
-    A BMC flash resets the board to defaults; a BIOS flash does not. The note is the
-    difference, and it must not appear where nothing was reset.
+    Only a BMC flash can take the board's configuration with it; a BIOS flash cannot.
+    Whether it did is decided from the board afterwards - this is the wording for
+    when it did, and it must not appear for a component that never could.
     """
     from utils.firmware_push import FirmwarePush
 
     note = FirmwarePush().reconfigure_note(['BMC'])
-    assert 'setupbmc' in note and 'reset to defaults' in note
+    assert 'setupbmc' in note and 'was reset by the flash' in note
     assert FirmwarePush().reconfigure_note(['BIOS']) == ''
     assert FirmwarePush().reconfigure_note([]) == ''
     # one resetting component among several is enough to warrant the note
@@ -429,19 +430,15 @@ def test_the_note_reports_and_does_not_promise_a_reboot():
 def test_a_finished_bmc_flash_carries_the_note_into_its_result(db, nodes, monkeypatch):
     """
     The note has to reach the request row the operator reads, which means it has to be
-    on update_node's success message - not merely computable somewhere.
+    on update_node's success message - not merely computable somewhere. It is carried
+    when the board went silent after its flash, which is the reset.
     """
-    from utils.database import Database
-    from utils.helper import Helper
     from utils.firmware_push import FirmwarePush
-
-    # node001 is behind on BMC (7.00 vs catalogue 7.10); make the flash itself a no-op
-    fp = FirmwarePush()
-    monkeypatch.setattr(fp, 'update_component',
-                        lambda redfish, nodename, item: (True, f'{nodename} {item["component"]} ok'))
-    status, message = fp.update_node({'nodename': 'node001'}, redfish=object())
+    catalogue(db, 'BMC')
+    monkeypatch.setattr(FirmwarePush, 'update_component',
+                        lambda self, redfish=None, nodename=None, item=None: (None, 'node001 BMC: flashed, silent'))
+    status, message = FirmwarePush().update_node({'nodename': 'node001'}, redfish=object())
     assert status is True
-    assert 'now at the catalogue version' in message
     assert 'setupbmc' in message
 
 
@@ -494,16 +491,78 @@ def flashed_ok(monkeypatch):
                         lambda self, redfish=None, nodename=None, item=None: (True, 'flashed'))
 
 
-def test_a_bmc_flash_marks_its_request_restore_pending(db, nodes, monkeypatch):
+def test_a_bmc_flash_the_board_no_longer_answers_after_is_the_reset_and_owes_a_restore(db, nodes, monkeypatch):
+    """
+    Measured shape of a config-resetting flash: the task completes, then the board
+    stops answering the stored credentials. That silence is the evidence - not the
+    component name, not the transfer - and it is reported as flashed-and-reset, not
+    as a failed push the admin would only re-issue.
+    """
     from utils.firmware import RESTORE_PENDING
+    from utils.firmware_push import FirmwarePush
+    catalogue(db, 'BMC')
+    monkeypatch.setattr(FirmwarePush, 'update_component',
+                        lambda self, redfish=None, nodename=None, item=None:
+                        (None, 'node001 BMC: flashed (the task completed), but the board no longer answers the stored credentials - connection refused (asked for 900s after the flash)'))
+    rid = request_row(db, nodes['node001'])
+    status, message = FirmwarePush().update_node({'id': rid, 'nodename': 'node001'}, redfish=object())
+    assert status is True
+    assert db.get_record(table='firmwarerequest', where=f'id = "{rid}"')[0]['restore'] == RESTORE_PENDING
+    assert 'no longer answers' in message and 're-applies the BIOS configuration' in message
+
+
+def test_a_bmc_flash_the_board_answers_after_retained_its_configuration_and_owes_nothing(db, nodes, monkeypatch):
+    """Measured on an AMI board over a multipart push: address, credentials and
+    accounts survived. The board answering the stored credentials IS that evidence,
+    so no restore is marked and the next install is not held for nothing."""
     from utils.firmware_push import FirmwarePush
     catalogue(db, 'BMC')
     flashed_ok(monkeypatch)
     rid = request_row(db, nodes['node001'])
     status, message = FirmwarePush().update_node({'id': rid, 'nodename': 'node001'}, redfish=object())
     assert status is True
+    assert not db.get_record(table='firmwarerequest', where=f'id = "{rid}"')[0]['restore']
+    assert 'BMC configuration retained' in message and 'setupbmc' not in message
+
+
+def bios_now(monkeypatch, attributes):
+    from utils.bios_push import BiosPush
+    monkeypatch.setattr(BiosPush, 'bios_resource',
+                        lambda self, redfish=None: (True, '/redfish/v1/Systems/1/Bios', {'Attributes': attributes}))
+
+
+def test_bios_settings_that_drifted_from_the_recorded_configuration_owe_a_restore(db, nodes, monkeypatch):
+    from utils.firmware import RESTORE_PENDING
+    from utils.firmware_push import FirmwarePush
+    catalogue(db, 'BMC')
+    flashed_ok(monkeypatch)
+    recorded_config(db, nodes)                      # golden: BootMode=Uefi
+    bios_now(monkeypatch, {'BootMode': 'Legacy', 'Other': 'x'})
+    rid = request_row(db, nodes['node001'])
+    status, message = FirmwarePush().update_node({'id': rid, 'nodename': 'node001'}, redfish=object())
+    assert status is True
     assert db.get_record(table='firmwarerequest', where=f'id = "{rid}"')[0]['restore'] == RESTORE_PENDING
-    assert 're-applies the BIOS configuration' in message
+    assert '1 BIOS setting(s) differ from the recorded configuration golden' in message
+
+
+def test_bios_settings_still_as_recorded_owe_nothing_and_say_so(db, nodes, monkeypatch):
+    from utils.firmware_push import FirmwarePush
+    catalogue(db, 'BMC')
+    flashed_ok(monkeypatch)
+    recorded_config(db, nodes)
+    bios_now(monkeypatch, {'BootMode': 'Uefi', 'Other': 'x'})
+    rid = request_row(db, nodes['node001'])
+    status, message = FirmwarePush().update_node({'id': rid, 'nodename': 'node001'}, redfish=object())
+    assert status is True
+    assert not db.get_record(table='firmwarerequest', where=f'id = "{rid}"')[0]['restore']
+    assert 'BIOS settings as recorded (golden)' in message
+
+
+def test_an_attribute_the_board_no_longer_publishes_is_not_drift(db, nodes, monkeypatch):
+    from utils.firmware_push import FirmwarePush
+    recorded_config(db, nodes)
+    bios_now(monkeypatch, {'Other': 'x'})
+    assert FirmwarePush().bios_drift(nodename='node001', redfish=object()) == ('golden', {})
 
 
 def test_a_bios_only_flash_owes_no_restore(db, nodes, monkeypatch):

@@ -384,8 +384,12 @@ class FirmwareRequest():
         A request removed when it is claimed is lost if the daemon stops mid-flash,
         and the node is then left part-updated with nothing recording that anybody
         ever asked. Marked, it can be reclaimed.
+
+        Returns whether the mark was written: it travels through the journal, and a
+        controller out of sync is refused. The caller must not flash what it could
+        not claim - the row would still read as queued, and be taken up again.
         """
-        self.update(requestid, status=CLAIMED)
+        return self.update(requestid, status=CLAIMED)
 
 
     def finish(self, requestid=None, status=None, message=None):

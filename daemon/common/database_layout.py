@@ -546,6 +546,7 @@ DATABASE_LAYOUT_nodeinventory = [
 {"column": "nic_count",            "datatype": "INTEGER", "length": "10"},
 {"column": "bios_version",         "datatype": "VARCHAR", "length": "64"},
 {"column": "bios_digest",          "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_writable",          "datatype": "VARCHAR", "length": "1"},
 {"column": "bios_config",          "datatype": "VARCHAR", "length": "64"},
 {"column": "bios_config_digest",   "datatype": "VARCHAR", "length": "64"},
 {"column": "inventory",            "datatype": "TEXT"},

@@ -754,3 +754,23 @@ def test_a_queued_bios_push_holds_the_install_too_and_the_length_is_rendered(db,
     assert FirmwarePush().hold(nodename='node001') == (True, 'a BIOS task is scheduled')
     assert FirmwarePush().hold_seconds(nodename='node001') == (HOLD_SECONDS, 'a BIOS task is scheduled')
     assert FirmwarePush().hold(nodename='node0010')[0] is False, 'node0010 is not node001'
+
+
+def test_a_board_that_cannot_take_a_bios_write_holds_nothing(db, nodes):
+    """
+    Measured: a node held its install ten minutes for a restore that was refused in
+    seconds, because its Bios is GET-only. The collector records that; the hold
+    reads it. Unknown still holds - the safe side.
+    """
+    from utils.firmware import RESTORE_PENDING
+    from utils.firmware_push import FirmwarePush
+    from utils.helper import Helper
+    request_row(db, nodes['node001'], restore=RESTORE_PENDING)
+    recorded_config(db, nodes)
+    assert FirmwarePush().hold(nodename='node001')[0] is True, 'unknown writability must hold'
+    db.update('nodeinventory', Helper().make_rows({'bios_writable': '0'}),
+              [{"column": "nodeid", "value": nodes['node001']}, {"column": "source", "value": 'redfish'}])
+    assert FirmwarePush().hold(nodename='node001') == (False, 'nothing scheduled')
+    db.update('nodeinventory', Helper().make_rows({'bios_writable': '1'}),
+              [{"column": "nodeid", "value": nodes['node001']}, {"column": "source", "value": 'redfish'}])
+    assert FirmwarePush().hold(nodename='node001')[0] is True

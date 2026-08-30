@@ -46,7 +46,7 @@ import os
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED
+from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED, RESTORE_PENDING
 from utils.firmware_push import FirmwarePush
 from utils.status import Status
 from common.constant import CONSTANT
@@ -326,6 +326,10 @@ class Firmware():
         groups = {record['id']: record['name']
                   for record in Database().get_record(table='group') or []}
         latest, summary = {}, {}
+        # a restore is owed by the node, not by the request that left it owed: a
+        # newer request must not push it out of view before it has settled
+        owed = {record['nodename'] for record in records
+                if record['restore'] == RESTORE_PENDING}
         for record in records:
             previous = latest.get(record['nodename'])
             if previous and previous['id'] >= record['id']:
@@ -339,7 +343,7 @@ class Firmware():
                 'component': record['component'] or '',
                 'request_id': record['request_id'] or '',
                 'state': state, 'message': record['message'] or '',
-                'restore': record['restore'] or '',
+                'restore': record['restore'] or (RESTORE_PENDING if nodename in owed else ''),
                 'since': record['updated'] or record['created'] or ''}
             summary[state] = summary.get(state, 0) + 1
         response['config'][self.table]['summary'] = summary

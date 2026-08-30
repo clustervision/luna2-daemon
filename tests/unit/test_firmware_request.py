@@ -247,6 +247,38 @@ def test_status_reports_the_newest_request_per_node(db):
     assert response['config']['firmwarecatalog']['summary'] == {'queued': 1}
 
 
+def test_status_keeps_a_restore_an_older_request_still_owes_in_view(db):
+    """
+    The newest request is the one shown, but a restore is owed by the node, not
+    by the request whose flash left it owed. Shown per request it disappears the
+    moment somebody asks again, and the admin then learns of the reset from the
+    board. It stays until it settles.
+    """
+    from base.firmware import Firmware
+    from utils.firmware import FirmwareRequest, RESTORE_PENDING
+
+    groupid = add_group(db, 'compute')
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650', groupid)
+    add_running(db, nodeid, 'BMC', '7.00')
+    add_entry(db, 'dellbmc', 'Dell Inc.', 'PowerEdge R650', 'BMC', '7.10')
+
+    push('node', 'node001')
+    first = requests(db)[0]['id']
+    FirmwareRequest().finish(requestid=first, status=True, message='flashed')
+    FirmwareRequest().mark_restore(requestid=first)
+    push('node', 'node001')
+    second = requests(db)[1]['id']
+    FirmwareRequest().finish(requestid=second, status=True, message='already there')
+
+    _, response = Firmware().status()
+    rows = response['config']['firmwarecatalog']['status']
+    assert rows['node001']['request_id'] == requests(db)[1]['request_id']
+    assert rows['node001']['restore'] == RESTORE_PENDING
+    FirmwareRequest().finish_restore(requestid=first, status=True, message='BMC answers')
+    _, response = Firmware().status()
+    assert response['config']['firmwarecatalog']['status']['node001']['restore'] == ''
+
+
 def test_status_carries_what_the_board_said_when_it_failed(db):
     from base.firmware import Firmware
     from utils.firmware import FirmwareRequest

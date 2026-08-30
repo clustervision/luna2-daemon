@@ -292,12 +292,74 @@ class FirmwareRequest():
         """
         written = 0
         for nodeid in nodeids or []:
-            row = Helper().make_rows({'nodeid': nodeid, 'component': component or '',
-                                      'request_id': request_id or '',
-                                      'status': QUEUED, 'created': 'NOW'})
-            if Database().insert(self.table, row):
+            if self.write('record', nodeid=nodeid, component=component or '',
+                          request_id=request_id or ''):
                 written += 1
         return written
+
+
+    def write(self, method=None, **arguments):
+        """
+        This method carries one write to this table to the peer and then applies it
+        here - in that order, and the local half only if the peer half was taken.
+
+        Every write to a replicated table goes through the journal. The hash sweep
+        that compares whole tables between controllers is the last resort for a
+        controller that was away, not the way a row travels: it runs about once an
+        hour, and a node that netboots from the other controller in that hour would
+        be told nothing is owed. add_request answers 'Not in H/A mode' on a single
+        controller, so the local write happens there unconditionally.
+
+        Rows are addressed by (request_id, nodeid), never by id: the peer inserts
+        its own row and its autoincrement is its own.
+        """
+        from utils.journal import Journal
+        status, _ = Journal().add_request(function='Firmware.replay_request', object=method,
+                                          payload=arguments)
+        if status is True:
+            return self.apply(method, **arguments)
+        return False
+
+
+    def apply(self, method=None, **arguments):
+        """
+        This method performs one write locally. The journal replays it on the peer
+        through Firmware.replay_request; nothing else calls it.
+        """
+        return getattr(self, f'apply_{method}')(**arguments)
+
+
+    def apply_record(self, nodeid=None, component=None, request_id=None):
+        row = Helper().make_rows({'nodeid': nodeid, 'component': component or '',
+                                  'request_id': request_id or '',
+                                  'status': QUEUED, 'created': 'NOW'})
+        return bool(Database().insert(self.table, row))
+
+
+    def apply_update(self, request_id=None, nodeid=None, **columns):
+        columns['updated'] = 'NOW'
+        Database().update(self.table, Helper().make_rows(columns),
+                          [{"column": "request_id", "value": request_id},
+                           {"column": "nodeid", "value": nodeid}])
+        return True
+
+
+    def identity(self, requestid=None):
+        """
+        This method returns the (request_id, nodeid) a local row id stands for - the
+        address a write travels under, since the peer's ids are its own.
+        """
+        row = Database().get_record(table=self.table, where=f'id = "{requestid}"')
+        if not row:
+            return None, None
+        return row[0]['request_id'], row[0]['nodeid']
+
+
+    def update(self, requestid=None, **columns):
+        request_id, nodeid = self.identity(requestid)
+        if nodeid is None:
+            return False
+        return self.write('update', request_id=request_id, nodeid=nodeid, **columns)
 
 
     def pending(self, status=QUEUED):
@@ -323,19 +385,15 @@ class FirmwareRequest():
         and the node is then left part-updated with nothing recording that anybody
         ever asked. Marked, it can be reclaimed.
         """
-        Database().update(self.table, Helper().make_rows({'status': CLAIMED, 'updated': 'NOW'}),
-                          [{"column": "id", "value": requestid}])
+        self.update(requestid, status=CLAIMED)
 
 
     def finish(self, requestid=None, status=None, message=None):
         """
         This method records how a request ended, and leaves the row for the status view.
         """
-        Database().update(self.table,
-                          Helper().make_rows({'status': 'done' if status else 'failed',
-                                              'message': str(message or '')[:2000],
-                                              'updated': 'NOW'}),
-                          [{"column": "id", "value": requestid}])
+        self.update(requestid, status='done' if status else 'failed',
+                    message=str(message or '')[:2000])
 
 
     def mark_restore(self, requestid=None):
@@ -344,8 +402,7 @@ class FirmwareRequest():
         restore is owed once the node has been back through setupbmc. On the request
         row, which is replicated: the mark survives the controller that set it.
         """
-        Database().update(self.table, Helper().make_rows({'restore': RESTORE_PENDING}),
-                          [{"column": "id", "value": requestid}])
+        self.update(requestid, restore=RESTORE_PENDING)
 
 
     def restore_pending(self, nodeid=None):
@@ -362,10 +419,7 @@ class FirmwareRequest():
         This method records how the restore ended, and with it lifts the hold.
         """
         outcome = 'done' if status else 'failed'
-        Database().update(self.table,
-                          Helper().make_rows({'restore': f'{outcome}: {str(message or "")[:1900]}',
-                                              'updated': 'NOW'}),
-                          [{"column": "id", "value": requestid}])
+        self.update(requestid, restore=f'{outcome}: {str(message or "")[:1900]}')
 
 
     def reclaim_abandoned(self, minutes=60):
@@ -382,6 +436,5 @@ class FirmwareRequest():
         for row in stale:
             self.logger.warning(f'firmware request {row["id"]} was left in progress; '
                                 'it will be tried again')
-            Database().update(self.table, Helper().make_rows({'status': QUEUED}),
-                              [{"column": "id", "value": row['id']}])
+            self.update(row['id'], status=QUEUED)
         return stale

@@ -155,6 +155,16 @@ class Firmware():
                 'interface facing the BMC network must be in the firewall\'s trusted zone')
 
 
+    def replay_request(self, name=None, payload=None):
+        """
+        This method is the peer's half of a write to the firmware request table.
+        The journal dispatches it as Firmware().replay_request(<write>, <arguments>);
+        it applies the write locally and never journals it again.
+        """
+        FirmwareRequest().apply(name, **(payload or {}))
+        return True, f'firmware request {name} replayed'
+
+
     def image_file_is_usable(self, imagefile=None):
         """
         This method refuses an image file name that could never be fetched.

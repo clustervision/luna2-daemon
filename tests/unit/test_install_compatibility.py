@@ -78,7 +78,7 @@ RENDER_CONTEXT = dict(
     NODE_NAME='n1', LUNA_GROUP='compute', LUNA_OSIMAGE='img',
     LUNA_DISTRIBUTION='redhat', LUNA_OSRELEASE='9', LUNA_SYSTEMROOT='sysroot',
     LUNA_IMAGEFILE='f.tar.bz2', LUNA_FILE='f.tar.bz2', LUNA_SELINUX_ENABLED='0',
-    LUNA_SETUPBMC=False, LUNA_BMC={}, LUNA_ROLES='', LUNA_SCRIPTS='',
+    LUNA_SETUPBMC=False, LUNA_HOLD_SECONDS=0, LUNA_HOLD_REASON='', LUNA_BMC={}, LUNA_ROLES='', LUNA_SCRIPTS='',
     LUNA_UNMANAGED_BMC_USERS='', LUNA_INTERFACES={}, LUNA_PRESCRIPT='',
     LUNA_PARTSCRIPT='', LUNA_POSTSCRIPT='', PROVISION_METHOD='torrent',
     PROVISION_FALLBACK='http', PROVISION_INTERFACE='BOOTIF',
@@ -222,6 +222,7 @@ def test_lpart_is_never_reachable_without_the_daemon_choosing_it():
 # "an old client is handed the same functions, called in the same order".
 CLASSIC_FUNCTIONS = {
     'bmcsetup',
+    'hold_for_daemon',
     'change_net',
     'cleanup',
     'collect_mac_n_name_net',
@@ -262,6 +263,10 @@ CLASSIC_FUNCTIONS = {
 }
 CLASSIC_FLOW = [
     'lunainit', 'dynamic_ip_check', 'node_scripts', 'prescript', 'bmcsetup',
+    # TRIX-2035: right after setupbmc the node holds the LUNA_HOLD_SECONDS the
+    # daemon rendered, so a reset from a scheduled restore or BIOS push lands in
+    # the hold, not mid-install. Zero, and no wait, when nothing is scheduled
+    'hold_for_daemon',
     # TRIX-143: hardware discovery moved up from the end of the install, deliberately.
     # update_system_info was removed beside it: it ran dmidecode a second time to POST
     # a vendor and an assettag that update_inventory already sends as manufacturer and
@@ -418,7 +423,24 @@ def _baseline_classic_template():
 # be listed is a difference nobody meant: every osimage that has not been rebuilt runs
 # this file, so a line lost here changes nodes nobody has touched.
 BLESSED_CLASSIC_REMOVALS = []
-BLESSED_CLASSIC_ADDITIONS = []
+# TRIX-2035: hold_for_daemon and its call after bmcsetup - the install waits the
+# LUNA_HOLD_SECONDS the daemon rendered (0 when nothing is scheduled) so a reset
+# from a scheduled restore or BIOS push lands in the hold, not mid-install. Delete this
+# block when the lines land on the baseline.
+BLESSED_CLASSIC_ADDITIONS = [
+    '',
+    'function hold_for_daemon {',
+    '    # A restore owed by a firmware flash, or a BIOS push, scheduled for this node',
+    '    # resets it. The daemon decided at render time whether one is, and how long to',
+    '    # hold so that the reset lands here rather than in the middle of the install.',
+    '    # Fixed and bounded: nothing is asked of the daemon, and it ends regardless.',
+    '    if [ "{{ LUNA_HOLD_SECONDS }}" -gt 0 ] 2>/dev/null; then',
+    '        echo "Luna2: {{ LUNA_HOLD_REASON }} for this node and may reset it; holding {{ LUNA_HOLD_SECONDS }}s so that reset does not land mid-install"',
+    '        sleep {{ LUNA_HOLD_SECONDS }}',
+    '    fi',
+    '}',
+    'hold_for_daemon',
+]
 
 
 def test_classic_installer_only_differs_from_its_owner_by_what_we_blessed():
@@ -535,7 +557,7 @@ def test_the_rendered_installer_is_valid_bash(template):
     if shutil.which('bash') is None:
         pytest.skip('bash not available')
     rendered = _render(os.path.join(TEMPLATES, template),
-                       LUNA_SETUPBMC=True, LUNA_ROLES='role1', LUNA_SCRIPTS='s',
+                       LUNA_SETUPBMC=True, LUNA_HOLD_SECONDS=0, LUNA_HOLD_REASON='', LUNA_ROLES='role1', LUNA_SCRIPTS='s',
                        LUNA_TOKEN='t', LUNA_BOOTIF='eth0', LUNA_BOOTPROTO='dhcp',
                        DOMAIN_SEARCH=['example'], LUNA_INSTALL_MODE='full',
                        LUNA_DISKLAYOUT_B64='eyJ2IjoyfQ==', LUNA_OSIMAGE_FILTER_B64='e30=')
@@ -545,3 +567,17 @@ def test_the_rendered_installer_is_valid_bash(template):
         f'{template} renders to bash that will not parse:\n'
         f'{check.stderr.decode("utf-8", "replace")}'
     )
+
+
+def test_every_variable_the_installers_use_is_rendered_by_the_boot_route():
+    """
+    A variable added to a template and not to the render call renders as nothing,
+    silently - the trap a new LUNA_ variable walks into. Derived from the
+    templates, so the next variable is covered without being remembered.
+    """
+    import os, re
+    routes = open(os.path.join(DAEMON, 'routes', 'boot.py'), encoding='utf-8').read()
+    for name in ('templ_install.cfg', 'templ_install_lpart.cfg'):
+        text = open(os.path.join(DAEMON, 'templates', name), encoding='utf-8').read()
+        for variable in sorted(set(re.findall(r'{{\s*(LUNA_[A-Z0-9_]+)', text))):
+            assert re.search(rf'\b{variable}\s*=', routes), f'{name} uses {variable}, boot.py never renders it'

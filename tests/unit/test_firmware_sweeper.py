@@ -54,7 +54,8 @@ def db(tmp_path):
     database.local_thread.connection = None
     for table in ['node', 'group', 'firmwarecatalog', 'firmwarerequest',
                   'nodeinventory', 'nodeinventoryfirmware', 'queue',
-                  'network', 'nodeinterface', 'ipaddress', 'controller']:
+                  'network', 'nodeinterface', 'ipaddress', 'controller',
+                  'biosconfig', 'status', 'monitor']:
         Database().create(table, DBStructure().get_database_table_structure(table))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
@@ -466,3 +467,231 @@ def test_a_bios_only_flash_carries_no_note(db, nodes, monkeypatch):
     status, message = fp.update_node({'nodename': 'node001'}, redfish=object())
     assert status is True
     assert 'setupbmc' not in message
+
+
+# ---------------------------------------------------------------------------
+# The restore a config-resetting flash leaves owed (TRIX-2035)
+# ---------------------------------------------------------------------------
+
+def request_row(db, nodeid, restore=''):
+    from utils.helper import Helper
+    return db.insert('firmwarerequest', Helper().make_rows(
+        {'nodeid': nodeid, 'component': '', 'request_id': 'req1', 'status': 'done',
+         'restore': restore, 'created': 'NOW'}))
+
+
+def catalogue(db, component='BMC', version='7.10'):
+    from utils.helper import Helper
+    db.insert('firmwarecatalog', Helper().make_rows(
+        {'name': f'dell{component.lower()}', 'manufacturer': 'Dell Inc.',
+         'model': 'PowerEdge R650', 'component': component, 'version': version,
+         'imagefile': 'bmc.bin'}))
+
+
+def flashed_ok(monkeypatch):
+    from utils.firmware_push import FirmwarePush
+    monkeypatch.setattr(FirmwarePush, 'update_component',
+                        lambda self, redfish=None, nodename=None, item=None: (True, 'flashed'))
+
+
+def test_a_bmc_flash_marks_its_request_restore_pending(db, nodes, monkeypatch):
+    from utils.firmware import RESTORE_PENDING
+    from utils.firmware_push import FirmwarePush
+    catalogue(db, 'BMC')
+    flashed_ok(monkeypatch)
+    rid = request_row(db, nodes['node001'])
+    status, message = FirmwarePush().update_node({'id': rid, 'nodename': 'node001'}, redfish=object())
+    assert status is True
+    assert db.get_record(table='firmwarerequest', where=f'id = "{rid}"')[0]['restore'] == RESTORE_PENDING
+    assert 're-applies the BIOS configuration' in message
+
+
+def test_a_bios_only_flash_owes_no_restore(db, nodes, monkeypatch):
+    from utils.firmware_push import FirmwarePush
+    from utils.helper import Helper
+    db.insert('firmwarecatalog', Helper().make_rows(
+        {'name': 'dellbios', 'manufacturer': 'Dell Inc.', 'model': 'PowerEdge R650',
+         'component': 'BIOS', 'version': '1.05', 'imagefile': 'bios.bin'}))
+    flashed_ok(monkeypatch)
+    rid = request_row(db, nodes['node001'])
+    status, _ = FirmwarePush().update_node({'id': rid, 'nodename': 'node001', 'component': 'BIOS'}, redfish=object())
+    assert status is True
+    assert not db.get_record(table='firmwarerequest', where=f'id = "{rid}"')[0]['restore']
+
+
+def test_the_install_holds_only_while_a_restore_that_will_reset_the_node_is_owed(db, nodes):
+    """A restore with no recorded BIOS configuration only verifies the BMC and
+    resets nothing, so it holds nothing: a plain BMC flash costs no idle minutes."""
+    from utils.firmware import FirmwareRequest, RESTORE_PENDING
+    from utils.firmware_push import FirmwarePush
+    assert FirmwarePush().hold(nodename='node001') == (False, 'nothing scheduled')
+    rid = request_row(db, nodes['node001'], restore=RESTORE_PENDING)
+    assert FirmwarePush().hold(nodename='node001')[0] is False, 'nothing recorded, nothing to reset for'
+    recorded_config(db, nodes)
+    hold, _ = FirmwarePush().hold(nodename='node001')
+    assert hold is True
+    FirmwareRequest().finish_restore(requestid=rid, status=True, message='ok')
+    assert FirmwarePush().hold(nodename='node001')[0] is False
+    assert FirmwarePush().hold(nodename='nobody') == (False, 'unknown node')
+
+
+def test_reporting_setupbmc_queues_the_owed_restore_and_nothing_otherwise(db, nodes):
+    from utils.firmware import RESTORE_PENDING
+    from utils.firmware_push import FirmwarePush
+    assert FirmwarePush().queue_restore(nodename='node001') == 0
+    request_row(db, nodes['node001'], restore=RESTORE_PENDING)
+    assert FirmwarePush().queue_restore(nodename='node001') == 1
+    tasks = [row for row in db.get_record(table='queue') or [] if row['task'] == 'restore_after_flash']
+    assert len(tasks) == 1 and tasks[0]['param'] == 'node001' and tasks[0]['subsystem'] == 'bios'
+    assert tasks[0]['request_id'] == 'req1'
+    # deferred would defeat the point: the node is holding for this right now
+    assert tasks[0]['created'] <= tasks[0]['created']
+
+
+class Reachable:
+    """A BMC that answers Redfish, after a number of refusals."""
+    def __init__(self, refusals=0):
+        self.refusals = refusals
+    def __call__(self, device=None, username=None, password=None, scheme=None, port=None, verify=None):
+        self.device = device
+        return self
+    def system(self):
+        if self.refusals:
+            self.refusals -= 1
+            return False, 'connection refused', None
+        return True, '/redfish/v1/Systems/1', {'Manufacturer': 'Dell Inc.'}
+
+
+class Inventory:
+    def __init__(self, ok=True):
+        self.ok = ok
+    def bmc_for(self, name=None, needs=None):
+        if not self.ok:
+            return False, 'no BMC address'
+        return True, {'device': '10.148.0.1', 'username': 'admin', 'password': 'pw',
+                      'scheme': 'https', 'port': 443, 'verify': False}
+
+
+class Bios:
+    def __init__(self, result=(True, '2 stage(s) applied')):
+        self.result, self.pushed, self.recorded = result, [], []
+    def push_node(self, nodename=None, config=None, policy=None, request_id=None):
+        self.pushed.append((nodename, config['attributes'], policy))
+        return self.result
+    def record_applied(self, nodename=None, configname=None):
+        self.recorded.append((nodename, configname))
+
+
+def no_sleep(monkeypatch):
+    import utils.firmware_push as module
+    monkeypatch.setattr(module, 'sleep', lambda seconds: None)
+
+
+def recorded_config(db, nodes, name='golden'):
+    import base64
+    from json import dumps
+    from utils.helper import Helper
+    db.insert('biosconfig', Helper().make_rows(
+        {'name': name, 'manufacturer': 'Dell Inc.', 'model': 'PowerEdge R650',
+         'biosversion': '1.0', 'attributes': base64.b64encode(dumps({'BootMode': 'Uefi'}).encode()).decode()}))
+    db.update('nodeinventory', Helper().make_rows({'bios_config': name}),
+              [{"column": "nodeid", "value": nodes['node001']}, {"column": "source", "value": 'redfish'}])
+
+
+def test_a_bmc_that_never_answers_fails_the_restore_loudly(db, nodes, monkeypatch):
+    from utils.firmware_push import FirmwarePush
+    no_sleep(monkeypatch)
+    status, message = FirmwarePush().restore_node(
+        nodename='node001', inventory=Inventory(), redfish_class=Reachable(refusals=99),
+        bios=Bios(), deadline=30)
+    assert status is False
+    assert 'did not answer' in message and '10.148.0.1' in message and 'refused' in message
+
+
+def test_a_node_with_no_recorded_configuration_gets_its_bmc_verified_and_nothing_else(db, nodes, monkeypatch):
+    from utils.firmware_push import FirmwarePush
+    no_sleep(monkeypatch)
+    bios = Bios()
+    status, message = FirmwarePush().restore_node(
+        nodename='node001', inventory=Inventory(), redfish_class=Reachable(refusals=2), bios=bios)
+    assert status is True
+    assert 'answers with the stored credentials' in message and 'nothing to restore' in message
+    assert bios.pushed == []
+
+
+def test_the_recorded_configuration_is_pushed_back_and_recorded_again(db, nodes, monkeypatch):
+    """Only what Luna itself applied comes back - the stored attributes of the
+    configuration the node was last found to match - through the ordinary staged push."""
+    from utils.firmware_push import FirmwarePush
+    no_sleep(monkeypatch)
+    recorded_config(db, nodes)
+    bios = Bios()
+    status, message = FirmwarePush().restore_node(
+        nodename='node001', inventory=Inventory(), redfish_class=Reachable(), bios=bios)
+    assert status is True and 'golden' in message and '2 stage(s)' in message
+    assert bios.pushed == [('node001', {'BootMode': 'Uefi'}, 'warn')]
+    assert bios.recorded == [('node001', 'golden')]
+
+
+def test_a_configuration_that_vanished_is_a_failure_not_a_silent_skip(db, nodes, monkeypatch):
+    from utils.firmware_push import FirmwarePush
+    from utils.database import Database
+    no_sleep(monkeypatch)
+    recorded_config(db, nodes)
+    Database().delete_row('biosconfig', [{"column": "name", "value": 'golden'}])
+    status, message = FirmwarePush().restore_node(
+        nodename='node001', inventory=Inventory(), redfish_class=Reachable(), bios=Bios())
+    assert status is False and 'no longer exists' in message
+
+
+def test_a_refused_push_is_not_recorded_as_applied(db, nodes, monkeypatch):
+    from utils.firmware_push import FirmwarePush
+    no_sleep(monkeypatch)
+    recorded_config(db, nodes)
+    bios = Bios(result=(False, 'stage 1/2: the board refused'))
+    status, message = FirmwarePush().restore_node(
+        nodename='node001', inventory=Inventory(), redfish_class=Reachable(), bios=bios)
+    assert status is False and 'not restored' in message and 'refused' in message
+    assert bios.recorded == []
+
+
+def test_the_restore_settles_every_owed_request_and_lifts_the_hold(db, nodes, monkeypatch):
+    from utils.firmware import RESTORE_PENDING
+    from utils.firmware_push import FirmwarePush
+    rid = request_row(db, nodes['node001'], restore=RESTORE_PENDING)
+    monkeypatch.setattr(FirmwarePush, 'restore_node',
+                        lambda self, **kw: (True, 'BMC answers; nothing to restore'))
+    status, message = FirmwarePush().restore_after_flash(nodename='node001', request_id='req1')
+    assert status is True
+    row = db.get_record(table='firmwarerequest', where=f'id = "{rid}"')[0]
+    assert row['restore'].startswith('done: BMC answers')
+    assert FirmwarePush().hold(nodename='node001')[0] is False
+    assert FirmwarePush().restore_after_flash(nodename='node001') == (None, 'node001: no restore is owed')
+
+
+def test_the_bios_loop_dispatches_the_restore_task(db, nodes, monkeypatch):
+    from utils.bios_push import BiosPush
+    from utils.firmware_push import FirmwarePush
+    seen = []
+    monkeypatch.setattr(FirmwarePush, 'restore_after_flash',
+                        lambda self, nodename=None, request_id=None: seen.append((nodename, request_id)) or (True, 'ok'))
+    BiosPush().run_task({'task': 'restore_after_flash', 'param': 'node001', 'request_id': 'req1'})
+    assert seen == [('node001', 'req1')]
+
+
+def test_status_shows_how_the_restore_ended(db, nodes):
+    from base.firmware import Firmware
+    request_row(db, nodes['node001'], restore='done: BMC answers')
+    status, response = Firmware().status(name='node001')
+    assert status is True
+    assert response['config']['firmwarecatalog']['status']['node001']['restore'] == 'done: BMC answers'
+
+
+def test_a_queued_bios_push_holds_the_install_too_and_the_length_is_rendered(db, nodes):
+    from utils.firmware_push import FirmwarePush, HOLD_SECONDS
+    from utils.queue import Queue
+    assert FirmwarePush().hold_seconds(nodename='node001') == (0, 'nothing scheduled')
+    Queue().add_task_to_queue(task='push_bios', param='node001:golden:warn', subsystem='bios')
+    assert FirmwarePush().hold(nodename='node001') == (True, 'a BIOS task is scheduled')
+    assert FirmwarePush().hold_seconds(nodename='node001') == (HOLD_SECONDS, 'a BIOS task is scheduled')
+    assert FirmwarePush().hold(nodename='node0010')[0] is False, 'node0010 is not node001'

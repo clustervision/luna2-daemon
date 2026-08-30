@@ -84,6 +84,7 @@ from utils.log import Log
 from utils.queue import Queue
 from utils.ha import HA
 from utils.firmware import FirmwareCatalog, FirmwareRequest, NO_IMAGEFILE, NO_IMAGE
+from utils.status import Status
 
 
 # How a board will take an image, in the order we would rather use them.
@@ -134,6 +135,15 @@ POLL_INTERVAL = 15
 # How long to wait for an update service to come back before giving up on it. A BMC
 # that has just flashed itself is unreachable for a while, and that is not a failure.
 READY_DEADLINE = 300
+# how long the restore waits for a BMC that setupbmc has just re-addressed to answer
+# Redfish with the stored credentials. The node holds its install for about this
+# long, so the two are sized together: see hold_for_daemon in the install template
+RESTORE_READY_DEADLINE = 240
+# how long an install holds after setupbmc when a restore or a BIOS push is scheduled
+# for the node, so that the reset it needs lands in the hold and not mid-install.
+# The restore's BMC wait above sits inside it. Fixed and bounded: the node is told at
+# render time and asks nothing afterwards
+HOLD_SECONDS = 600
 
 
 class FirmwarePush():
@@ -580,8 +590,18 @@ class FirmwarePush():
                 return False, (f'{message}' if not done
                                else f'{message} (after {", ".join(done)})')
             done.append(item['component'])
+        if self.resets_config(done) and request.get('id'):
+            FirmwareRequest().mark_restore(request['id'])
         return True, (f'{nodename}: {", ".join(done)} now at the catalogue version'
                       + self.reconfigure_note(done))
+
+
+    def resets_config(self, components=None):
+        """
+        This method says whether flashing these components resets the BMC to defaults.
+        """
+        return any(marker in str(component).upper()
+                   for component in components or [] for marker in RESETS_BMC_CONFIG)
 
 
     def reconfigure_note(self, components=None):
@@ -590,16 +610,163 @@ class FirmwarePush():
         empty string when none did.
 
         Kept apart from the success message so the wording lives in one place and can
-        be asserted on its own. It reports rather than acts: Luna cannot reach a reset
-        BMC with the stored credentials, and the config is restored by setupbmc on the
-        node's next boot through Luna - which Luna leaves to the operator to trigger.
+        be asserted on its own. It says what Luna will do and what it will not: the
+        address and credentials come back in band when the node next installs through
+        Luna, the daemon then verifies the BMC and re-applies the BIOS configuration it
+        last recorded for the node - and getting the node to that install is the
+        operator's, because Luna reboots nothing on its own initiative.
         """
-        if not any(marker in str(component).upper()
-                   for component in components or [] for marker in RESETS_BMC_CONFIG):
+        if not self.resets_config(components):
             return ''
         return ('; the BMC was reset to defaults by the flash - boot the node through '
-                'Luna (setupbmc) to restore its address and credentials, until then '
-                'Luna cannot reach it')
+                'Luna (setupbmc): its address and credentials are restored in band, '
+                'after which Luna verifies the BMC and re-applies the BIOS configuration '
+                'it last recorded for this node. Until then Luna cannot reach it')
+
+
+    def queue_restore(self, nodename=None):
+        """
+        This method queues the restore a flash left owed, when a node reports
+        install.setupbmc. Returns the number of restores queued, so a caller can
+        say whether anything is coming.
+
+        Queued and not done here: the node's status update must not wait on its BMC.
+        Not deferred either, unlike the inventory collection: the node is holding its
+        install for exactly this, so the restore starts now and waits for the BMC
+        itself, bounded.
+        """
+        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        if not node:
+            return 0
+        pending = FirmwareRequest().restore_pending(nodeid=node[0]['id'])
+        for row in pending:
+            Queue().add_task_to_queue(task='restore_after_flash', param=nodename,
+                                      subsystem='bios', request_id=row['request_id'])
+        if pending:
+            self.logger.info(f'{nodename} reported its BMC configured; the restore owed '
+                             f'by its firmware flash is queued')
+        return len(pending)
+
+
+    def hold(self, nodename=None):
+        """
+        This method answers 'is anything scheduled for this node that may reset it':
+        a restore owed by a firmware flash, or a BIOS push already queued or running.
+        Decided when the install template is rendered, so the node needs nothing
+        from the daemon afterwards: it waits a fixed, bounded time after setupbmc and
+        continues regardless, and a daemon that stops cannot deadlock a node.
+        """
+        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        if not node:
+            return False, 'unknown node'
+        if FirmwareRequest().restore_pending(nodeid=node[0]['id']):
+            # a restore only resets the node when it has a BIOS configuration to put
+            # back; with none recorded it verifies the BMC and touches nothing, and
+            # holding for that would cost every plain BMC flash ten idle minutes
+            snapshot = Database().get_record(
+                table='nodeinventory',
+                where=f'nodeid = "{node[0]["id"]}" AND source = "redfish"')
+            if str((snapshot or [{}])[0].get('bios_config') or '').strip():
+                return True, 'a restore owed by a firmware flash is scheduled'
+        # a BIOS task carries the node as its parameter: bare for a restore,
+        # node:config:policy for a push
+        if Database().get_record(table='queue',
+                                 where=f'subsystem = "bios" AND (param = "{nodename}" '
+                                       f'OR param LIKE "{nodename}:%")'):
+            return True, 'a BIOS task is scheduled'
+        return False, 'nothing scheduled'
+
+
+    def hold_seconds(self, nodename=None):
+        """
+        This method returns how long the installer should hold after setupbmc and
+        why: the full bound when something is scheduled, nothing when nothing is.
+        The reason is rendered into the install so the admin sees it on the console.
+        """
+        hold, reason = self.hold(nodename=nodename)
+        return (HOLD_SECONDS if hold else 0), reason
+
+
+    def restore_after_flash(self, nodename=None, request_id=None):
+        """
+        This method gives a node back what a flash took: it waits for the BMC to
+        answer on its intended address with the stored credentials, then re-applies
+        the BIOS configuration Luna last recorded for the node. Only what Luna
+        itself applied is restored; a node with no recorded configuration gets its
+        BMC verified and nothing else.
+
+        Runs when the node reports install.setupbmc, which is the moment the address
+        and credentials are back and the moment before anyone has touched the BIOS
+        out of band. The BIOS push resets the machine as its stages need; the node
+        is holding its install for that.
+        """
+        from base.nodeinventory import NodeInventory
+        from utils.bios_push import BiosPush
+        from utils.redfish import Redfish
+
+        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        if not node:
+            return None, f'{nodename} no longer exists'
+        pending = FirmwareRequest().restore_pending(nodeid=node[0]['id'])
+        if not pending:
+            return None, f'{nodename}: no restore is owed'
+        status, message = self.restore_node(nodename=nodename, request_id=request_id,
+                                            inventory=NodeInventory(), redfish_class=Redfish,
+                                            bios=BiosPush())
+        for row in pending:
+            FirmwareRequest().finish_restore(requestid=row['id'], status=status,
+                                             message=message)
+        level = self.logger.info if status else self.logger.error
+        level(f'restore after flash, {nodename}: {message}')
+        if request_id:
+            Status().add_message(request_id, 'luna', f'restore {nodename}: {message}')
+        return status, message
+
+
+    def restore_node(self, nodename=None, request_id=None, inventory=None,
+                     redfish_class=None, bios=None, deadline=RESTORE_READY_DEADLINE):
+        """
+        This method does the work for restore_after_flash(), given its collaborators.
+        """
+        status, access = inventory.bmc_for(name=nodename)
+        if not status:
+            return False, f'BMC not verified: {access}'
+        redfish = redfish_class(device=access['device'], username=access['username'],
+                                password=access['password'], scheme=access['scheme'],
+                                port=access['port'], verify=access['verify'])
+        waited, reason = 0, None
+        while True:
+            status, reason, _ = redfish.system()
+            if status:
+                break
+            if waited >= deadline:
+                return False, (f'BMC at {access["device"]} did not answer with the stored '
+                               f'credentials within {waited}s: {reason}')
+            sleep(POLL_INTERVAL)
+            waited += POLL_INTERVAL
+        verified = f'BMC at {access["device"]} answers with the stored credentials'
+        snapshot = Database().get_record(
+            table='nodeinventory',
+            where=f'nodeid IN (SELECT id FROM node WHERE name = "{nodename}") '
+                  'AND source = "redfish"')
+        configname = str((snapshot or [{}])[0].get('bios_config') or '').strip()
+        if not configname:
+            return True, f'{verified}; no BIOS configuration recorded for this node, nothing to restore'
+        record = Database().get_record(table='biosconfig', where=f'name = "{configname}"')
+        if not record:
+            return False, (f'{verified}; the BIOS configuration {configname} recorded for '
+                           'this node no longer exists, so it was not restored')
+        from base.bios import Bios
+        config = {'attributes': Bios().stored_attributes(record[0]),
+                  'manufacturer': record[0]['manufacturer'],
+                  'model': record[0]['model'],
+                  'biosversion': record[0]['biosversion']}
+        status, message = bios.push_node(nodename=nodename, config=config, policy='warn',
+                                         request_id=request_id)
+        if status:
+            bios.record_applied(nodename=nodename, configname=configname)
+            return True, f'{verified}; BIOS configuration {configname}: {message}'
+        return False, f'{verified}; BIOS configuration {configname} not restored: {message}'
 
 
     def update_component(self, redfish=None, nodename=None, item=None):

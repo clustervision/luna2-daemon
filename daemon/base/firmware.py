@@ -305,6 +305,7 @@ class Firmware():
             ['firmwarerequest.id as id', 'firmwarerequest.component as component',
              'firmwarerequest.request_id as request_id',
              'firmwarerequest.status as state', 'firmwarerequest.message as message',
+             'firmwarerequest.restore as restore',
              'firmwarerequest.created as created', 'firmwarerequest.updated as updated',
              'node.name as nodename', 'node.groupid as groupid'],
             ['node.id=firmwarerequest.nodeid'],
@@ -328,6 +329,7 @@ class Firmware():
                 'component': record['component'] or '',
                 'request_id': record['request_id'] or '',
                 'state': state, 'message': record['message'] or '',
+                'restore': record['restore'] or '',
                 'since': record['updated'] or record['created'] or ''}
             summary[state] = summary.get(state, 0) + 1
         response['config'][self.table]['summary'] = summary

@@ -1551,6 +1551,12 @@ class Boot():
                 data['setupbmc'] = False
         else:
             del data['bmcsetup']
+        # a restore owed by a firmware flash, or a BIOS push, scheduled for this node
+        # resets it; the installer holds this long after setupbmc so that lands in
+        # the hold rather than mid-install (TRIX-2035). Zero when nothing is scheduled
+        from utils.firmware_push import FirmwarePush
+        data['hold_seconds'], data['hold_reason'] = FirmwarePush().hold_seconds(
+            nodename=data['nodename'])
 
         data['osrelease'] = 'default'
         data['distribution'] = 'redhat'

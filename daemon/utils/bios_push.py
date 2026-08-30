@@ -445,6 +445,13 @@ class BiosPush():
         answers to the name.
         """
         request_id = task.get('request_id')
+        if task.get('task') == 'restore_after_flash':
+            # the restore a firmware flash left owed; same loop as a push because it
+            # is one, when the node has a recorded configuration to go back to
+            from utils.firmware_push import FirmwarePush
+            FirmwarePush().restore_after_flash(nodename=task.get('param'),
+                                               request_id=request_id)
+            return
         nodename, configname, policy, *_ = (str(task.get('param') or '').split(':')
                                             + [None] + [None])
         record = Database().get_record(table='biosconfig', where=f'name = "{configname}"')

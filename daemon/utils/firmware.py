@@ -251,6 +251,9 @@ class FirmwareCatalog():
 # been claimed by it, and anything else is a finished state kept for the status view.
 QUEUED = 'queued'
 CLAIMED = 'in progress'
+# a flash reset the BMC and the node has not yet come back through setupbmc; the
+# restore that follows is owed and the install holds for it
+RESTORE_PENDING = 'pending'
 
 
 class FirmwareRequest():
@@ -331,6 +334,36 @@ class FirmwareRequest():
         Database().update(self.table,
                           Helper().make_rows({'status': 'done' if status else 'failed',
                                               'message': str(message or '')[:2000],
+                                              'updated': 'NOW'}),
+                          [{"column": "id", "value": requestid}])
+
+
+    def mark_restore(self, requestid=None):
+        """
+        This method records that the flash behind a request reset the BMC, so a
+        restore is owed once the node has been back through setupbmc. On the request
+        row, which is replicated: the mark survives the controller that set it.
+        """
+        Database().update(self.table, Helper().make_rows({'restore': RESTORE_PENDING}),
+                          [{"column": "id", "value": requestid}])
+
+
+    def restore_pending(self, nodeid=None):
+        """
+        This method returns the requests of a node whose restore is still owed.
+        """
+        return Database().get_record(
+            table=self.table,
+            where=f'nodeid = "{nodeid}" AND restore = "{RESTORE_PENDING}"') or []
+
+
+    def finish_restore(self, requestid=None, status=None, message=None):
+        """
+        This method records how the restore ended, and with it lifts the hold.
+        """
+        outcome = 'done' if status else 'failed'
+        Database().update(self.table,
+                          Helper().make_rows({'restore': f'{outcome}: {str(message or "")[:1900]}',
                                               'updated': 'NOW'}),
                           [{"column": "id", "value": requestid}])
 

@@ -941,7 +941,13 @@ class FirmwarePush():
             snapshot = Database().get_record(
                 table='nodeinventory',
                 where=f'nodeid = "{node[0]["id"]}" AND source = "redfish"')
-            if str((snapshot or [{}])[0].get('bios_config') or '').strip():
+            row = (snapshot or [{}])[0]
+            # ... and only on a board that can take the write. A board whose last
+            # inventory found no settings object cannot be restored by a staged
+            # push, so holding for it would be ten idle minutes before a refusal.
+            # Unknown counts as writable: the safe side is to hold
+            if (str(row.get('bios_config') or '').strip()
+                    and str(row.get('bios_writable') or '') != '0'):
                 return True, 'a restore owed by a firmware flash is scheduled'
         # a BIOS task carries the node as its parameter: bare for a restore,
         # node:config:policy for a push

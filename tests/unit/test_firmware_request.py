@@ -289,3 +289,63 @@ def test_status_for_a_group_nobody_made_says_so(db):
 
     status, response = Firmware().status(group='nosuchgroup')
     assert status is False and 'not available' in response
+
+
+# ---------------------------------------------------------------------------
+# Every write to the request table travels through the journal (HA)
+# ---------------------------------------------------------------------------
+
+def journaled(monkeypatch, answer=(True, 'Not in H/A mode')):
+    """Records what would go to the peer, and answers as the journal would."""
+    from utils.journal import Journal
+    sent = []
+    monkeypatch.setattr(Journal, 'add_request',
+                        lambda self, function=None, object=None, param=None, payload=None, **k:
+                        sent.append({'function': function, 'object': object, 'payload': payload}) or answer)
+    return sent
+
+
+def test_every_request_write_is_journaled_to_the_peer_and_applied_locally(db, monkeypatch):
+    """
+    The table is replicated, so its writes go through the journal - the hourly hash
+    sweep is a last resort for a controller that was away, not the way a row travels.
+    A node netbooting from the other controller inside that hour would otherwise be
+    told nothing is owed.
+    """
+    from utils.firmware import FirmwareRequest, RESTORE_PENDING
+    sent = journaled(monkeypatch)
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    requests_ = FirmwareRequest()
+    assert requests_.record(nodeids=[nodeid], component='BMC', request_id='r1') == 1
+    row = requests(db)[0]
+    requests_.claim(row['id']); requests_.mark_restore(row['id'])
+    requests_.finish(row['id'], True, 'flashed'); requests_.finish_restore(row['id'], False, 'no settings object')
+    assert [s['function'] for s in sent] == ['Firmware.replay_request'] * 5
+    assert [s['object'] for s in sent] == ['record', 'update', 'update', 'update', 'update']
+    # addressed by what both controllers share, never by the local autoincrement
+    for s in sent[1:]:
+        assert s['payload']['request_id'] == 'r1' and s['payload']['nodeid'] == nodeid and 'id' not in s['payload']
+    row = requests(db)[0]
+    assert (row['status'], row['message'], row['restore']) == ('done', 'flashed', 'failed: no settings object')
+
+
+def test_a_write_the_peer_did_not_take_is_not_written_locally_either(db, monkeypatch):
+    """A controller that is not in sync must not write what it cannot replicate."""
+    from utils.firmware import FirmwareRequest
+    journaled(monkeypatch, answer=(False, 'not in sync'))
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    assert FirmwareRequest().record(nodeids=[nodeid], component='BMC', request_id='r1') == 0
+    assert requests(db) == []
+
+
+def test_the_peer_replays_the_write_onto_its_own_row(db, monkeypatch):
+    """What the journal hands the peer reproduces the row there - keyed on
+    (request_id, nodeid), since the peer's id is its own."""
+    from base.firmware import Firmware
+    from utils.firmware import RESTORE_PENDING
+    journaled(monkeypatch)
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    Firmware().replay_request('record', {'nodeid': nodeid, 'component': 'BMC', 'request_id': 'r9'})
+    Firmware().replay_request('update', {'request_id': 'r9', 'nodeid': nodeid, 'restore': RESTORE_PENDING})
+    row = requests(db)[0]
+    assert (row['request_id'], row['status'], row['restore']) == ('r9', 'queued', RESTORE_PENDING)

@@ -153,9 +153,15 @@ VERIFY_DEADLINE = 900
 RESTORE_READY_DEADLINE = 240
 # how long an install holds after setupbmc when a restore or a BIOS push is scheduled
 # for the node, so that the reset it needs lands in the hold and not mid-install.
-# The restore's BMC wait above sits inside it. Fixed and bounded: the node is told at
-# render time and asks nothing afterwards
-HOLD_SECONDS = 600
+# It has to cover the time to the FIRST reset only - the status reaching the master
+# (tens of seconds, journaled), the queue pickup, the BMC readiness wait above and
+# the write - not the whole restore, since the reset ends the sleep. Measured on a
+# real install: about a minute typical, under five worst case. Fixed and bounded:
+# the node is told at render time and asks nothing afterwards. Bulk is not this
+# number's business: the BIOS loop is serial, so after a fleet flash the later
+# nodes sleep out and are reset mid-install when their turn comes, which a
+# netboot install simply re-runs
+HOLD_SECONDS = 450
 
 
 class MultipartBody():

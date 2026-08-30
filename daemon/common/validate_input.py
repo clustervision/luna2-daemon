@@ -129,7 +129,10 @@ MATCH = {
     'bond_mode': 'nameandclear',
     'bond_slaves': 'interfacecsv',
     'newredfishsetupname': 'name',
-    'biosconfig': 'name',
+    # nameandclear, not name: on a node or a group it is an assignment, and an
+    # assignment is cleared by sending it empty. The grab and push routes that
+    # also carry it refuse an empty one themselves
+    'biosconfig': 'nameandclear',
     'firmwarecatalog': 'name',
     'newbiosname': 'name',
     'account': 'name',

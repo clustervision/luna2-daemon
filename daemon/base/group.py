@@ -57,6 +57,7 @@ NAME_REFERENCES = {
     'bmcsetupname':     ('bmcsetup', 'BMC Setup', True),
     'redfishsetupname': ('redfishsetup', 'Redfish Setup', False),
     'osimage':          ('osimage', 'OSimage', True),
+    'biosconfig':       ('biosconfig', 'BIOS Configuration', False),
 }
 
 
@@ -145,6 +146,9 @@ class Group():
                 group['redfishsetupname'] = Database().name_by_id(
                     'redfishsetup', group['redfishsetupid']) or None
                 del group['redfishsetupid']
+                group['biosconfig'] = Database().name_by_id(
+                    'biosconfig', group['biosconfigid']) or None
+                del group['biosconfigid']
                 # assignments hold ids; a human reading this wants the names, as
                 # they are now rather than as they were when assigned
                 group['profiles'] = ','.join(Profile().profile_names(group['profiles']))
@@ -217,6 +221,10 @@ class Group():
             if group['redfishsetupid']:
                 group['redfishsetupname'] = Database().name_by_id(
                     'redfishsetup', group['redfishsetupid']) or '!!Invalid!!'
+            group['biosconfig'] = None
+            if group['biosconfigid']:
+                group['biosconfig'] = Database().name_by_id(
+                    'biosconfig', group['biosconfigid']) or '!!Invalid!!'
 
             group_interface = Database().get_record_join(
                 [
@@ -296,6 +304,7 @@ class Group():
             del group['osimageid']
             del group['bmcsetupid']
             del group['redfishsetupid']
+            del group['biosconfigid']
             # ---
             if group['osimagetagid']:
                 group['osimagetag'] = Database().name_by_id('osimagetag', group['osimagetagid']) or 'default'
@@ -305,6 +314,7 @@ class Group():
             group['_osimage_source'] = 'group'
             group['_bmcsetupname_source'] = 'group'
             group['_redfishsetupname_source'] = 'group'
+            group['_biosconfig_source'] = 'group'
             group['_osimagetag_source'] = 'group'
             if group['osimagetag'] == 'default':
                 group['_osimagetag_source'] = 'default'

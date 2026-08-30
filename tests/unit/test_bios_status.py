@@ -431,7 +431,11 @@ def test_the_group_lookup_is_one_query_not_one_per_node(cluster, monkeypatch):
         f'nodeinventory was read {calls.count("nodeinventory")} times - reading it '
         'per node is the cost this whole view exists to avoid'
     )
-    assert len(calls) <= 3, f'{len(calls)} queries for a whole-cluster status'
+    assert calls.count('biosconfig') == 1, (
+        f'biosconfig was read {calls.count("biosconfig")} times - the assignment names '
+        'and the content digests come from one read'
+    )
+    assert len(calls) <= 4, f'{len(calls)} queries for a whole-cluster status'
 
 
 def test_the_collector_records_whether_the_board_can_take_a_bios_write():

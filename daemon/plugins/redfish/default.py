@@ -113,6 +113,20 @@ class Plugin():
         return {}, filename
 
 
+    def concepts(self):
+        """
+        This method returns {concept: attribute name} for a board whose attribute
+        registry does not let a concept be found through its DisplayNames.
+
+        Empty here on purpose: the default is discovery, and a vendor file adds an
+        entry only where discovery was tried against a capture or a board and
+        could not answer - with the model and firmware it was needed for beside
+        it. An entry is used only when the attribute it names is in the target's
+        registry, so a stale mapping refuses rather than misfires.
+        """
+        return {}
+
+
     def probe(self, redfish=None, uri=None):
         """
         This method will read a Redfish resource and hand it back, so core can

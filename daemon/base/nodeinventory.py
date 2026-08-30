@@ -67,7 +67,7 @@ class NodeInventory():
         self.parent_fields = ['manufacturer', 'product', 'serial', 'cpu_model',
                               'cpu_count', 'memory_mb', 'bios_version',
                               'bios_digest', 'bios_config', 'bios_config_digest',
-                              'bios_writable']
+                              'bios_config_content', 'bios_writable']
         self.disk_fields = ['name', 'size_gb', 'type', 'model', 'serial']
         self.gpu_fields = ['busid', 'vendor', 'model', 'memory_mb', 'uuid']
         self.nic_fields = ['name', 'mac', 'speed_mbps', 'capabilities']

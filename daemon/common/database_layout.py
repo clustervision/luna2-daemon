@@ -238,6 +238,7 @@ DATABASE_LAYOUT_group = [
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
 {"column": "redfishsetupid",       "datatype": "INTEGER", "length": "10"},
+{"column": "biosconfigid",         "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "setupredfish",         "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
@@ -411,6 +412,7 @@ DATABASE_LAYOUT_node = [
 {"column": "service",              "datatype": "INTEGER", "length": "10"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
 {"column": "redfishsetupid",       "datatype": "INTEGER", "length": "10"},
+{"column": "biosconfigid",         "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "setupredfish",         "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
@@ -549,6 +551,7 @@ DATABASE_LAYOUT_nodeinventory = [
 {"column": "bios_writable",          "datatype": "VARCHAR", "length": "1"},
 {"column": "bios_config",          "datatype": "VARCHAR", "length": "64"},
 {"column": "bios_config_digest",   "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_config_content",  "datatype": "VARCHAR", "length": "64"},
 {"column": "inventory",            "datatype": "TEXT"},
 {"column": "hash",                 "datatype": "VARCHAR", "length": "64"},
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"}]

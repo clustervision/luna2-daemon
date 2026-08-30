@@ -34,7 +34,7 @@ def db(tmp_path):
     constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'unit.db')
     database.local_thread.connection = None
     for table in ['node', 'group', 'osimage', 'osimagetag', 'bmcsetup', 'redfishsetup',
-                  'cloud', 'switch', 'nodeinterface', 'ipaddress', 'network', 'monitor',
+                  'biosconfig', 'cloud', 'switch', 'nodeinterface', 'ipaddress', 'network', 'monitor',
                   'queue', 'route', 'routemap', 'nodesecrets', 'groupsecrets']:
         Database().create(table, DBStructure().get_database_table_structure(table))
     yield Database()
@@ -44,7 +44,7 @@ def db(tmp_path):
 
 # Seeded from the schema rather than from the list under test, so the fixture still
 # stands up on code that does not have that list.
-REFERENCED = ['group', 'osimage', 'bmcsetup', 'redfishsetup', 'cloud', 'switch']
+REFERENCED = ['group', 'osimage', 'bmcsetup', 'redfishsetup', 'biosconfig', 'cloud', 'switch']
 
 
 @pytest.fixture

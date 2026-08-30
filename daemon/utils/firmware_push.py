@@ -482,13 +482,21 @@ class FirmwarePush():
                            'has nowhere to fetch from')
         if ':' in source:
             source = f'[{source}]'
+        protocol, port = self.file_port()
+        return True, f'{protocol}://{source}:{port}/files/{imagefile}'
+
+
+    def file_port(self):
+        """
+        This method returns (protocol, port) of the file server a BMC fetches from.
+        """
         protocol, port = 'http', '7051'
         try:
             protocol = str(CONSTANT['WEBSERVER']['PROTOCOL'] or protocol)
             port = str(CONSTANT['WEBSERVER']['PORT'] or port)
         except (KeyError, TypeError):
             pass
-        return True, f'{protocol}://{source}:{port}/files/{imagefile}'
+        return protocol, port
 
 
     def follow(self, redfish=None, task=None, deadline=FLASH_DEADLINE):

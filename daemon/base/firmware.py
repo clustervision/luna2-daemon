@@ -47,7 +47,9 @@ from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
 from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED
+from utils.firmware_push import FirmwarePush
 from utils.status import Status
+from common.constant import CONSTANT
 from base.authentication import TOKEN_GATED_EXTENSIONS
 
 
@@ -127,13 +129,30 @@ class Firmware():
             row = Helper().make_rows(data)
             if not Database().insert(self.table, row):
                 return False, f'Internal error: {self.table_cap} {name} create failed'
-            return True, f'{self.table_cap} {name} created'
+            return True, f'{self.table_cap} {name} created' + self.staging_note(data.get('imagefile'))
         del data['name']
         if not data:
             return False, 'Nothing to update'
         Database().update(self.table, Helper().make_rows(data),
                           [{"column": "id", "value": record[0]['id']}])
-        return True, f'{self.table_cap} {name} updated'
+        return True, f'{self.table_cap} {name} updated' + self.staging_note(data.get('imagefile'))
+
+
+    def staging_note(self, imagefile=None):
+        """
+        This method returns the reminder that goes with naming an image file: where
+        to put it, and that the BMC has to be able to reach the controller to fetch
+        it. Said here, when the admin is setting the entry up, rather than discovered
+        at the board forty minutes into a push. The daemon does not judge the
+        firewall - that is the installer's, which trusts the BMC-facing interface.
+        """
+        imagefile = str(imagefile or '').strip()
+        if not imagefile:
+            return ''
+        _, port = FirmwarePush().file_port()
+        return (f'; stage {imagefile} in {CONSTANT["FILES"]["IMAGE_FILES"]} on the active '
+                f'controller. BMCs fetch it from the controller over port {port}, so the '
+                'interface facing the BMC network must be in the firewall\'s trusted zone')
 
 
     def image_file_is_usable(self, imagefile=None):

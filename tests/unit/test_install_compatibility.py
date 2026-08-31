@@ -423,24 +423,7 @@ def _baseline_classic_template():
 # be listed is a difference nobody meant: every osimage that has not been rebuilt runs
 # this file, so a line lost here changes nodes nobody has touched.
 BLESSED_CLASSIC_REMOVALS = []
-# TRIX-2035: hold_for_daemon and its call after bmcsetup - the install waits the
-# LUNA_HOLD_SECONDS the daemon rendered (0 when nothing is scheduled) so a reset
-# from a scheduled restore or BIOS push lands in the hold, not mid-install. Delete this
-# block when the lines land on the baseline.
-BLESSED_CLASSIC_ADDITIONS = [
-    '',
-    'function hold_for_daemon {',
-    '    # A restore owed by a firmware flash, or a BIOS push, scheduled for this node',
-    '    # resets it. The daemon decided at render time whether one is, and how long to',
-    '    # hold so that the reset lands here rather than in the middle of the install.',
-    '    # Fixed and bounded: nothing is asked of the daemon, and it ends regardless.',
-    '    if [ "{{ LUNA_HOLD_SECONDS }}" -gt 0 ] 2>/dev/null; then',
-    '        echo "Luna2: {{ LUNA_HOLD_REASON }} for this node and may reset it; holding {{ LUNA_HOLD_SECONDS }}s so that reset does not land mid-install"',
-    '        sleep {{ LUNA_HOLD_SECONDS }}',
-    '    fi',
-    '}',
-    'hold_for_daemon',
-]
+BLESSED_CLASSIC_ADDITIONS = []
 
 
 def test_classic_installer_only_differs_from_its_owner_by_what_we_blessed():

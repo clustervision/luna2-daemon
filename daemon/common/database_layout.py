@@ -156,7 +156,7 @@ DATABASE_LAYOUT_redfishaccount = [
 # gets decoded into nonsense.
 DATABASE_LAYOUT_biosconfig = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "40", "key": "UNIQUE"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "64", "key": "UNIQUE"},
 {"column": "manufacturer",         "datatype": "VARCHAR", "length": "64"},
 {"column": "model",                "datatype": "VARCHAR", "length": "128"},
 {"column": "biosversion",          "datatype": "VARCHAR", "length": "64"},

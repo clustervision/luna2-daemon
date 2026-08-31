@@ -88,11 +88,35 @@ def config_bios_get(name=None):
 def config_bios_post(name=None):
     """
     This route will update what an administrator owns on a BIOS configuration.
+
+    Entries under 'set' are resolved here, before the journal: the board type's
+    registry is read from a machine this controller can reach, and what travels
+    to the peer is the resolved map - the same split _biosgrab uses, reading
+    locally and replicating the result.
     """
-    status, response = Journal().add_request(function="Bios.update_bios",
+    status, response = Bios().resolve_set(name, request.data)
+    if status is True:
+        payload = response
+        status, response = Journal().add_request(function="Bios.update_bios",
+                                                 object=name, payload=payload)
+        if status is True:
+            status, response = Bios().update_bios(name, payload)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@bios_blueprint.route("/config/biosconfig/<string:name>/_clone", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:biosconfig'], skip=None)
+def config_bios_clone(name=None):
+    """
+    This route will clone a BIOS configuration under a new name.
+    """
+    status, response = Journal().add_request(function="Bios.clone_bios",
                                              object=name, payload=request.data)
     if status is True:
-        status, response = Bios().update_bios(name, request.data)
+        status, response = Bios().clone_bios(name, request.data)
     access_code = Helper().get_access_code(status, response)
     return {'message': response}, access_code
 
@@ -127,6 +151,8 @@ def config_node_biosgrab(name=None):
     try:
         config = request.data['config']['node'][name]['biosconfig']
     except (KeyError, TypeError):
+        config = None
+    if not config:
         return {'message': 'Invalid request: no biosconfig name supplied'}, 400
     status, response = Bios().collect_bios(node=name, name=config)
     if status is True:

@@ -241,6 +241,11 @@ class Monitor():
         """
         if str(state or '') != 'install.setupbmc':
             return False
+        # a firmware flash that reset this BMC left a restore owed; setupbmc has just
+        # given the BMC its address back, and the node is holding its install for
+        # this, so it goes first and is not deferred (TRIX-2035)
+        from utils.firmware_push import FirmwarePush
+        FirmwarePush().queue_restore(nodename=nodename)
         status, reason = RedfishAccess().for_node(nodename=nodename)
         if not status:
             # a node nobody configured Redfish for would have every collection

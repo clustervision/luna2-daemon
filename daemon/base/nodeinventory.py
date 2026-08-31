@@ -66,7 +66,8 @@ class NodeInventory():
         # scalar columns stored on the parent row (rollups + node-level facts)
         self.parent_fields = ['manufacturer', 'product', 'serial', 'cpu_model',
                               'cpu_count', 'memory_mb', 'bios_version',
-                              'bios_digest', 'bios_config', 'bios_config_digest']
+                              'bios_digest', 'bios_config', 'bios_config_digest',
+                              'bios_config_content', 'bios_writable']
         self.disk_fields = ['name', 'size_gb', 'type', 'model', 'serial']
         self.gpu_fields = ['busid', 'vendor', 'model', 'memory_mb', 'uuid']
         self.nic_fields = ['name', 'mac', 'speed_mbps', 'capabilities']
@@ -347,9 +348,17 @@ class NodeInventory():
         memory = system.get('MemorySummary') or {}
         if memory.get('TotalSystemMemoryGiB'):
             snapshot['memory_mb'] = int(float(memory['TotalSystemMemoryGiB']) * 1024)
-        digest = self.bios_digest(redfish=redfish, system=system)
+        bios = self.read_bios(redfish=redfish, system=system)
+        digest = self.bios_digest(bios=bios)
         if digest:
             snapshot['bios_digest'] = digest
+        if bios is not None:
+            # whether a staged BIOS write has anywhere to go on this board, recorded
+            # so that nothing later waits for a write that cannot happen: a board
+            # with a GET-only Bios and a dummy settings object holds an install for
+            # nothing otherwise
+            from utils.bios_push import BiosPush
+            snapshot['bios_writable'] = '1' if BiosPush().settings_path(bios=bios) else '0'
         snapshot['disks'] = self.redfish_disks(redfish=redfish, system=system)
         snapshot['nics'] = self.redfish_nics(redfish=redfish, system=system)
         snapshot['gpus'] = []
@@ -357,7 +366,7 @@ class NodeInventory():
         return True, snapshot
 
 
-    def bios_digest(self, redfish=None, system=None):
+    def bios_digest(self, redfish=None, system=None, bios=None):
         """
         This method returns a digest of the BIOS attributes a machine holds, or None.
 
@@ -373,15 +382,28 @@ class NodeInventory():
         What it cannot answer is what the settings are, or how far a machine is
         from a configuration. Those need the board, and the status view says so
         rather than implying the stored answer is the current one.
+
+        Takes the Bios resource where the caller already read it, so one read serves
+        every fact taken from it.
+        """
+        if bios is None:
+            bios = self.read_bios(redfish=redfish, system=system)
+        attributes = (bios or {}).get('Attributes')
+        if not isinstance(attributes, dict) or not attributes:
+            return None
+        return hashlib.sha256(dumps(attributes, sort_keys=True).encode()).hexdigest()
+
+
+    def read_bios(self, redfish=None, system=None):
+        """
+        This method reads a machine's Bios resource once, or None where the system
+        names none or the read fails.
         """
         bios_path = (system or {}).get('Bios', {}).get('@odata.id')
         if not bios_path:
             return None
         status, bios = redfish.get(path=bios_path)
-        attributes = (bios or {}).get('Attributes') if status else None
-        if not isinstance(attributes, dict) or not attributes:
-            return None
-        return hashlib.sha256(dumps(attributes, sort_keys=True).encode()).hexdigest()
+        return bios if status and isinstance(bios, dict) else None
 
 
     def redfish_disks(self, redfish=None, system=None):

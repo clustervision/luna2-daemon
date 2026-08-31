@@ -41,12 +41,18 @@ def db(tmp_path):
 
     original = constant.CONSTANT['DATABASE']['DATABASE']
     constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'unit.db')
+    files = tmp_path / 'files'
+    files.mkdir()
+    (files / 'bmc-7.10.bin').write_bytes(b'firmware')
+    original_files = constant.CONSTANT['FILES']['IMAGE_FILES']
+    constant.CONSTANT['FILES']['IMAGE_FILES'] = str(files)
     database.local_thread.connection = None
     for table in ['node', 'group', 'firmwarecatalog', 'nodeinventory',
                   'nodeinventoryfirmware']:
         Database().create(table, DBStructure().get_database_table_structure(table))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
+    constant.CONSTANT['FILES']['IMAGE_FILES'] = original_files
     database.local_thread.connection = None
 
 
@@ -89,6 +95,68 @@ def test_the_refusal_names_everything_that_is_missing_at_once(db):
     assert status is False
     for field in ('manufacturer', 'model', 'component', 'version'):
         assert field in response
+
+
+def test_an_image_file_is_a_bare_name_because_it_becomes_a_url_path(db):
+    """
+    The value is handed to a BMC as '/files/<imagefile>'. A path in it either
+    walks out of the served directory or names a file nothing will find; neither
+    is a catalogue entry.
+    """
+    for bad in ('../etc/passwd', 'sub/bmc.bin', '/bmc.bin'):
+        fields = dict(COMPLETE, imagefile=bad)
+        status, response = entry('dellbmc', **fields)
+        assert status is False, f'{bad!r} was accepted as an image file'
+        assert 'bare file name' in response
+    assert not db.get_record(table='firmwarecatalog', where='name = "dellbmc"')
+
+
+def test_an_image_named_like_an_os_image_is_refused_because_a_bmc_has_no_token(db):
+    """
+    The file server asks for a token only for the extensions an OS image wears.
+    A BMC cannot present one, so a firmware image with such a name would be
+    refused at fetch time with the board's 'file is missing' - say it here.
+    """
+    from base.authentication import TOKEN_GATED_EXTENSIONS
+
+    assert TOKEN_GATED_EXTENSIONS, 'the gated set the check reads is empty'
+    for ext in TOKEN_GATED_EXTENSIONS:
+        fields = dict(COMPLETE, imagefile=f'bmc-7.10{ext}')
+        status, response = entry('dellbmc', **fields)
+        assert status is False, f'*{ext} was accepted as an image file'
+        assert ext in response and 'token' in response
+    assert not db.get_record(table='firmwarecatalog', where='name = "dellbmc"')
+
+
+def test_a_change_that_names_a_bad_image_file_is_refused_too(db):
+    entry('dellbmc', **COMPLETE)
+    status, response = entry('dellbmc', imagefile='../bmc.bin')
+    assert status is False
+    row = db.get_record(table='firmwarecatalog', where='name = "dellbmc"')[0]
+    assert row['imagefile'] == 'bmc-7.10.bin'
+
+
+def test_naming_an_image_file_reminds_where_to_stage_it_and_that_the_bmc_must_reach_it(db):
+    """
+    The admin is told at the moment they set the entry up - not by the board, forty
+    minutes into a push, in the words 'file is missing'. The reminder is Luna's own
+    facts: the directory, the port. Whether the firewall allows it is the
+    installer's business, so the note says what must be true, not whether it is.
+    """
+    import common.constant as constant
+    status, response = entry('dellbmc', **COMPLETE)
+    assert status is True
+    assert 'bmc-7.10.bin' in response
+    assert constant.CONSTANT['FILES']['IMAGE_FILES'] in response
+    assert 'port 7051' in response and 'trusted zone' in response
+
+
+def test_a_change_that_sets_the_image_file_carries_the_reminder_and_one_that_does_not_does_not(db):
+    entry('dellbmc', **COMPLETE)
+    status, response = entry('dellbmc', imagefile='bmc-7.20.bin')
+    assert status is True and 'stage bmc-7.20.bin' in response
+    status, response = entry('dellbmc', version='7.20')
+    assert status is True and 'stage' not in response
 
 
 def test_an_existing_entry_can_be_changed_without_resupplying_everything(db):

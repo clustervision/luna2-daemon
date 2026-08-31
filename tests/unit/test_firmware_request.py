@@ -45,12 +45,19 @@ def db(tmp_path):
 
     original = constant.CONSTANT['DATABASE']['DATABASE']
     constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'unit.db')
+    files = tmp_path / 'files'
+    files.mkdir()
+    for name in ('fw.bin',):
+        (files / name).write_bytes(b'firmware')
+    original_files = constant.CONSTANT['FILES']['IMAGE_FILES']
+    constant.CONSTANT['FILES']['IMAGE_FILES'] = str(files)
     database.local_thread.connection = None
     for table in ['node', 'group', 'firmwarecatalog', 'firmwarerequest',
                   'nodeinventory', 'nodeinventoryfirmware', 'status']:
         Database().create(table, DBStructure().get_database_table_structure(table))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
+    constant.CONSTANT['FILES']['IMAGE_FILES'] = original_files
     database.local_thread.connection = None
 
 
@@ -128,6 +135,25 @@ def test_a_node_the_catalogue_does_not_cover_is_refused_with_the_reason(db):
 
     status, response = push('node', 'node001')
     assert status is False and NO_ENTRY in response
+
+
+def test_a_node_whose_image_is_not_staged_is_refused_and_nothing_is_recorded(db):
+    """
+    Recording the request would put a node in the sweeper's hands with nothing to
+    give the BMC; the failure would then arrive minutes later, per node, in the
+    board's words. Refused here, in ours, with the file named.
+    """
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    add_running(db, nodeid, 'BMC', '7.00')
+    add_entry(db, 'dellbmc', 'Dell Inc.', 'PowerEdge R650', 'BMC', '7.10')
+    import os
+    import common.constant as constant
+    os.remove(os.path.join(constant.CONSTANT['FILES']['IMAGE_FILES'], 'fw.bin'))
+
+    status, response = push('node', 'node001')
+    assert status is False
+    assert 'fw.bin' in response and 'not staged' in response
+    assert requests(db) == []
 
 
 def test_a_group_is_answered_per_node_and_one_bad_member_does_not_stop_it(db):
@@ -221,6 +247,38 @@ def test_status_reports_the_newest_request_per_node(db):
     assert response['config']['firmwarecatalog']['summary'] == {'queued': 1}
 
 
+def test_status_keeps_a_restore_an_older_request_still_owes_in_view(db):
+    """
+    The newest request is the one shown, but a restore is owed by the node, not
+    by the request whose flash left it owed. Shown per request it disappears the
+    moment somebody asks again, and the admin then learns of the reset from the
+    board. It stays until it settles.
+    """
+    from base.firmware import Firmware
+    from utils.firmware import FirmwareRequest, RESTORE_PENDING
+
+    groupid = add_group(db, 'compute')
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650', groupid)
+    add_running(db, nodeid, 'BMC', '7.00')
+    add_entry(db, 'dellbmc', 'Dell Inc.', 'PowerEdge R650', 'BMC', '7.10')
+
+    push('node', 'node001')
+    first = requests(db)[0]['id']
+    FirmwareRequest().finish(requestid=first, status=True, message='flashed')
+    FirmwareRequest().mark_restore(requestid=first)
+    push('node', 'node001')
+    second = requests(db)[1]['id']
+    FirmwareRequest().finish(requestid=second, status=True, message='already there')
+
+    _, response = Firmware().status()
+    rows = response['config']['firmwarecatalog']['status']
+    assert rows['node001']['request_id'] == requests(db)[1]['request_id']
+    assert rows['node001']['restore'] == RESTORE_PENDING
+    FirmwareRequest().finish_restore(requestid=first, status=True, message='BMC answers')
+    _, response = Firmware().status()
+    assert response['config']['firmwarecatalog']['status']['node001']['restore'] == ''
+
+
 def test_status_carries_what_the_board_said_when_it_failed(db):
     from base.firmware import Firmware
     from utils.firmware import FirmwareRequest
@@ -263,3 +321,112 @@ def test_status_for_a_group_nobody_made_says_so(db):
 
     status, response = Firmware().status(group='nosuchgroup')
     assert status is False and 'not available' in response
+
+
+# ---------------------------------------------------------------------------
+# Every write to the request table travels through the journal (HA)
+# ---------------------------------------------------------------------------
+
+def journaled(monkeypatch, answer=(True, 'Not in H/A mode')):
+    """Records what would go to the peer, and answers as the journal would."""
+    from utils.journal import Journal
+    sent = []
+    monkeypatch.setattr(Journal, 'add_request',
+                        lambda self, function=None, object=None, param=None, payload=None, **k:
+                        sent.append({'function': function, 'object': object, 'payload': payload}) or answer)
+    return sent
+
+
+def test_every_request_write_is_journaled_to_the_peer_and_applied_locally(db, monkeypatch):
+    """
+    The table is replicated, so its writes go through the journal - the hourly hash
+    sweep is a last resort for a controller that was away, not the way a row travels.
+    A node netbooting from the other controller inside that hour would otherwise be
+    told nothing is owed.
+    """
+    from utils.firmware import FirmwareRequest, RESTORE_PENDING
+    sent = journaled(monkeypatch)
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    requests_ = FirmwareRequest()
+    assert requests_.record(nodeids=[nodeid], component='BMC', request_id='r1') == 1
+    row = requests(db)[0]
+    requests_.claim(row['id']); requests_.mark_restore(row['id'])
+    requests_.finish(row['id'], True, 'flashed'); requests_.finish_restore(row['id'], False, 'no settings object')
+    assert [s['function'] for s in sent] == ['Firmware.replay_request'] * 5
+    assert [s['object'] for s in sent] == ['record', 'update', 'update', 'update', 'update']
+    # addressed by what both controllers share, never by the local autoincrement
+    for s in sent[1:]:
+        assert s['payload']['request_id'] == 'r1' and s['payload']['nodeid'] == nodeid and 'id' not in s['payload']
+    row = requests(db)[0]
+    assert (row['status'], row['message'], row['restore']) == ('done', 'flashed', 'failed: no settings object')
+
+
+def test_a_write_the_peer_did_not_take_is_not_written_locally_either(db, monkeypatch):
+    """A controller that is not in sync must not write what it cannot replicate."""
+    from utils.firmware import FirmwareRequest
+    journaled(monkeypatch, answer=(False, 'not in sync'))
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    assert FirmwareRequest().record(nodeids=[nodeid], component='BMC', request_id='r1') == 0
+    assert requests(db) == []
+
+
+def test_the_peer_replays_the_write_onto_its_own_row(db, monkeypatch):
+    """What the journal hands the peer reproduces the row there - keyed on
+    (request_id, nodeid), since the peer's id is its own."""
+    from base.firmware import Firmware
+    from utils.firmware import RESTORE_PENDING
+    journaled(monkeypatch)
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    Firmware().replay_request('record', {'nodeid': nodeid, 'component': 'BMC', 'request_id': 'r9'})
+    Firmware().replay_request('update', {'request_id': 'r9', 'nodeid': nodeid, 'restore': RESTORE_PENDING})
+    row = requests(db)[0]
+    assert (row['request_id'], row['status'], row['restore']) == ('r9', 'queued', RESTORE_PENDING)
+
+
+def test_the_peer_says_so_when_a_replayed_write_lands_on_nothing(db, monkeypatch):
+    """
+    The journal logs whatever the replay answers and drops the entry either way, so
+    the answer is the only trace a lost write leaves on the peer. An update for a
+    row the peer never received matches nothing - and it used to be reported as
+    replayed, so the peer's log said success while it answered stale for the hour
+    until the hash sweep repaired the table.
+    """
+    from base.firmware import Firmware
+    from utils.firmware import RESTORE_PENDING
+    journaled(monkeypatch)
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    status, message = Firmware().replay_request(
+        'update', {'request_id': 'never-arrived', 'nodeid': nodeid, 'restore': RESTORE_PENDING})
+    assert status is False
+    assert 'never-arrived' in message and str(nodeid) in message
+    assert requests(db) == []
+    status, _ = Firmware().replay_request('record', {'nodeid': nodeid, 'component': 'BMC', 'request_id': 'r9'})
+    assert status is True
+    status, _ = Firmware().replay_request('update', {'request_id': 'r9', 'nodeid': nodeid, 'restore': RESTORE_PENDING})
+    assert status is True
+
+
+def test_a_request_whose_claim_was_refused_is_not_flashed_and_stays_queued(db, monkeypatch):
+    """
+    The claim travels through the journal, and a controller out of sync is refused.
+    Flashing anyway would leave the row queued while the node was flashed, and the
+    next sweep would take it up and flash it again - for as long as the pair stayed
+    out of sync, and against the stored inventory, which still says the old version.
+    So a request that cannot be claimed is left alone, and said so.
+    """
+    from threading import Event
+    from utils.firmware import FirmwareRequest, QUEUED
+    from utils.firmware_push import FirmwarePush
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    journaled(monkeypatch)
+    assert FirmwareRequest().record(nodeids=[nodeid], component='BMC', request_id='r1') == 1
+    journaled(monkeypatch, answer=(False, 'not in sync'))
+    flashed = []
+    monkeypatch.setattr(FirmwarePush, 'sweep_batches',
+                        lambda self, pipeline, requests=None: flashed.append(pipeline.get_nodes()))
+    stop = Event()
+    stop.set()
+    FirmwarePush().sweep_mother(stop)
+    assert flashed == []
+    row = requests(db)[0]
+    assert (row['request_id'], row['status']) == ('r1', QUEUED)

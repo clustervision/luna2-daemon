@@ -127,6 +127,56 @@ IDENTITY_SHAPES = (
                                      r'-[0-9a-f]{12}\b', re.I)),
 )
 
+# What an administrator commonly changes on a compute or GPU node, named by the
+# concept and never by a vendor's spelling of it. A concept is found in a board's
+# own attribute registry through its DisplayName - the one field a registry fills
+# in for a human - so the same word reaches "SMT Mode" on one board and
+# "Hyper-Threading" on another without this file knowing either board. A board
+# whose registry matches none of a concept's patterns refuses that concept by
+# name: the list is what gets changed on HPC nodes, not the intersection of what
+# every vendor publishes. Patterns are anchored so that "secure boot" does not
+# also reach "Secure Boot Mode". Extend it on evidence - a capture, a customer -
+# and say beside each pattern where it was seen.
+CONCEPTS = {
+    # GIGABYTE R181 "Boot mode select"; the ticket names Dell/HPE "Boot Mode"
+    'boot_mode':           (r'^boot ?mode( select)?$',),
+    # R181 "SMT Mode"; ticket: Dell "Logical Processor", HPE/Intel "Hyper-Threading"
+    'hyperthreading':      (r'^smt( mode| control)?$', r'^hyper-?threading( \[all\])?$',
+                            r'^logical processor$'),
+    # R181 "SVM Mode" (AMD); ticket: Intel "Virtualization Technology"
+    'virtualization':      (r'^svm mode$', r'^(processor |cpu )?virtualization( technology)?$',
+                            r'^vt-x$'),
+    # R181 "IOMMU"; ticket: Intel "VT-d"
+    'iommu':               (r'^iommu$', r'^vt-?d( support)?$', r'^amd-vi$'),
+    # R181 "SR-IOV Support"; ticket: Dell "SR-IOV Global Enable"
+    'sriov':               (r'^sr-?iov( support| global enable)?$',),
+    # R181 "Global C-state Control"
+    'c_states':            (r'^(global )?c-?states?( control)?$',),
+    # R181 "Determinism Slider"; ticket: Dell "System Profile", HPE "Workload Profile"
+    'power_profile':       (r'^determinism slider$', r'^(system|workload|power) profile$',
+                            r'^power regulator$'),
+    # the redirection toggle, its port and its speed are three attributes on every
+    # board that has them, so they are three concepts; R181 publishes the port
+    'serial_console':      (r'^console redirection$',),
+    'serial_console_port': (r'^redirection com port$', r'^serial port for out-of-band management$'),
+    'serial_console_baud': (r'^(serial port )?baud ?rate$', r'^bits per second$'),
+    # R181 "Security Device Support" (AMI's name for the TPM toggle)
+    'tpm':                 (r'^security device support$', r'^tpm( device| state| 2\.0)?( support)?$',
+                            r'^trusted platform module$'),
+    # the attribute form; the standard SecureBoot resource is a later, separate piece
+    'secure_boot':         (r'^secure boot$',),
+}
+
+# The only synonyms a value may travel under, and only to a published value that
+# means exactly that. 'on' reaches Enabled or Enable or On - whichever the board
+# publishes - and never Auto: Auto is a vendor's third state with its own meaning,
+# and mapping a plain on/off onto it would be this file deciding what the board
+# meant. Anything else is typed as the board publishes it.
+SYNONYMS = {
+    'on':  ('enabled', 'enable', 'on', 'true', 'yes'),
+    'off': ('disabled', 'disable', 'off', 'false', 'no'),
+}
+
 
 class Bios():
     """
@@ -537,3 +587,127 @@ class Bios():
             elif attributes[name] != value:
                 missing[name] = attributes[name]
         return missing
+
+
+    def concept_matches(self, registry=None, concept=None):
+        """
+        This method returns the attribute names whose DisplayName a concept's
+        patterns match on this registry - possibly none, possibly several. The
+        caller decides what more than one means; here it is only a lookup.
+        """
+        patterns = CONCEPTS.get(concept) or ()
+        found = []
+        for name, entry in self.attributes(registry=registry).items():
+            display = str(entry.get('DisplayName') or '').strip()
+            if any(re.match(pattern, display, re.I) for pattern in patterns):
+                found.append(name)
+        return sorted(found)
+
+
+    def published_values(self, entry=None):
+        """
+        This method lists an enumeration's values as (name, display) pairs.
+        """
+        values = []
+        for value in (entry or {}).get('Value') or []:
+            if isinstance(value, dict) and value.get('ValueName') is not None:
+                values.append((str(value['ValueName']),
+                               str(value.get('ValueDisplayName') or value['ValueName'])))
+        return values
+
+
+    def coerce(self, entry=None, value=None):
+        """
+        This method turns what an administrator typed into what the board
+        publishes for that attribute, or says why it cannot.
+
+        Returns (True, value) or (False, reason). Only the board's own vocabulary
+        is ever written: an enumeration value is matched against the published
+        names, case-insensitively, then through the on/off synonyms when exactly
+        one published value means that; a number is checked against the bounds
+        the registry gives; a password is refused outright - a stored
+        configuration is copied to machines, and a password does not travel.
+        """
+        kind = str((entry or {}).get('Type') or 'String')
+        typed = str(value if value is not None else '').strip()
+        if kind == 'Password':
+            return False, 'is a password, which a stored configuration never carries'
+        if kind == 'Enumeration':
+            published = self.published_values(entry)
+            for name, display in published:
+                if typed.casefold() in (name.casefold(), display.casefold()):
+                    return True, name
+            meant = SYNONYMS.get(typed.casefold())
+            if meant:
+                candidates = [name for name, display in published
+                              if name.casefold() in meant or display.casefold() in meant]
+                if len(candidates) == 1:
+                    return True, candidates[0]
+            names = ', '.join(name for name, _ in published) or 'nothing'
+            return False, f'takes one of: {names}'
+        if kind == 'Boolean':
+            meant = 'on' if typed.casefold() in SYNONYMS['on'] else \
+                    'off' if typed.casefold() in SYNONYMS['off'] else None
+            if meant is None:
+                return False, 'takes true or false'
+            return True, meant == 'on'
+        if kind == 'Integer':
+            try:
+                number = int(typed)
+            except ValueError:
+                return False, 'takes a whole number'
+            lower, upper = entry.get('LowerBound'), entry.get('UpperBound')
+            if (lower is not None and number < lower) or (upper is not None and number > upper):
+                return False, f'takes a whole number between {lower} and {upper}'
+            return True, number
+        longest = entry.get('MaxLength')
+        if longest is not None and len(typed) > int(longest):
+            return False, f'takes at most {longest} characters'
+        return True, typed
+
+
+    def resolve(self, registry=None, entries=None, mapping=None):
+        """
+        This method turns {concept-or-attribute: typed value} into
+        {attribute: published value} against one board's registry, and says by
+        name what it could not.
+
+        Returns (resolved, refused). A key that is an attribute name in the
+        registry is taken as one. Otherwise it is a concept: found through the
+        registry's DisplayNames, or through a mapping a vendor plugin supplied for
+        a board that discovery cannot answer on. Exactly one attribute must
+        answer - none is refused as "not published", several as ambiguous with
+        the candidates listed - because a guess here is written to hardware.
+
+        Nothing is dropped quietly, and the two dicts together account for every
+        key that came in: the caller refuses the whole change when refused is not
+        empty, since a profile with half its entries is not the profile asked for.
+        """
+        described = self.attributes(registry=registry)
+        resolved, refused = {}, {}
+        for key, value in (entries or {}).items():
+            key = str(key).strip()
+            if key in described:
+                attribute = key
+            elif key in CONCEPTS:
+                mapped = (mapping or {}).get(key)
+                candidates = [mapped] if mapped and mapped in described \
+                    else self.concept_matches(registry=registry, concept=key)
+                if not candidates:
+                    refused[key] = 'is not published by this board type'
+                    continue
+                if len(candidates) > 1:
+                    refused[key] = (f'is ambiguous on this board type, matching '
+                                    f'{", ".join(candidates)}; name the attribute instead')
+                    continue
+                attribute = candidates[0]
+            else:
+                refused[key] = ('is neither a known concept nor an attribute this '
+                                'board type publishes')
+                continue
+            ok, outcome = self.coerce(entry=described[attribute], value=value)
+            if not ok:
+                refused[key] = outcome if key == attribute else f'({attribute}) {outcome}'
+                continue
+            resolved[attribute] = outcome
+        return resolved, refused

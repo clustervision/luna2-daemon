@@ -156,7 +156,7 @@ DATABASE_LAYOUT_redfishaccount = [
 # gets decoded into nonsense.
 DATABASE_LAYOUT_biosconfig = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "40", "key": "UNIQUE"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "64", "key": "UNIQUE"},
 {"column": "manufacturer",         "datatype": "VARCHAR", "length": "64"},
 {"column": "model",                "datatype": "VARCHAR", "length": "128"},
 {"column": "biosversion",          "datatype": "VARCHAR", "length": "64"},
@@ -168,7 +168,7 @@ DATABASE_LAYOUT_biosconfig = [
 
 DATABASE_LAYOUT_firmwarecatalog = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "40", "key": "UNIQUE"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "64", "key": "UNIQUE"},
 {"column": "manufacturer",         "datatype": "VARCHAR", "length": "64"},
 {"column": "model",                "datatype": "VARCHAR", "length": "128"},
 {"column": "component",            "datatype": "VARCHAR", "length": "128"},
@@ -184,6 +184,7 @@ DATABASE_LAYOUT_firmwarerequest = [
 {"column": "request_id",           "datatype": "VARCHAR", "length": "64"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
 {"column": "message",              "datatype": "VARCHAR", "length": "2048"},
+{"column": "restore",              "datatype": "VARCHAR", "length": "2048"},
 {"column": "created",              "datatype": "VARCHAR", "length": "64"},
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"}]
 
@@ -237,6 +238,7 @@ DATABASE_LAYOUT_group = [
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
 {"column": "redfishsetupid",       "datatype": "INTEGER", "length": "10"},
+{"column": "biosconfigid",         "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "setupredfish",         "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
@@ -410,6 +412,7 @@ DATABASE_LAYOUT_node = [
 {"column": "service",              "datatype": "INTEGER", "length": "10"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
 {"column": "redfishsetupid",       "datatype": "INTEGER", "length": "10"},
+{"column": "biosconfigid",         "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "setupredfish",         "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
@@ -545,8 +548,10 @@ DATABASE_LAYOUT_nodeinventory = [
 {"column": "nic_count",            "datatype": "INTEGER", "length": "10"},
 {"column": "bios_version",         "datatype": "VARCHAR", "length": "64"},
 {"column": "bios_digest",          "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_writable",          "datatype": "VARCHAR", "length": "1"},
 {"column": "bios_config",          "datatype": "VARCHAR", "length": "64"},
 {"column": "bios_config_digest",   "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_config_content",  "datatype": "VARCHAR", "length": "64"},
 {"column": "inventory",            "datatype": "TEXT"},
 {"column": "hash",                 "datatype": "VARCHAR", "length": "64"},
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"}]

@@ -47,7 +47,7 @@ from common.constant import CONSTANT
 # The named things a node points at, and whether a supplied value may be empty.
 # True means: cannot be empty if supplied. False means: can only be empty or correct
 NAME_REFERENCES = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False,
-                   'cloud': False, 'redfishsetup': False}
+                   'cloud': False, 'redfishsetup': False, 'biosconfig': False}
 
 
 class Node():
@@ -85,6 +85,8 @@ class Node():
         switch = Helper().convert_list_to_dict(switches, 'id')
         cloud = Helper().convert_list_to_dict(clouds, 'id')
         bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
+        biosconfig = {row['id']: row['name']
+                      for row in Database().get_record(table='biosconfig') or []}
         monitoring = Helper().convert_list_to_dict(monitorings, 'tablerefid')
         cluster = Database().get_record(table='cluster')
         route_names = {r['id']: r['name'] for r in (Database().get_record(table='route') or [])}
@@ -151,6 +153,8 @@ class Node():
                     node['redfishsetup'] = Database().name_by_id(
                         'redfishsetup',
                         node['redfishsetupid'] or group[groupid].get('redfishsetupid')) or None
+                    node['biosconfig'] = biosconfig.get(
+                        node['biosconfigid'] or group[groupid].get('biosconfigid')) or None
                 else:
                     node['group'] = '!!Invalid!!'
                 # -------------
@@ -214,6 +218,7 @@ class Node():
                 del node['id']
                 del node['bmcsetupid']
                 del node['redfishsetupid']
+                del node['biosconfigid']
                 del node['groupid']
                 del node['osimageid']
                 del node['switchid']
@@ -318,6 +323,7 @@ class Node():
                 'group.setupbmc AS group_setupbmc',
                 'group.bmcsetupid AS group_bmcsetupid',
                 'group.redfishsetupid AS group_redfishsetupid',
+                'group.biosconfigid AS group_biosconfigid',
                 'group.prescript AS group_prescript',
                 'group.partscript AS group_partscript',
                 'group.postscript AS group_postscript',
@@ -428,6 +434,20 @@ class Node():
             if 'group_redfishsetupid' in node:
                 del node['group_redfishsetupid']
             del node['redfishsetupid']
+            #---
+            effective_biosconfigid = node['biosconfigid'] or node.get('group_biosconfigid')
+            node['biosconfig'] = None
+            if effective_biosconfigid:
+                node['biosconfig'] = Database().name_by_id(
+                    'biosconfig', effective_biosconfigid) or '!!Invalid!!'
+            if node['biosconfigid']:
+                node['_biosconfig_source'] = 'node'
+                node['_override'] = True
+            elif node.get('group_biosconfigid'):
+                node['_biosconfig_source'] = 'group'
+            if 'group_biosconfigid' in node:
+                del node['group_biosconfigid']
+            del node['biosconfigid']
             # unmanaged_bmc_users inherits node -> group -> bmcsetup -> None
             unmanaged = node['unmanaged_bmc_users']
             unmanaged_source = 'node'
@@ -738,6 +758,11 @@ class Node():
                 data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()
                 if data['ipxe_kernel'] not in ['default', 'alternative']:
                     return False, 'Invalid request: ipxe_kernel must be default or alternative'
+            if 'ipxe_kernel' in data:
+                # the iPXE binary is named per host in the DHCP configuration, so the
+                # change reaches the node only once that is rendered again - also when
+                # cleared, which hands the node the group's choice
+                needs_rewrite = True
             if 'install_mode' in data and data['install_mode']:
                 data['install_mode'] = str(data['install_mode']).strip().lower()
                 if data['install_mode'] not in ['auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'legacy']:

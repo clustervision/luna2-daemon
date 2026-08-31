@@ -125,19 +125,21 @@ class Redfish():
         return f'Redfish HTTP {http_code}'
 
 
-    def transport_reason(self, exp=None):
+    def transport_reason(self, exp=None, timeout=None):
         """
         This method will say why a BMC could not be reached, in a few words.
 
         The exception itself carries a paragraph of urllib3 internals - the pool
         object, the retry count, the nested cause - and a hostlist run prints one
         of these per node into a fixed-width column. What an operator needs is
-        which of the handful of things went wrong.
+        which of the handful of things went wrong. The timeout named is the one the
+        request actually used: an upload waits far longer than an ordinary call.
         """
+        timeout = timeout or self.timeout
         if isinstance(exp, requests.exceptions.ConnectTimeout):
-            return f'connect timed out after {self.timeout[0]}s'
+            return f'connect timed out after {timeout[0]}s'
         if isinstance(exp, requests.exceptions.ReadTimeout):
-            return f'no answer within {self.timeout[1]}s'
+            return f'no answer within {timeout[1]}s'
         if isinstance(exp, requests.exceptions.SSLError):
             return 'TLS handshake failed (check the scheme and the verify setting)'
         if isinstance(exp, requests.exceptions.ConnectionError):
@@ -191,6 +193,44 @@ class Redfish():
                 data = response.text
         if not response.ok:
             self.logger.debug(f'redfish {method} {url} answered {response.status_code}')
+            return False, response.status_code, self.reason(data, response.status_code), \
+                dict(response.headers)
+        return True, response.status_code, data, dict(response.headers)
+
+
+    def upload(self, path=None, body=None, content_type=None, timeout=None):
+        """
+        This method POSTs a streamed body - a multipart form or a raw image - and
+        returns (status, http_code, data, answered) exactly as call() does.
+
+        Apart from call() because the body is not JSON and must not be built in
+        memory: the body is whatever read()s, with its own length, and the session
+        streams it. The read timeout is the caller's, because a BMC takes minutes to
+        swallow an image and the ordinary one is sized for an answer, not a transfer.
+        """
+        if not self.device:
+            return False, 0, 'No BMC address configured for this node', {}
+        if not path:
+            return False, 0, 'No Redfish resource requested', {}
+        if not str(path).startswith('/'):
+            path = f'/{path}'
+        url = f'{self.base}{path}'
+        headers = {'Content-Type': content_type or 'application/octet-stream'}
+        bounds = (self.timeout[0], timeout or self.timeout[1])
+        try:
+            response = self.session.request('POST', url, data=body, headers=headers,
+                                            timeout=bounds)
+        except requests.exceptions.RequestException as exp:
+            self.logger.debug(f'redfish upload {url} failed: {exp}')
+            return False, 0, f'{self.device}: {self.transport_reason(exp, timeout=bounds)}', {}
+        data = response.text
+        if response.content:
+            try:
+                data = response.json()
+            except ValueError:
+                data = response.text
+        if not response.ok:
+            self.logger.debug(f'redfish upload {url} answered {response.status_code}')
             return False, response.status_code, self.reason(data, response.status_code), \
                 dict(response.headers)
         return True, response.status_code, data, dict(response.headers)

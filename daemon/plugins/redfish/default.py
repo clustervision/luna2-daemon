@@ -99,6 +99,34 @@ class Plugin():
         return True, f'uploaded on {uri}'
 
 
+    def multipart(self, component=None, filename=None):
+        """
+        This method returns the extra parts a multipart firmware push must carry
+        for this board, and the name the image is presented under, as
+        ({part name: JSON body}, filename).
+
+        The standard names two parts, UpdateParameters and UpdateFile, and that is
+        all the default sends. A vendor file overrides this where the board demands
+        more: a board that refuses the standard form says so only in its rejection,
+        which discovery cannot read before sending the image.
+        """
+        return {}, filename
+
+
+    def concepts(self):
+        """
+        This method returns {concept: attribute name} for a board whose attribute
+        registry does not let a concept be found through its DisplayNames.
+
+        Empty here on purpose: the default is discovery, and a vendor file adds an
+        entry only where discovery was tried against a capture or a board and
+        could not answer - with the model and firmware it was needed for beside
+        it. An entry is used only when the attribute it names is in the target's
+        registry, so a stale mapping refuses rather than misfires.
+        """
+        return {}
+
+
     def probe(self, redfish=None, uri=None):
         """
         This method will read a Redfish resource and hand it back, so core can

@@ -42,11 +42,15 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
+import os
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED
+from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED, RESTORE_PENDING
+from utils.firmware_push import FirmwarePush
 from utils.status import Status
+from common.constant import CONSTANT
+from base.authentication import TOKEN_GATED_EXTENSIONS
 
 
 class Firmware():
@@ -112,6 +116,9 @@ class Firmware():
         except (KeyError, TypeError):
             return False, 'Invalid request: Did not receive data'
         data['name'] = name
+        status, reason = self.image_file_is_usable(data.get('imagefile'))
+        if not status:
+            return False, f'Invalid request: {reason}'
         record = Database().get_record(table=self.table, where=f'name = "{name}"')
         if not record:
             missing = [field for field in ('manufacturer', 'model', 'component', 'version')
@@ -122,13 +129,70 @@ class Firmware():
             row = Helper().make_rows(data)
             if not Database().insert(self.table, row):
                 return False, f'Internal error: {self.table_cap} {name} create failed'
-            return True, f'{self.table_cap} {name} created'
+            return True, f'{self.table_cap} {name} created' + self.staging_note(data.get('imagefile'))
         del data['name']
         if not data:
             return False, 'Nothing to update'
         Database().update(self.table, Helper().make_rows(data),
                           [{"column": "id", "value": record[0]['id']}])
-        return True, f'{self.table_cap} {name} updated'
+        return True, f'{self.table_cap} {name} updated' + self.staging_note(data.get('imagefile'))
+
+
+    def staging_note(self, imagefile=None):
+        """
+        This method returns the reminder that goes with naming an image file: where
+        to put it, and that the BMC has to be able to reach the controller to fetch
+        it. Said here, when the admin is setting the entry up, rather than discovered
+        at the board forty minutes into a push. The daemon does not judge the
+        firewall - that is the installer's, which trusts the BMC-facing interface.
+        """
+        imagefile = str(imagefile or '').strip()
+        if not imagefile:
+            return ''
+        _, port = FirmwarePush().file_port()
+        return (f'; stage {imagefile} in {CONSTANT["FILES"]["IMAGE_FILES"]} on the active '
+                f'controller. BMCs fetch it from the controller over port {port}, so the '
+                'interface facing the BMC network must be in the firewall\'s trusted zone')
+
+
+    def replay_request(self, name=None, payload=None):
+        """
+        This method is the peer's half of a write to the firmware request table.
+        The journal dispatches it as Firmware().replay_request(<write>, <arguments>);
+        it applies the write locally and never journals it again.
+
+        The answer is the only trace a lost write leaves here: the journal logs it
+        and removes the entry whatever it says, and the table is then repaired by
+        the hash sweep about an hour later. Until then this controller answers
+        stale - so a write that did not land has to say so, with the keys it was
+        addressed by.
+        """
+        payload = payload or {}
+        if not FirmwareRequest().apply(name, **payload):
+            keys = {key: payload.get(key) for key in ('request_id', 'nodeid')}
+            return False, f'firmware request {name} was not applied here: {keys}'
+        return True, f'firmware request {name} replayed'
+
+
+    def image_file_is_usable(self, imagefile=None):
+        """
+        This method refuses an image file name that could never be fetched.
+
+        The value is handed to a BMC as '/files/<imagefile>' on the file server, so
+        it has to be a bare name in that directory - and not one the server would
+        ask a token for, because a BMC has none to give. Both would otherwise
+        surface minutes later, per node, as the board's 'file is missing'.
+        """
+        imagefile = str(imagefile or '').strip()
+        if not imagefile:
+            return True, None
+        if os.sep in imagefile or imagefile in ('.', '..'):
+            return False, f'imagefile must be a bare file name in the files directory, not {imagefile}'
+        gated = [ext for ext in TOKEN_GATED_EXTENSIONS if imagefile.endswith(ext)]
+        if gated:
+            return False, (f'imagefile {imagefile} would be served only with a token, '
+                           f'which a BMC cannot present: do not use {gated[0]}')
+        return True, None
 
 
     def delete_firmware(self, name=None):
@@ -260,6 +324,7 @@ class Firmware():
             ['firmwarerequest.id as id', 'firmwarerequest.component as component',
              'firmwarerequest.request_id as request_id',
              'firmwarerequest.status as state', 'firmwarerequest.message as message',
+             'firmwarerequest.restore as restore',
              'firmwarerequest.created as created', 'firmwarerequest.updated as updated',
              'node.name as nodename', 'node.groupid as groupid'],
             ['node.id=firmwarerequest.nodeid'],
@@ -270,6 +335,10 @@ class Firmware():
         groups = {record['id']: record['name']
                   for record in Database().get_record(table='group') or []}
         latest, summary = {}, {}
+        # a restore is owed by the node, not by the request that left it owed: a
+        # newer request must not push it out of view before it has settled
+        owed = {record['nodename'] for record in records
+                if record['restore'] == RESTORE_PENDING}
         for record in records:
             previous = latest.get(record['nodename'])
             if previous and previous['id'] >= record['id']:
@@ -283,6 +352,7 @@ class Firmware():
                 'component': record['component'] or '',
                 'request_id': record['request_id'] or '',
                 'state': state, 'message': record['message'] or '',
+                'restore': record['restore'] or (RESTORE_PENDING if nodename in owed else ''),
                 'since': record['updated'] or record['created'] or ''}
             summary[state] = summary.get(state, 0) + 1
         response['config'][self.table]['summary'] = summary

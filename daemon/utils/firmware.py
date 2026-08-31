@@ -57,6 +57,8 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
+import os
+from common.constant import CONSTANT
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
@@ -69,6 +71,8 @@ from utils.redfish import RedfishAccess
 NO_INVENTORY = 'no inventory; has this node booted?'
 NO_ENTRY = 'no catalogue entry for this hardware'
 NO_VERSION = 'the catalogue entry names no version'
+NO_IMAGEFILE = 'the catalogue entry names no image file'
+NO_IMAGE = 'image {imagefile} is not staged on this controller'
 
 
 class FirmwareCatalog():
@@ -137,7 +141,25 @@ class FirmwareCatalog():
         return versions
 
 
-    def plan(self, nodename=None):
+    def staged_images(self):
+        """
+        This method returns the names of the image files present on this controller.
+
+        preview() reads it once and hands it to every plan(): a stat per component
+        per node is twelve thousand stats on a four-thousand-node dry run, where one
+        directory listing answers for all of them. A directory that cannot be read
+        stages nothing - every node is then skipped for a named file, which is loud
+        in the right place, and the cause is in the log.
+        """
+        location = CONSTANT['FILES']['IMAGE_FILES']
+        try:
+            return set(os.listdir(location))
+        except (OSError, TypeError) as exp:
+            self.logger.error(f'cannot list the staged images in {location}: {exp}')
+            return set()
+
+
+    def plan(self, nodename=None, staged=None):
         """
         This method returns what a firmware push would do to one node, and why it
         would not, without contacting anything.
@@ -145,7 +167,13 @@ class FirmwareCatalog():
         Returns (status, answer). A False status carries the reason as a string,
         one of the constants above, so a caller fanning out over a group can group
         thousands of nodes by a handful of causes rather than printing a line each.
+
+        An image is needed to flash, not to compare, so it is only looked for where
+        a component would change: a fleet already on the catalogue version stays
+        'as the catalogue asks' after the file has been tidied away.
         """
+        if staged is None:
+            staged = self.staged_images()
         manufacturer, model = self.hardware(nodename=nodename)
         if not manufacturer or not model:
             return False, NO_INVENTORY
@@ -166,6 +194,11 @@ class FirmwareCatalog():
                     'imagefile': entry['imagefile']}
             wanted.append(item)
             if item['running'] != version:
+                imagefile = str(entry['imagefile'] or '').strip()
+                if not imagefile:
+                    return False, NO_IMAGEFILE
+                if imagefile not in staged:
+                    return False, NO_IMAGE.format(imagefile=imagefile)
                 differs.append(item)
         return True, {'node': nodename, 'hardware': (manufacturer, model),
                       'components': wanted, 'differs': differs}
@@ -187,8 +220,9 @@ class FirmwareCatalog():
         wrong way round.
         """
         ready, skipped = [], {}
+        staged = self.staged_images()
         for nodename in nodenames or []:
-            status, answer = self.plan(nodename=nodename)
+            status, answer = self.plan(nodename=nodename, staged=staged)
             if status:
                 ready.append(answer)
             else:
@@ -217,6 +251,9 @@ class FirmwareCatalog():
 # been claimed by it, and anything else is a finished state kept for the status view.
 QUEUED = 'queued'
 CLAIMED = 'in progress'
+# a flash reset the BMC and the node has not yet come back through setupbmc; the
+# restore that follows is owed and the install holds for it
+RESTORE_PENDING = 'pending'
 
 
 class FirmwareRequest():
@@ -255,12 +292,75 @@ class FirmwareRequest():
         """
         written = 0
         for nodeid in nodeids or []:
-            row = Helper().make_rows({'nodeid': nodeid, 'component': component or '',
-                                      'request_id': request_id or '',
-                                      'status': QUEUED, 'created': 'NOW'})
-            if Database().insert(self.table, row):
+            if self.write('record', nodeid=nodeid, component=component or '',
+                          request_id=request_id or ''):
                 written += 1
         return written
+
+
+    def write(self, method=None, **arguments):
+        """
+        This method carries one write to this table to the peer and then applies it
+        here - in that order, and the local half only if the peer half was taken.
+
+        Every write to a replicated table goes through the journal. The hash sweep
+        that compares whole tables between controllers is the last resort for a
+        controller that was away, not the way a row travels: it runs about once an
+        hour, and a node that netboots from the other controller in that hour would
+        be told nothing is owed. add_request answers 'Not in H/A mode' on a single
+        controller, so the local write happens there unconditionally.
+
+        Rows are addressed by (request_id, nodeid), never by id: the peer inserts
+        its own row and its autoincrement is its own.
+        """
+        from utils.journal import Journal
+        status, _ = Journal().add_request(function='Firmware.replay_request', object=method,
+                                          payload=arguments)
+        if status is True:
+            return self.apply(method, **arguments)
+        return False
+
+
+    def apply(self, method=None, **arguments):
+        """
+        This method performs one write locally. The journal replays it on the peer
+        through Firmware.replay_request; nothing else calls it.
+        """
+        return getattr(self, f'apply_{method}')(**arguments)
+
+
+    def apply_record(self, nodeid=None, component=None, request_id=None):
+        row = Helper().make_rows({'nodeid': nodeid, 'component': component or '',
+                                  'request_id': request_id or '',
+                                  'status': QUEUED, 'created': 'NOW'})
+        return bool(Database().insert(self.table, row))
+
+
+    def apply_update(self, request_id=None, nodeid=None, **columns):
+        columns['updated'] = 'NOW'
+        # the update's own answer, not a constant: it is False when no row matched,
+        # which on the peer means the record this update was for never arrived
+        return bool(Database().update(self.table, Helper().make_rows(columns),
+                                      [{"column": "request_id", "value": request_id},
+                                       {"column": "nodeid", "value": nodeid}]))
+
+
+    def identity(self, requestid=None):
+        """
+        This method returns the (request_id, nodeid) a local row id stands for - the
+        address a write travels under, since the peer's ids are its own.
+        """
+        row = Database().get_record(table=self.table, where=f'id = "{requestid}"')
+        if not row:
+            return None, None
+        return row[0]['request_id'], row[0]['nodeid']
+
+
+    def update(self, requestid=None, **columns):
+        request_id, nodeid = self.identity(requestid)
+        if nodeid is None:
+            return False
+        return self.write('update', request_id=request_id, nodeid=nodeid, **columns)
 
 
     def pending(self, status=QUEUED):
@@ -285,20 +385,46 @@ class FirmwareRequest():
         A request removed when it is claimed is lost if the daemon stops mid-flash,
         and the node is then left part-updated with nothing recording that anybody
         ever asked. Marked, it can be reclaimed.
+
+        Returns whether the mark was written: it travels through the journal, and a
+        controller out of sync is refused. The caller must not flash what it could
+        not claim - the row would still read as queued, and be taken up again.
         """
-        Database().update(self.table, Helper().make_rows({'status': CLAIMED, 'updated': 'NOW'}),
-                          [{"column": "id", "value": requestid}])
+        return self.update(requestid, status=CLAIMED)
 
 
     def finish(self, requestid=None, status=None, message=None):
         """
         This method records how a request ended, and leaves the row for the status view.
         """
-        Database().update(self.table,
-                          Helper().make_rows({'status': 'done' if status else 'failed',
-                                              'message': str(message or '')[:2000],
-                                              'updated': 'NOW'}),
-                          [{"column": "id", "value": requestid}])
+        self.update(requestid, status='done' if status else 'failed',
+                    message=str(message or '')[:2000])
+
+
+    def mark_restore(self, requestid=None):
+        """
+        This method records that the flash behind a request reset the BMC, so a
+        restore is owed once the node has been back through setupbmc. On the request
+        row, which is replicated: the mark survives the controller that set it.
+        """
+        self.update(requestid, restore=RESTORE_PENDING)
+
+
+    def restore_pending(self, nodeid=None):
+        """
+        This method returns the requests of a node whose restore is still owed.
+        """
+        return Database().get_record(
+            table=self.table,
+            where=f'nodeid = "{nodeid}" AND restore = "{RESTORE_PENDING}"') or []
+
+
+    def finish_restore(self, requestid=None, status=None, message=None):
+        """
+        This method records how the restore ended, and with it lifts the hold.
+        """
+        outcome = 'done' if status else 'failed'
+        self.update(requestid, restore=f'{outcome}: {str(message or "")[:1900]}')
 
 
     def reclaim_abandoned(self, minutes=60):
@@ -315,6 +441,5 @@ class FirmwareRequest():
         for row in stale:
             self.logger.warning(f'firmware request {row["id"]} was left in progress; '
                                 'it will be tried again')
-            Database().update(self.table, Helper().make_rows({'status': QUEUED}),
-                              [{"column": "id", "value": row['id']}])
+            self.update(row['id'], status=QUEUED)
         return stale

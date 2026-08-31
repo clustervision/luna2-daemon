@@ -78,7 +78,7 @@ RENDER_CONTEXT = dict(
     NODE_NAME='n1', LUNA_GROUP='compute', LUNA_OSIMAGE='img',
     LUNA_DISTRIBUTION='redhat', LUNA_OSRELEASE='9', LUNA_SYSTEMROOT='sysroot',
     LUNA_IMAGEFILE='f.tar.bz2', LUNA_FILE='f.tar.bz2', LUNA_SELINUX_ENABLED='0',
-    LUNA_SETUPBMC=False, LUNA_BMC={}, LUNA_ROLES='', LUNA_SCRIPTS='',
+    LUNA_SETUPBMC=False, LUNA_HOLD_SECONDS=0, LUNA_HOLD_REASON='', LUNA_BMC={}, LUNA_ROLES='', LUNA_SCRIPTS='',
     LUNA_UNMANAGED_BMC_USERS='', LUNA_INTERFACES={}, LUNA_PRESCRIPT='',
     LUNA_PARTSCRIPT='', LUNA_POSTSCRIPT='', PROVISION_METHOD='torrent',
     PROVISION_FALLBACK='http', PROVISION_INTERFACE='BOOTIF',
@@ -222,6 +222,7 @@ def test_lpart_is_never_reachable_without_the_daemon_choosing_it():
 # "an old client is handed the same functions, called in the same order".
 CLASSIC_FUNCTIONS = {
     'bmcsetup',
+    'hold_for_daemon',
     'change_net',
     'cleanup',
     'collect_mac_n_name_net',
@@ -262,6 +263,10 @@ CLASSIC_FUNCTIONS = {
 }
 CLASSIC_FLOW = [
     'lunainit', 'dynamic_ip_check', 'node_scripts', 'prescript', 'bmcsetup',
+    # TRIX-2035: right after setupbmc the node holds the LUNA_HOLD_SECONDS the
+    # daemon rendered, so a reset from a scheduled restore or BIOS push lands in
+    # the hold, not mid-install. Zero, and no wait, when nothing is scheduled
+    'hold_for_daemon',
     # TRIX-143: hardware discovery moved up from the end of the install, deliberately.
     # update_system_info was removed beside it: it ran dmidecode a second time to POST
     # a vendor and an assettag that update_inventory already sends as manufacturer and
@@ -405,166 +410,36 @@ def _baseline_classic_template():
 # Every line by which the classic installer differs from its owner, enumerated in both
 # directions -- a line that is *changed* is a removal and an addition, and listing only
 # what appeared would wave the other half through.
-BLESSED_CLASSIC_REMOVALS = [
-    # TRIX-143: update_system_info collected a vendor and an assettag with a second
-    # dmidecode pass and a second POST, for values update_inventory already sends as
-    # manufacturer and serial. The node's two columns are now derived from the stored
-    # snapshot instead, so they survive - and they refresh on an out-of-band collection
-    # rather than only at install, which is what stops a replaced board reporting the
-    # machine it used to be. The whole function goes, and its call with it
-    'function update_system_info {',
-    '    dmidecode --help &> /dev/null',
-    '    ret=$?',
-    '    if [ "$ret" == "0" ]; then',
-    '        vendor=$(dmidecode -s system-manufacturer)',
-    '        assettag=$(dmidecode -s system-serial-number)',
-    '        json=\'{"config": {"node": { "{{ NODE_NAME }}": { "vendor": "\'$vendor\'", "assettag": "\'$assettag\'" } } } }\'',
-    '        curl $INTERFACE $INSECURE -X POST -H "x-access-tokens: $LUNA_TOKEN" -H "Content-Type: application/json" -d "$json" -s "${LUNA_URL}/config/node/{{ NODE_NAME }}"',
-    '    else',
-    '        echo "Luna2: dmidecode not found and could therefor not update system information"',
-    '    fi',
-    '}',
-    '',
-    # postboot addressed the target root as ${rootmnt} while every other function in
-    # the file, and postboot's own chroot line, use "/${rootmnt}". Made consistent.
-    # Identical in effect wherever rootmnt is absolute (// collapses to /), and correct
-    # rather than merely equivalent where a plugin reports a relative systemroot -- the
-    # leading slash is why the rest of the file carries one.
-    '    if [ ! -d "${rootmnt}/usr/local/sbin/" ]; then',
-    '        mkdir -p "${rootmnt}/usr/local/sbin/"',
-    "cat << 'LUNAEOF' > ${rootmnt}/usr/local/sbin/postboot.sh",
-    'chmod 750 ${rootmnt}/usr/local/sbin/postboot.sh 2> /dev/null',
-    "cat << 'LUNAEOF' > ${rootmnt}/etc/systemd/system/luna-post-boot.service",
-    # TRIX-143: the other half of moving hardware discovery earlier - these two calls
-    # left the tail of the install, and the additions list carries them at their new
-    # position after bmcsetup. Nothing is dropped; a moved line is a removal and an
-    # addition, and both halves are enumerated so neither can be waved through alone
-    'update_system_info',
-    'update_inventory',
-]
+#
+# Both are empty, and that is the healthy state: the file here is byte-identical to the
+# one on the baseline branch. They were not empty while this branch's changes to the
+# classic installer were still unmerged, and emptying them is what landing those changes
+# means - the baseline moves, and a difference that has been ported is no longer a
+# difference to bless. The reasons that used to sit here are in the history of the
+# branch that now carries the lines.
+#
+# When a legitimate divergence appears again, list it here with the reason, in whichever
+# direction it falls, and delete the entry once it lands on the baseline. What must never
+# be listed is a difference nobody meant: every osimage that has not been rebuilt runs
+# this file, so a line lost here changes nodes nobody has touched.
+BLESSED_CLASSIC_REMOVALS = []
+# TRIX-2035: hold_for_daemon and its call after bmcsetup - the install waits the
+# LUNA_HOLD_SECONDS the daemon rendered (0 when nothing is scheduled) so a reset
+# from a scheduled restore or BIOS push lands in the hold, not mid-install. Delete this
+# block when the lines land on the baseline.
 BLESSED_CLASSIC_ADDITIONS = [
-    # the other half of the postboot change above, now quoted like its neighbours
-    '    if [ ! -d "/${rootmnt}/usr/local/sbin/" ]; then',
-    '        mkdir -p "/${rootmnt}/usr/local/sbin/"',
-    'cat << \'LUNAEOF\' > "/${rootmnt}/usr/local/sbin/postboot.sh"',
-    'chmod 750 "/${rootmnt}/usr/local/sbin/postboot.sh" 2> /dev/null',
-    'cat << \'LUNAEOF\' > "/${rootmnt}/etc/systemd/system/luna-post-boot.service"',
-    '}',
     '',
-    # TRIX-1968: a profile is files plus a service action, assigned per group/node
-    # and stacked. Applied at install time, and it seeds the record the live applier
-    # maintains afterwards: what it wrote, and what was there before it wrote. Without
-    # that record a later delivery would treat these files as pre-existing and keep
-    # the profile's own output as the thing to restore when the profile goes away.
-    'function node_profiles {',
-    '    update_status "install.profiles"',
-    '',
-    "    local PROFILES=$(echo {{ LUNA_PROFILES }} | tr ',' ' ')",
-    '    local PROFILE_STATE=/var/lib/luna/profiles',
-    '    local PROFILE_BACKUP=${PROFILE_STATE}/backup',
-    '    rm -f /lunatmp/node.profile.manifest.dat',
-    '    for PROFILE in $PROFILES; do',
-    '        echo "Luna2: Preparing node profile: [$PROFILE]"',
-    '        curl $INTERFACE $INSECURE -H "x-access-tokens: $LUNA_TOKEN" -s "${LUNA_URL}/boot/profiles/${PROFILE}" | grep -v \'"message":\' > /lunatmp/node.profile.json',
-    "        get_json_segment /lunatmp/node.profile.json 'path' > /lunatmp/node.profile.files.dat",
-    "        get_json_segment /lunatmp/node.profile.json 'content' 'nodash' > /lunatmp/node.profile.contents.dat",
-    "        get_json_exact /lunatmp/node.profile.json 'resolved_owner' > /lunatmp/node.profile.owners.dat",
-    "        get_json_exact /lunatmp/node.profile.json 'mode' > /lunatmp/node.profile.modes.dat",
-    "        SERVICE=$(get_json_exact /lunatmp/node.profile.json 'service')",
-    "        ACTION=$(get_json_exact /lunatmp/node.profile.json 'action')",
-    '        if [ "$SERVICE" ]; then SERVICE=$(echo "${SERVICE:1:-1}"); fi',
-    '        if [ "$ACTION" ]; then ACTION=$(echo "${ACTION:1:-1}"); fi',
-    '',
-    '        # content[0-9]*, not content*: the second glob also matches',
-    '        # node.profile.contents.dat, which is the file the loop below reads',
-    '        rm -f /lunatmp/node.profile.content[0-9]*.dat',
-    '        TEL=0',
-    "        while IFS='' read -r line; do",
-    '            if [ "$(echo $line)" == "--" ]; then',
-    '               TEL=$[TEL+1]',
-    '           else',
-    '               echo $line >> /lunatmp/node.profile.content${TEL}.dat',
-    '           fi',
-    '        done < /lunatmp/node.profile.contents.dat',
-    '',
-    '        TEL=0',
-    "        while IFS='' read -r file; do",
-    '            file=$(echo "${file:1:-1}")',
-    '            echo "Luna2: Profile ${PROFILE} file path: [$file]"',
-    '            if [ "$file" ]; then',
-    '                existed=false',
-    '                if [ -f "/${rootmnt}/$file" ]; then',
-    '                    mkdir -p "/${rootmnt}${PROFILE_BACKUP}/$(dirname $file)"',
-    '                    cp -a "/${rootmnt}/$file" "/${rootmnt}${PROFILE_BACKUP}/$file"',
-    '                    existed=true',
-    '                fi',
-    '                echo "  \\"$file\\": {\\"profile\\": \\"${PROFILE}\\", \\"existed_before\\": ${existed}, \\"service\\": \\"${SERVICE}\\", \\"action\\": \\"${ACTION}\\"}," >> /lunatmp/node.profile.manifest.dat',
-    '                mkdir -p "/${rootmnt}/$(dirname $file)"',
-    '                if [ "$DECODE" ]; then',
-    '                    get_encapsulated_content /lunatmp/node.profile.content${TEL}.dat | base64 -d > "/${rootmnt}/$file"',
-    '                else',
-    '                    get_encapsulated_content /lunatmp/node.profile.content${TEL}.dat > "/${rootmnt}/$file"',
-    '                fi',
-    '                owner=$(sed -n "$[TEL+1]p" /lunatmp/node.profile.owners.dat)',
-    '                mode=$(sed -n "$[TEL+1]p" /lunatmp/node.profile.modes.dat)',
-    '                if [ "$owner" ]; then owner=$(echo "${owner:1:-1}"); fi',
-    '                if [ "$mode" ]; then mode=$(echo "${mode:1:-1}"); fi',
-    '                chmod "${mode:-644}" "/${rootmnt}/$file" 2> /dev/null',
-    '                if [ "$owner" ] && [ "$owner" != "0:0" ]; then',
-    '                    if ! chroot "/${rootmnt}" chown "$owner" "/$file" 2> /dev/null; then',
-    '                        echo "Luna2: --WARNING-- could not set owner [$owner] on profile file [$file]"',
-    '                    fi',
-    '                fi',
-    '                TEL=$[TEL+1]',
-    '            fi',
-    '        done < /lunatmp/node.profile.files.dat',
-    '',
-    "        SERVICE=$(get_json_exact /lunatmp/node.profile.json 'service')",
-    "        ACTION=$(get_json_exact /lunatmp/node.profile.json 'action')",
-    '        if [ "$SERVICE" ]; then SERVICE=$(echo "${SERVICE:1:-1}"); fi',
-    '        if [ "$ACTION" ]; then ACTION=$(echo "${ACTION:1:-1}"); fi',
-    '        if [ "$SERVICE" ]; then',
-    '            echo "Luna2: Profile ${PROFILE} service: [$SERVICE] action: [$ACTION]"',
-    '            case $ACTION in',
-    '                stop)',
-    '                    chroot "/${rootmnt}" /bin/bash -c "systemctl disable ${SERVICE}" 2> /dev/null',
-    '                    ;;',
-    '                none)',
-    '                    ;;',
-    '                *)',
-    '                    chroot "/${rootmnt}" /bin/bash -c "systemctl enable ${SERVICE}" 2> /dev/null',
-    '                    ;;',
-    '            esac',
-    '        fi',
-    '    done',
-    '',
-    '    # the record the live applier picks up: what we wrote, and what was there',
-    '    # before we wrote it. without it a later delivery would treat these files as',
-    "    # pre-existing and keep the profile's own output as the thing to restore",
-    '    if [ -s /lunatmp/node.profile.manifest.dat ]; then',
-    '        mkdir -p "/${rootmnt}${PROFILE_STATE}"',
-    '        echo "{" > "/${rootmnt}${PROFILE_STATE}/manifest.json"',
-    '        sed \'$ s/,$//\' /lunatmp/node.profile.manifest.dat >> "/${rootmnt}${PROFILE_STATE}/manifest.json"',
-    '        echo "}" >> "/${rootmnt}${PROFILE_STATE}/manifest.json"',
+    'function hold_for_daemon {',
+    '    # A restore owed by a firmware flash, or a BIOS push, scheduled for this node',
+    '    # resets it. The daemon decided at render time whether one is, and how long to',
+    '    # hold so that the reset lands here rather than in the middle of the install.',
+    '    # Fixed and bounded: nothing is asked of the daemon, and it ends regardless.',
+    '    if [ "{{ LUNA_HOLD_SECONDS }}" -gt 0 ] 2>/dev/null; then',
+    '        echo "Luna2: {{ LUNA_HOLD_REASON }} for this node and may reset it; holding {{ LUNA_HOLD_SECONDS }}s so that reset does not land mid-install"',
+    '        sleep {{ LUNA_HOLD_SECONDS }}',
     '    fi',
-    # an operator reading a node's install log can tell which installer ran
-    'echo "Luna2: install_mode is legacy, installing via the classic installer"',
-    # TRIX-143: hardware discovery moved up to here from the tail of the install. The
-    # two calls appear in the removals list above at their old position; these are the
-    # same two lines and the comment that explains why they sit where they now do.
-    # It also serves TRIX-933 - a discovery boot can be acted on before the node has
-    # paid for an image that the discovery may well change
-    '# Hardware discovery runs here rather than at the end of the install, and the',
-    '# position is the point of it. Everything it reads - dmidecode, /proc, lsblk,',
-    '# lspci, /sys/class/net - is available in the installer environment, so nothing',
-    '# is gained by waiting for the image: what is lost by waiting is every node whose',
-    '# install fails after this point, which reports no hardware at all and is exactly',
-    '# the node somebody needs the hardware facts for. Running before partscript also',
-    '# means the disks are recorded as found rather than as repartitioned.',
-    'update_inventory',
-    '{% if LUNA_PROFILES %}',
-    'node_profiles',
-    '{% endif %}',
+    '}',
+    'hold_for_daemon',
 ]
 
 
@@ -682,7 +557,7 @@ def test_the_rendered_installer_is_valid_bash(template):
     if shutil.which('bash') is None:
         pytest.skip('bash not available')
     rendered = _render(os.path.join(TEMPLATES, template),
-                       LUNA_SETUPBMC=True, LUNA_ROLES='role1', LUNA_SCRIPTS='s',
+                       LUNA_SETUPBMC=True, LUNA_HOLD_SECONDS=0, LUNA_HOLD_REASON='', LUNA_ROLES='role1', LUNA_SCRIPTS='s',
                        LUNA_TOKEN='t', LUNA_BOOTIF='eth0', LUNA_BOOTPROTO='dhcp',
                        DOMAIN_SEARCH=['example'], LUNA_INSTALL_MODE='full',
                        LUNA_DISKLAYOUT_B64='eyJ2IjoyfQ==', LUNA_OSIMAGE_FILTER_B64='e30=')
@@ -692,3 +567,17 @@ def test_the_rendered_installer_is_valid_bash(template):
         f'{template} renders to bash that will not parse:\n'
         f'{check.stderr.decode("utf-8", "replace")}'
     )
+
+
+def test_every_variable_the_installers_use_is_rendered_by_the_boot_route():
+    """
+    A variable added to a template and not to the render call renders as nothing,
+    silently - the trap a new LUNA_ variable walks into. Derived from the
+    templates, so the next variable is covered without being remembered.
+    """
+    import os, re
+    routes = open(os.path.join(DAEMON, 'routes', 'boot.py'), encoding='utf-8').read()
+    for name in ('templ_install.cfg', 'templ_install_lpart.cfg'):
+        text = open(os.path.join(DAEMON, 'templates', name), encoding='utf-8').read()
+        for variable in sorted(set(re.findall(r'{{\s*(LUNA_[A-Z0-9_]+)', text))):
+            assert re.search(rf'\b{variable}\s*=', routes), f'{name} uses {variable}, boot.py never renders it'

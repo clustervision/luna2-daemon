@@ -431,4 +431,30 @@ def test_the_group_lookup_is_one_query_not_one_per_node(cluster, monkeypatch):
         f'nodeinventory was read {calls.count("nodeinventory")} times - reading it '
         'per node is the cost this whole view exists to avoid'
     )
-    assert len(calls) <= 3, f'{len(calls)} queries for a whole-cluster status'
+    assert calls.count('biosconfig') == 1, (
+        f'biosconfig was read {calls.count("biosconfig")} times - the assignment names '
+        'and the content digests come from one read'
+    )
+    assert len(calls) <= 4, f'{len(calls)} queries for a whole-cluster status'
+
+
+def test_the_collector_records_whether_the_board_can_take_a_bios_write():
+    """One read of the Bios resource serves the digest and the writable fact; a
+    dummy settings object (no SettingsObject) is recorded as not writable."""
+    from base.nodeinventory import NodeInventory
+    from utils.bios_push import BiosPush
+
+    class Bmc():
+        def __init__(self, doc):
+            self.doc = doc
+        def get(self, path=None, cache=False):
+            return (True, dict(self.doc)) if path == '/redfish/v1/Systems/1/Bios' else (False, 'no')
+
+    writable = Bmc({'Attributes': {'A': 1},
+                    '@Redfish.Settings': {'SettingsObject': {'@odata.id': '/redfish/v1/Systems/1/Bios/SD'}}})
+    dummy = Bmc({'Attributes': {'A': 1}, '@Redfish.Settings': {'ETag': 'Dummyetag', 'Messages': []}})
+    for client, expected in ((writable, '1'), (dummy, '0')):
+        bios = NodeInventory().read_bios(redfish=client, system=system_with())
+        assert ('1' if BiosPush().settings_path(bios=bios) else '0') == expected
+        assert NodeInventory().bios_digest(bios=bios) == NodeInventory().bios_digest(redfish=client, system=system_with())
+    assert NodeInventory().read_bios(redfish=dummy, system=system_with(bios=False)) is None

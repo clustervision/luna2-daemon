@@ -55,6 +55,26 @@ class FakeBoard():
         status, data = self.post(path=path, payload=payload)
         return status, data, self.resources.get('__location__')
 
+    def patch(self, path=None, payload=None):
+        self.posted.append({'path': path, 'payload': payload, 'method': 'PATCH'})
+        return True, {}
+
+    def upload(self, path=None, body=None, content_type=None, timeout=None):
+        """Consumes the body the way a transport would - in chunks - and records
+        what arrived, so a test can assert on bytes rather than on intentions."""
+        received = b''
+        while True:
+            chunk = body.read(65536)
+            if not chunk:
+                break
+            received += chunk
+        self.posted.append({'path': path, 'content_type': content_type,
+                            'received': received, 'length': len(body) if hasattr(body, '__len__') else None,
+                            'timeout': timeout})
+        if '__refuse_upload__' in self.resources:
+            return False, 400, self.resources['__refuse_upload__'], {}
+        return True, 202, self.resources.get('__post__', {}), {'Location': self.resources.get('__location__')}
+
     # The real implementations over this fake's transport, so the singleton walk
     # and the failure wording under test are the ones that ship.
     from utils.redfish import Redfish
@@ -222,7 +242,9 @@ def test_a_completed_task_over_an_unchanged_version_is_a_failure():
         task='/redfish/v1/TaskService/Tasks/3')
     assert state == 'finished'
 
-    status, reason = FirmwarePush().verify(redfish=machine, component='BMC', wanted='7.10')
+    # deadline 0: this board never publishes the component, and waiting for it
+    # is the rebooting-BMC case tested further down, not this one
+    status, reason = FirmwarePush().verify(redfish=machine, component='BMC', wanted='7.10', deadline=0)
     assert status is False
     assert 'inactive slot' in reason
 
@@ -230,9 +252,11 @@ def test_a_completed_task_over_an_unchanged_version_is_a_failure():
 def test_a_component_the_board_does_not_publish_is_reported():
     from utils.firmware_push import FirmwarePush
 
+    # deadline 0: this board never publishes the component; waiting for one to
+    # appear is the rebooting-BMC case, tested further down
     status, reason = FirmwarePush().verify(redfish=inventory('7.10'),
-                                           component='CPLD', wanted='1.0')
-    assert status is False and 'no component called CPLD' in reason
+                                           component='CPLD', wanted='1.0', deadline=0)
+    assert status is None and 'no component called CPLD' in reason, 'no answer is not a verdict'
 
 
 def action_board(parameters=None, inline=None):
@@ -422,3 +446,227 @@ def test_a_refused_task_says_why_in_words():
     assert state == 'failed'
     assert 'firmware update is failed' in reason
     assert 'HTTP 0' not in reason
+
+
+# ---------------------------------------------------------------------------
+# Push transfers, for a board that will not fetch (TRIX-2038)
+# ---------------------------------------------------------------------------
+
+def staged(tmp_path, monkeypatch, name='bmc.bin', size=1000):
+    import common.constant as constant
+    files = tmp_path / 'files'
+    files.mkdir(exist_ok=True)
+    (files / name).write_bytes(bytes(range(256)) * (size // 256) + b'x' * (size % 256))
+    monkeypatch.setitem(constant.CONSTANT['FILES'], 'IMAGE_FILES', str(files))
+    return str(files / name)
+
+
+def test_the_multipart_body_streams_the_file_and_knows_its_length(tmp_path, monkeypatch):
+    """
+    The library would build the form in memory - an image per push, a batch of
+    them at once. This body reads the preamble, the file and the closing boundary
+    in order, in whatever chunk size the transport asks, and says its length up
+    front so the request carries Content-Length rather than chunked encoding.
+    """
+    from utils.firmware_push import MultipartBody
+    path = staged(tmp_path, monkeypatch, size=70000)
+    body = MultipartBody(parameters={'Targets': ['/x']}, filename='bmc.bin', path=path)
+    received, chunks = b'', 0
+    while chunk := body.read(4096):
+        received += chunk
+        chunks += 1
+    assert len(received) == len(body)
+    assert chunks > 17, 'the file was not streamed in transport-sized pieces'
+    assert body.content_type.startswith('multipart/form-data; boundary=')
+    boundary = body.boundary.encode()
+    assert received.count(b'--' + boundary) == 3 and received.endswith(b'--' + boundary + b'--\r\n')
+    assert b'name="UpdateParameters"' in received and b'"Targets": ["/x"]' in received
+    assert b'OperationApplyTime' not in received, 'refused by a measured board, and optional'
+    assert b'name="UpdateFile"; filename="bmc.bin"' in received
+    assert open(path, 'rb').read() in received
+    assert body.handle.closed
+
+
+def multipart_board(extra=None):
+    service = {'@odata.id': '/redfish/v1/UpdateService',
+               'MultipartHttpPushUri': '/redfish/v1/UpdateService/upload',
+               'MaxImageSizeBytes': 200000,
+               'FirmwareInventory': {'@odata.id': '/redfish/v1/UpdateService/FirmwareInventory'}}
+    return board(service, extra=dict({'__location__': '/redfish/v1/TaskService/Tasks/7'}, **(extra or {})))
+
+
+def test_a_multipart_push_streams_the_staged_file_to_the_boards_uri_naming_the_target(tmp_path, monkeypatch):
+    from utils.firmware_push import FirmwarePush, MULTIPART
+    path = staged(tmp_path, monkeypatch)
+    machine = multipart_board()
+    _, service = machine.update_service()[1:]
+    status, task = FirmwarePush().submit(redfish=machine, kind=MULTIPART, uri='/redfish/v1/UpdateService/upload',
+                                         component='BMC', image_path=path, service=service)
+    assert status is True and task == '/redfish/v1/TaskService/Tasks/7'
+    sent = machine.posted[-1]
+    assert sent['path'] == '/redfish/v1/UpdateService/upload'
+    assert sent['content_type'].startswith('multipart/form-data')
+    assert sent['length'] == len(sent['received']), 'Content-Length would have lied'
+    assert b'"Targets": ["/redfish/v1/UpdateService/FirmwareInventory/BMC"]' in sent['received']
+    assert open(path, 'rb').read() in sent['received']
+
+
+def test_an_image_the_board_cannot_take_is_refused_before_a_byte_is_sent(tmp_path, monkeypatch):
+    from utils.firmware_push import FirmwarePush, MULTIPART
+    path = staged(tmp_path, monkeypatch, size=300000)
+    machine = multipart_board()
+    _, service = machine.update_service()[1:]
+    status, reason = FirmwarePush().submit(redfish=machine, kind=MULTIPART, uri='/x',
+                                           component='BMC', image_path=path, service=service)
+    assert status is False and '300000 bytes' in reason and 'at most 200000' in reason
+    assert machine.posted == []
+
+
+def test_a_board_that_refuses_the_upload_is_reported_in_its_own_words(tmp_path, monkeypatch):
+    from utils.firmware_push import FirmwarePush, MULTIPART
+    path = staged(tmp_path, monkeypatch)
+    machine = multipart_board(extra={'__refuse_upload__': 'Update Failed. The file name don\'t match .'})
+    _, service = machine.update_service()[1:]
+    status, reason = FirmwarePush().submit(redfish=machine, kind=MULTIPART, uri='/x',
+                                           component='BMC', image_path=path, service=service)
+    assert status is False and 'file name' in reason
+
+
+def test_a_plain_http_push_sends_the_raw_image_and_names_the_target_where_the_board_has_the_property(tmp_path, monkeypatch):
+    from utils.firmware_push import FirmwarePush, HTTP
+    path = staged(tmp_path, monkeypatch)
+    service = {'@odata.id': '/redfish/v1/UpdateService', 'HttpPushUri': '/redfish/v1/UpdateService/push',
+               'HttpPushUriTargets': [],
+               'FirmwareInventory': {'@odata.id': '/redfish/v1/UpdateService/FirmwareInventory'}}
+    machine = board(service, extra={'__location__': '/redfish/v1/TaskService/Tasks/8'})
+    status, task = FirmwarePush().submit(redfish=machine, kind=HTTP, uri='/redfish/v1/UpdateService/push',
+                                         component='BIOS', image_path=path, service=service)
+    assert status is True and task == '/redfish/v1/TaskService/Tasks/8'
+    patched, sent = machine.posted
+    assert patched['method'] == 'PATCH' and patched['payload'] == {
+        'HttpPushUriTargets': ['/redfish/v1/UpdateService/FirmwareInventory/BIOS']}
+    assert sent['content_type'] == 'application/octet-stream'
+    assert sent['received'] == open(path, 'rb').read()
+
+
+def test_a_board_without_push_targets_is_not_patched(tmp_path, monkeypatch):
+    from utils.firmware_push import FirmwarePush, HTTP
+    path = staged(tmp_path, monkeypatch)
+    service = {'HttpPushUri': '/push'}
+    machine = board(service, extra={'__location__': '/t/1'})
+    status, _ = FirmwarePush().submit(redfish=machine, kind=HTTP, uri='/push', component='BMC',
+                                      image_path=path, service=service)
+    assert status is True
+    assert [p.get('method') for p in machine.posted] == [None]
+
+
+def test_a_push_only_board_takes_the_file_from_disk_not_a_url(tmp_path, monkeypatch):
+    """update_component asks for the file where the transfer sends it, and for a URL
+    only where the board fetches - a push-only board on a controller with no address
+    on the BMC network must not be refused for lacking a URL nobody will use."""
+    from utils.firmware_push import FirmwarePush
+    path = staged(tmp_path, monkeypatch)
+    machine = multipart_board(extra={
+        '/redfish/v1/UpdateService/FirmwareInventory/BMC': {'Version': '7.10'},
+        '/redfish/v1/UpdateService/FirmwareInventory': {'Members': [{'@odata.id': '/redfish/v1/UpdateService/FirmwareInventory/BMC'}]}})
+    push = FirmwarePush()
+    monkeypatch.setattr(FirmwarePush, 'wait_ready', lambda self, redfish=None, deadline=None: (True, None))
+    monkeypatch.setattr(FirmwarePush, 'image_url',
+                        lambda self, nodename=None, imagefile=None: (_ for _ in ()).throw(AssertionError('a URL was asked for')))
+    monkeypatch.setattr(FirmwarePush, 'follow', lambda self, redfish=None, task=None, deadline=None: ('gone', None))
+    monkeypatch.setattr(FirmwarePush, 'verify', lambda self, redfish=None, component=None, wanted=None: (True, '7.10'))
+    status, message = push.update_component(redfish=machine, nodename='node001',
+                                            item={'component': 'BMC', 'imagefile': 'bmc.bin', 'wanted': '7.10'})
+    assert status is True, message
+    assert machine.posted[-1]['path'] == '/redfish/v1/UpdateService/upload'
+
+
+class AmiLike:
+    """A vendor plugin that demands a third part, the way the measured board does."""
+    def multipart(self, component=None, filename=None):
+        return {'OemParameters': {'ImageType': component}}, 'rom.ima_enc'
+
+
+def test_a_vendor_plugin_adds_the_parts_its_board_demands_and_names_the_file(tmp_path, monkeypatch):
+    """
+    The AMI board answers the standard two-part form with silence. What it wants -
+    OemParameters with ImageType - is not discoverable before the image is sent, so
+    it is the vendor plugin's to say, and the default plugin says nothing.
+    """
+    from utils.firmware_push import FirmwarePush, MULTIPART
+    path = staged(tmp_path, monkeypatch)
+    machine = multipart_board()
+    _, service = machine.update_service()[1:]
+    status, task = FirmwarePush().submit(redfish=machine, kind=MULTIPART, uri='/redfish/v1/UpdateService/upload',
+                                         component='BMC', image_path=path, service=service, plugin=AmiLike())
+    assert status is True
+    received = machine.posted[-1]['received']
+    assert b'name="OemParameters"' in received and b'{"ImageType": "BMC"}' in received
+    assert b'name="UpdateFile"; filename="rom.ima_enc"' in received
+    assert received.index(b'name="OemParameters"') < received.index(b'name="UpdateFile"')
+    assert machine.posted[-1]['length'] == len(received)
+
+
+def test_the_default_plugin_adds_nothing():
+    from plugins.redfish.default import Plugin
+    assert Plugin().multipart(component='BMC', filename='x.bin') == ({}, 'x.bin')
+
+
+def test_the_gigabyte_plugin_names_the_image_type_the_board_demands():
+    from plugins.redfish.gigabyte import Plugin
+    extra, filename = Plugin().multipart(component='BIOS', filename='bios.bin')
+    assert extra == {'OemParameters': {'ImageType': 'BIOS'}} and filename == 'bios.bin'
+
+
+def test_the_vendor_plugin_is_loaded_from_the_real_plugin_tree_as_an_instance(monkeypatch):
+    """
+    plugin_load returns a class. Handing the class on and calling multipart() on
+    it fails with a missing self - which no fake plugin would ever show.
+    """
+    import os
+    import common.constant as constant
+    from utils.firmware_push import FirmwarePush
+    from utils.redfish import RedfishAccess
+    daemon = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'daemon')
+    monkeypatch.setitem(constant.CONSTANT['PLUGINS'], 'PLUGINS_DIRECTORY', os.path.join(daemon, 'plugins'))
+    monkeypatch.setattr(RedfishAccess, 'plugin_candidates',
+                        lambda self, nodename=None, groupname=None, generic=None: (['nodex', 'gigabyte'], None))
+    from utils.database import Database
+    monkeypatch.setattr(Database, 'get_record_join', lambda self, *a, **k: [])
+    plugin = FirmwarePush().vendor_plugin('nodex')
+    assert type(plugin).__module__.endswith('gigabyte')
+    assert plugin.multipart(component='BMC', filename='f.bin')[0] == {'OemParameters': {'ImageType': 'BMC'}}
+
+
+def test_an_upload_that_times_out_names_the_time_it_actually_waited():
+    import requests
+    from utils.redfish import Redfish
+    client = Redfish(device='10.0.0.1', username='u', password='p')
+    assert client.transport_reason(requests.exceptions.ReadTimeout(), timeout=(5, 900)) == 'no answer within 900s'
+    assert client.transport_reason(requests.exceptions.ReadTimeout()) == f'no answer within {client.timeout[1]}s'
+
+
+def test_verify_keeps_asking_while_the_board_is_rebooting_and_decides_on_the_first_answer(monkeypatch):
+    """
+    Measured: the task said Completed, then the BMC rebooted and for minutes its
+    inventory had no BMC entry. Deciding on that read calls a flash that worked a
+    failure. So verify waits for an answer, bounded, and decides on the answer.
+    """
+    import utils.firmware_push as module
+    from utils.firmware_push import FirmwarePush
+    monkeypatch.setattr(module, 'sleep', lambda seconds: None)
+    answers = [(False, 'the board reports no component called BMC')] * 3 + [(True, '7.10')]
+    monkeypatch.setattr(FirmwarePush, 'running_version',
+                        lambda self, redfish=None, component=None: answers.pop(0))
+    assert FirmwarePush().verify(redfish=object(), component='BMC', wanted='7.10', deadline=600) == (True, '7.10')
+    assert answers == []
+
+
+def test_verify_gives_up_after_the_deadline_and_says_how_long_it_asked(monkeypatch):
+    import utils.firmware_push as module
+    from utils.firmware_push import FirmwarePush
+    monkeypatch.setattr(module, 'sleep', lambda seconds: None)
+    monkeypatch.setattr(FirmwarePush, 'running_version',
+                        lambda self, redfish=None, component=None: (False, 'connection refused'))
+    status, reason = FirmwarePush().verify(redfish=object(), component='BMC', wanted='7.10', deadline=45)
+    assert status is None and 'connection refused' in reason and '45s' in reason

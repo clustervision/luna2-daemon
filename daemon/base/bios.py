@@ -42,6 +42,7 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 from base64 import b64encode, b64decode
+from hashlib import sha256
 from datetime import datetime
 from json import dumps, loads
 from common.constant import CONSTANT
@@ -51,7 +52,7 @@ from utils.queue import Queue
 from utils.status import Status
 from utils.helper import Helper
 from utils.bios import Bios as BiosPlanner, DEFAULT_EXCLUDE
-from utils.redfish import Redfish
+from utils.redfish import Redfish, RedfishAccess
 from base.nodeinventory import NodeInventory
 
 
@@ -68,8 +69,10 @@ class Bios():
         self.table = 'biosconfig'
         self.planner = BiosPlanner()
         # what an administrator may set; everything else on the row is written by
-        # a grab and is a statement about the machine it came from
-        self.editable = ['grab_exclude', 'comment']
+        # a grab and is a statement about the machine it came from. 'set' is the
+        # one door into the attributes, entry by entry, and it only opens after
+        # resolve_set has turned every entry into something the board publishes
+        self.editable = ['grab_exclude', 'comment', 'set']
 
 
     def encode(self, value=None):
@@ -181,14 +184,31 @@ class Bios():
             return {}
 
 
+    def content_digest(self, record=None):
+        """
+        This method digests what a configuration currently says, so that a node
+        recorded as holding it can later be told apart from one holding what it
+        said back then. Same construction as the machine digest in nodeinventory,
+        so the two are comparable by eye.
+        """
+        attributes = self.stored_attributes(record)
+        if not attributes:
+            return ''
+        return sha256(dumps(attributes, sort_keys=True).encode()).hexdigest()
+
+
     def update_bios(self, name=None, request_data=None):
         """
-        This method will create or update what an administrator owns on a BIOS
-        configuration - its exclude list and its comment.
+        This method will update what an administrator owns on a BIOS
+        configuration - its exclude list, its comment, and individual entries.
 
-        It deliberately does not take attributes. Those are what a machine said
-        about itself, and a configuration hand-edited into something no machine
-        ever reported is the thing a golden node exists to avoid.
+        Entries arrive under 'set' already resolved: the route runs resolve_set
+        first, so what lands here is {attribute: published value} for this
+        configuration's board type, and the same resolved map is what the journal
+        replays on the peer - the peer never has to reach a BMC to apply it.
+        Wholesale attributes are still refused: a configuration typed in from
+        nothing is what a golden node exists to avoid, and an entry that a board
+        type publishes is the only kind of change this takes.
         """
         if not request_data:
             return False, 'Invalid request: Did not receive data'
@@ -223,6 +243,13 @@ class Bios():
             if Database().get_record(table=self.table, where=f"name = \"{data['newbiosname']}\""):
                 return False, f"BIOS configuration {data['newbiosname']} already exists"
             row['name'] = data['newbiosname']
+        if 'set' in data:
+            if not isinstance(data['set'], dict) or not data['set']:
+                return False, 'Invalid request: set carries no entries'
+            attributes = self.stored_attributes(record[0])
+            attributes.update(data['set'])
+            row['attributes'] = self.encode(dumps(attributes))
+            row['updated'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         if not row:
             return False, 'Nothing to update'
         Database().update(self.table, Helper().make_rows(row),
@@ -232,13 +259,70 @@ class Bios():
 
     def delete_bios(self, name=None):
         """
-        This method will delete a BIOS configuration.
+        This method will delete a BIOS configuration - unless something is
+        assigned to it, in which case the assignment would be left pointing at
+        nothing and the next push would silently have nothing to push.
         """
         record = Database().get_record(table=self.table, where=f'name = "{name}"')
         if not record:
             return False, f'BIOS configuration {name} is not available'
+        inuse = self.assigned_to(name)
+        if inuse:
+            listed = ', '.join(inuse[:10])
+            more = ' ...' if len(inuse) > 10 else ''
+            return False, (f'Invalid request: BIOS configuration {name} is currently '
+                           f'assigned to {listed}{more}')
         Database().delete_row(self.table, [{"column": "id", "value": record[0]['id']}])
         return True, f'BIOS configuration {name} removed'
+
+
+    def assigned_to(self, name=None):
+        """
+        This method lists every node and group assigned a BIOS configuration.
+        """
+        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        if not record:
+            return []
+        assigned = []
+        for table in ['node', 'group']:
+            rows = Database().get_record(table=table,
+                                         where=f"biosconfigid = \"{record[0]['id']}\"")
+            for row in rows or []:
+                assigned.append(f"{table} {row['name']}")
+        return assigned
+
+
+    def clone_bios(self, name=None, request_data=None):
+        """
+        This method clones a BIOS configuration under a new name.
+
+        A profile starts life as a copy of the golden grab with a few entries
+        changed, so a clone keeps everything the grab recorded - the board it
+        came from, its exclude list, and the node it was grabbed from, which stays
+        as provenance: the clone still descends from that machine.
+        """
+        if not request_data:
+            return False, 'Invalid request: Did not receive data'
+        try:
+            data = request_data['config'][self.table][name]
+        except (KeyError, TypeError):
+            return False, 'Invalid request: BIOS configuration data not found in structure'
+        newname = data.get('newbiosname')
+        if not newname:
+            return False, 'Invalid request: New BIOS configuration name not provided'
+        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        if not record:
+            return False, f'BIOS configuration {name} is not available'
+        if Database().get_record(table=self.table, where=f'name = "{newname}"'):
+            return False, f'BIOS configuration {newname} already exists'
+        row = dict(record[0])
+        del row['id']
+        row['name'] = newname
+        row['updated'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        if 'comment' in data:
+            row['comment'] = data['comment']
+        Database().insert(self.table, Helper().make_rows(row))
+        return True, f'BIOS configuration {name} cloned to {newname}'
 
 
     def registry(self, redfish=None, bios=None):
@@ -335,21 +419,10 @@ class Bios():
         record = Database().get_record(table=self.table, where=f'name = "{name}"')
         exclude = self.exclude_list(record[0]) if record else list(DEFAULT_EXCLUDE)
 
-        status, access = NodeInventory().bmc_for(name=node)
+        status, board = self.board_bios(node=node)
         if not status:
-            return False, access
-        redfish = Redfish(device=access['device'], username=access['username'],
-                          password=access['password'], scheme=access['scheme'],
-                          port=access['port'], verify=access['verify'])
-        status, path, system = redfish.system()
-        if not status:
-            return False, f'{node}: {path}'
-        bios_path = (system.get('Bios') or {}).get('@odata.id')
-        if not bios_path:
-            return False, f'{node}: this machine exposes no Bios resource'
-        status, bios = redfish.get(path=bios_path)
-        if not status:
-            return False, f'{node}: {bios}'
+            return False, board
+        redfish, system, bios = board['redfish'], board['system'], board['bios']
         attributes = bios.get('Attributes')
         if not isinstance(attributes, dict) or not attributes:
             return False, f'{node}: the Bios resource carries no attributes'
@@ -370,6 +443,133 @@ class Bios():
             'biosversion': system.get('BiosVersion'),
             'node': node
         }}}}
+
+
+    def board_bios(self, node=None):
+        """
+        This method reads a node's Bios resource over its BMC and hands back the
+        client, the system and the resource together, so a caller that needs the
+        registry next reads it through the same client and the same cache.
+        Returns (True, board) or (False, reason).
+        """
+        status, access = NodeInventory().bmc_for(name=node)
+        if not status:
+            return False, access
+        redfish = Redfish(device=access['device'], username=access['username'],
+                          password=access['password'], scheme=access['scheme'],
+                          port=access['port'], verify=access['verify'])
+        status, path, system = redfish.system()
+        if not status:
+            return False, f'{node}: {path}'
+        bios_path = (system.get('Bios') or {}).get('@odata.id')
+        if not bios_path:
+            return False, f'{node}: this machine exposes no Bios resource'
+        status, bios = redfish.get(path=bios_path)
+        if not status:
+            return False, f'{node}: {bios}'
+        return True, {'redfish': redfish, 'system': system, 'bios': bios}
+
+
+    def registry_for(self, record=None):
+        """
+        This method reads the attribute registry of a configuration's own board
+        type, live, from a machine of that type - the node it was grabbed from
+        first, then any node whose Redfish inventory names the same manufacturer
+        and model. A BMC answers while its host is off, so this rarely needs a
+        node up; it does need one to exist, and where none is reachable the
+        change is refused rather than validated against nothing.
+
+        Live rather than stored, because a push validates against the target's
+        live registry anyway, and a registry runs to a thousand entries per board
+        type - a copy per configuration would be the biggest thing in the table
+        for the sake of editing while every node of that type is unreachable.
+
+        Returns (True, registry, node) or (False, reason, None).
+        """
+        record = record or {}
+        candidates = []
+        golden = Database().name_by_id('node', record['nodeid']) if record.get('nodeid') else None
+        if golden:
+            candidates.append(golden)
+        want = (str(record.get('manufacturer') or '').casefold(),
+                str(record.get('model') or '').casefold())
+        names = {row['id']: row['name'] for row in Database().get_record(table='node') or []}
+        for row in Database().get_record(table='nodeinventory', where='source = "redfish"') or []:
+            have = (str(row.get('manufacturer') or '').casefold(),
+                    str(row.get('product') or '').casefold())
+            node = names.get(row['nodeid'])
+            if node and have == want and node not in candidates:
+                candidates.append(node)
+        if not candidates:
+            return False, (f'no node of board type {record.get("manufacturer")} '
+                           f'{record.get("model")} is known; grab from one first'), None
+        reasons = []
+        for node in candidates:
+            status, board = self.board_bios(node=node)
+            if status:
+                status, board = self.registry(redfish=board['redfish'], bios=board['bios'])
+            if status:
+                return True, board, node
+            reasons.append(str(board))
+        return False, (f'no registry reachable for board type {record.get("manufacturer")} '
+                       f'{record.get("model")}: {"; ".join(reasons[:3])}'), None
+
+
+    def concept_map(self, record=None):
+        """
+        This method asks the vendor plugin for this board type what it knows
+        about concepts - a {concept: attribute} map for a board where the
+        registry's own DisplayNames cannot answer. Discovery comes first and the
+        plugin only fills what discovery leaves; a plugin that does not define it
+        contributes nothing, which is the shipped default.
+        """
+        record = record or {}
+        vendor = RedfishAccess().token(record.get('manufacturer'))
+        model = RedfishAccess().token(record.get('model'), first=False)
+        plugins = Helper().plugin_finder(f"{CONSTANT['PLUGINS']['PLUGINS_DIRECTORY']}/redfish")
+        loaded = Helper().plugin_load(plugins, 'redfish', [vendor] if vendor else [], model)
+        plugin = loaded() if loaded else None
+        concepts = getattr(plugin, 'concepts', None)
+        mapping = concepts() if callable(concepts) else {}
+        return mapping if isinstance(mapping, dict) else {}
+
+
+    def resolve_set(self, name=None, request_data=None):
+        """
+        This method turns the entries of a change - concepts or attribute names,
+        typed values - into the attributes and published values of this
+        configuration's board type, and hands the request back with 'set'
+        rewritten to that. It runs in the route, before the journal: the peer
+        then replays a resolved map and never has to reach a BMC to apply it.
+
+        All or nothing. One entry the board type cannot express, or one value it
+        does not publish, refuses the whole change by name - a profile with half
+        its entries applied is not the profile that was asked for, and the half
+        that landed would be found on hardware later with nobody knowing why.
+        Returns (True, request_data) or (False, reason).
+        """
+        try:
+            data = request_data['config'][self.table][name]
+        except (KeyError, TypeError):
+            return False, 'Invalid request: BIOS configuration data not found in structure'
+        entries = data.get('set')
+        if entries is None:
+            return True, request_data
+        if not isinstance(entries, dict) or not entries:
+            return False, 'Invalid request: set carries no entries'
+        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        if not record:
+            return False, f'BIOS configuration {name} is not available'
+        status, registry, node = self.registry_for(record[0])
+        if not status:
+            return False, registry
+        resolved, refused = self.planner.resolve(registry=registry, entries=entries,
+                                                 mapping=self.concept_map(record[0]))
+        if refused:
+            listed = '; '.join(f'{key} {reason}' for key, reason in refused.items())
+            return False, f'nothing changed on {name} (registry read from {node}): {listed}'
+        data['set'] = resolved
+        return True, request_data
 
 
     def store_grabbed(self, name=None, payload=None):
@@ -437,6 +637,38 @@ class Bios():
         return True, [name]
 
 
+    def assigned_configs(self, nodenames=None):
+        """
+        This method resolves what each named node is assigned - its own
+        biosconfig, else its group's - into {node: configuration name}, and
+        refuses by name where any of them has none.
+
+        Refuses all rather than skipping some: a push aimed at a group is one
+        intention, and half a group quietly moving to a profile while the other
+        half stays is the failure this whole family guards against. Two queries
+        for any number of nodes, not one per node.
+        """
+        wanted = set(nodenames or [])
+        groups = {row['id']: row for row in Database().get_record(table='group') or []}
+        configs = {row['id']: row['name'] for row in Database().get_record(table=self.table) or []}
+        assigned, missing = {}, []
+        for node in Database().get_record(table='node') or []:
+            if node['name'] not in wanted:
+                continue
+            group = groups.get(node.get('groupid')) or {}
+            configid = node.get('biosconfigid') or group.get('biosconfigid')
+            configname = configs.get(configid) if configid else None
+            if configname:
+                assigned[node['name']] = configname
+            else:
+                missing.append(node['name'])
+        if missing:
+            listed = ', '.join(sorted(missing)[:10]) + (' ...' if len(missing) > 10 else '')
+            return False, (f'no BIOS configuration is assigned to {listed}; assign one '
+                           'to the node or its group, or name one to push')
+        return True, assigned
+
+
     def status(self, name=None, group=None):
         """
         Where every node stands on its BIOS, from what is stored - no BMC is
@@ -463,12 +695,20 @@ class Bios():
         reading past the other.
 
         States, and each says something different:
-          matched      the last read found it holding that configuration
+          matched      the last read found it holding that configuration, and
+                       that is the one it is assigned (or it is assigned none)
+          pending      it is assigned a configuration it was not last found
+                       holding - assigned and not yet pushed, or reassigned
+          stale        it holds the configuration it is assigned, as that
+                       configuration read when it was pushed; entries have been
+                       changed on it since, and the node has not had them
           drifted      it matched once, and its BIOS has moved since - somebody
                        changed something outside Luna, or a push half landed
           collected    we have read its BIOS and it matches no configuration
           unknown      no Redfish inventory has ever been taken from it, so we
                        have never looked. Not a problem, just not an answer
+        Every row also carries what the node is assigned, so the view answers
+        "is it on the profile it should be on" without waking a BMC.
         """
         if group and not name:
             # 'group' is a reserved SQL word, so it is backticked - the form
@@ -476,7 +716,8 @@ class Bios():
             # that the daemon logs and swallows, and the caller then gets an empty
             # result that reads exactly like a group with no nodes
             nodes = Database().get_record_join(
-                ['node.id as id', 'node.name as name', 'node.groupid as groupid'],
+                ['node.id as id', 'node.name as name', 'node.groupid as groupid',
+                 'node.biosconfigid as biosconfigid'],
                 ['group.id=node.groupid'], [f'`group`.name="{group}"'])
         else:
             nodes = Database().get_record(
@@ -495,31 +736,45 @@ class Bios():
         # thousand nodes that is the difference between three queries and eight
         # thousand. The snapshots go the same way as the group names - reading them
         # one node at a time was the cost this comment used to claim it avoided
-        groups = {record['id']: record['name']
+        groups = {record['id']: record
                   for record in Database().get_record(table='group') or []}
+        # the configurations once, for two things: the name an assignment points
+        # at, and what each one currently says - so a node holding yesterday's
+        # version of its own profile reads as stale rather than matched
+        stored = Database().get_record(table=self.table) or []
+        configs = {record['id']: record['name'] for record in stored}
+        contents = {record['name']: self.content_digest(record) for record in stored}
         snapshots = {}
         for record in Database().get_record(table='nodeinventory',
                                             where='source = "redfish"') or []:
             snapshots[record['nodeid']] = record
         response = {'config': {self.table: {'status': {}, 'summary': {}}}}
         for node in nodes:
-            row = self.stored_state(snapshot=snapshots.get(node['id']))
-            row['group'] = groups.get(node['groupid']) or ''
+            group = groups.get(node['groupid']) or {}
+            configid = node.get('biosconfigid') or group.get('biosconfigid')
+            assigned = configs.get(configid) if configid else None
+            snapshot = snapshots.get(node['id'])
+            row = self.stored_state(snapshot=snapshot, assigned=assigned,
+                                    content=contents.get((snapshot or {}).get('bios_config')))
+            row['group'] = group.get('name') or ''
             response['config'][self.table]['status'][node['name']] = row
             summary = response['config'][self.table]['summary']
             summary[row['state']] = summary.get(row['state'], 0) + 1
         return True, response
 
 
-    def stored_state(self, snapshot=None):
+    def stored_state(self, snapshot=None, assigned=None, content=None):
         """
         This method names one node's stored BIOS state.
 
         Takes the snapshot rather than fetching it, so a cluster-wide view can read
-        every node's in one query instead of one query per node.
+        every node's in one query instead of one query per node. 'assigned' is
+        what the node should hold; 'content' is what the configuration it was
+        last found holding currently says, so that an edit to the profile since
+        the push is visible as stale rather than hidden behind matched.
         """
         row = {'config': '', 'digest': '', 'state': 'unknown',
-               'bios_version': '', 'since': ''}
+               'assigned': assigned or '', 'bios_version': '', 'since': ''}
         if not snapshot:
             return row
         digest = snapshot.get('bios_digest') or ''
@@ -535,6 +790,14 @@ class Bios():
             row['state'] = 'matched'
         else:
             row['state'] = 'drifted'
+        if row['state'] in ('matched', 'collected') and assigned and assigned != row['config']:
+            row['state'] = 'pending'
+        elif row['state'] == 'matched':
+            recorded = snapshot.get('bios_config_content') or ''
+            # a row recorded before the content was kept cannot be judged; it
+            # stays matched rather than being called stale on no evidence
+            if recorded and content and recorded != content:
+                row['state'] = 'stale'
         return row
 
 
@@ -569,9 +832,16 @@ class Bios():
             # nothing collected from this machine, so there is no observation to
             # annotate. Inventing the row would put a BIOS record beside no inventory
             return False
+        # what the configuration says right now, kept beside the match so that an
+        # entry changed on it later shows the node as stale. Read from this
+        # controller's own copy of the replicated row, so both sides record the
+        # same value without it travelling in the payload
+        record = Database().get_record(table=self.table, where=f'name = "{config}"') if config else None
+        content = self.content_digest(record[0]) if record else ''
         Database().update('nodeinventory',
                           Helper().make_rows({'bios_config': config,
                                               'bios_config_digest': digest,
+                                              'bios_config_content': content,
                                               'bios_digest': digest}),
                           [{"column": "nodeid", "value": node[0]['id']},
                            {"column": "source", "value": "redfish"}])
@@ -593,31 +863,42 @@ class Bios():
         """
         try:
             data = request_data['config'][object_type][name]
-            configname = data['biosconfig']
         except (KeyError, TypeError):
-            return False, 'Invalid request: no biosconfig name supplied'
-        record = Database().get_record(table=self.table, where=f'name = "{configname}"')
-        if not record:
-            return False, f'BIOS configuration {configname} is not available'
-        if not self.stored_attributes(record[0]):
-            return False, (f'BIOS configuration {configname} carries no settings; '
-                           'grab it from a node first')
+            data = {}
+        configname = data.get('biosconfig')
         policy = str(data.get('version_match') or self.version_policy()).strip().lower()
 
         status, targets = self.push_targets(object_type=object_type, name=name)
         if not status:
             return False, targets
+        if configname:
+            plan = {target: configname for target in targets}
+        else:
+            # no name means the assignment: each node's own, else its group's.
+            # Resolved now, per node, so a group whose members are assigned
+            # differently gets each member its own - and refused as a whole when
+            # one of them has none
+            status, plan = self.assigned_configs(nodenames=targets)
+            if not status:
+                return False, plan
+        for configname in sorted(set(plan.values())):
+            record = Database().get_record(table=self.table, where=f'name = "{configname}"')
+            if not record:
+                return False, f'BIOS configuration {configname} is not available'
+            if not self.stored_attributes(record[0]):
+                return False, (f'BIOS configuration {configname} carries no settings; '
+                               'grab it from a node first')
         request_id = Status().gen_request_id()
         for target in targets:
             # force, because the collapse window would fold a second push of the
             # same configuration into the first one - and here that is wrong: the
             # operator asked again, and the machine may well have moved on
             Queue().add_task_to_queue(task='push_bios',
-                                      param=f'{target}:{configname}:{policy}',
+                                      param=f'{target}:{plan[target]}:{policy}',
                                       subsystem='bios', request_id=request_id, force=True)
-        Status().add_message(request_id, 'luna',
-                             f'queued {configname} for {len(targets)} node(s)')
-        return True, f'BIOS configuration {configname} queued for {len(targets)} node(s)', request_id
+        names = ', '.join(sorted(set(plan.values())))
+        Status().add_message(request_id, 'luna', f'queued {names} for {len(targets)} node(s)')
+        return True, f'BIOS configuration {names} queued for {len(targets)} node(s)', request_id
 
 
     def version_policy(self):

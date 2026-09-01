@@ -138,7 +138,13 @@ class Plugin():
         response = ''
         bash_command = f'ipmitool -I lanplus -C3 -U "{username}" -P "{password}" -H "{device}" '
         bash_command += f'{subsystem} {action}'
-        output, exit_code = Helper().runcommand(bash_command,True,10)
+        # 10s. This runs inline in the API request worker, so it is not just how
+        # long we wait for this BMC - it is how long this worker is unavailable
+        # to everyone else. Measured on a six-worker daemon: twelve stuck BMC
+        # calls took an unrelated /config/node from 0.02s to 17s, tracking this
+        # number second for second. Long enough for a healthy BMC, short enough
+        # that a dead one is an inconvenience rather than an outage.
+        output, exit_code = Helper().runcommand(bash_command, True, 10)
         if output and exit_code == 0:
             response = str(output[0].decode())
             response = response.replace('Chassis Power is ', '')

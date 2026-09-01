@@ -114,7 +114,10 @@ class Plugin():
         ipmitool, and a Redfish-only account would authenticate the first attempt
         and then break the fallback it depends on.
         """
-        return Redfish(device=device, username=username, password=password, timeout=20)
+        # 10s, matching the ipmitool path in the default plugin - the same BMCs,
+        # the same request worker, so the same bound. It was 20s, which doubled
+        # the stall a dead BMC could cause for no reason anybody recorded.
+        return Redfish(device=device, username=username, password=password, timeout=10)
 
     def allowable_reset_types(self, system_data=None, redfish=None):
         """

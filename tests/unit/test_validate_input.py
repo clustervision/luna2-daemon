@@ -326,9 +326,10 @@ def test_the_default_script_plugin_can_be_asked_for():
     """
     import common.validate_input as validate_input
     from common.validate_input import filter_data
-    validate_input._st().error = None
-    filter_data('default', 'script')
-    assert not validate_input._st().error, validate_input._st().error
+    for segment in ('script', 'role'):
+        validate_input._st().error = None
+        filter_data('default', segment)
+        assert not validate_input._st().error, f'{segment}: {validate_input._st().error}'
     filter_data('default"--', 'script')
     assert validate_input._st().error
     validate_input._st().error = None

@@ -1649,7 +1649,7 @@ class Boot():
                         interface_data = {
                                 'interface': interface['interface'],
                                 'macaddress': interface['macaddress'],
-                                'mtu': interface['mtu'],
+                                'mtu': interface['mtu'] or "",
                                 'ipaddress': interface['ipaddress'],
                                 'ipaddress_ipv6': interface['ipaddress_ipv6'],
                                 'prefix': interface['subnet'],
@@ -1724,7 +1724,7 @@ class Boot():
                                     'master': master,
                                     'type': "slave",
                                     'networktype': interface['networktype'] or "ethernet",
-                                    'mtu': interface['mtu']
+                                    'mtu': interface['mtu'] or ""
                                 }
                             interface_data['bond_mode']  = interface['bond_mode']
                             interface_data['bond_slaves']= interface['bond_slaves'].split(',')

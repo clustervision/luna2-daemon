@@ -271,3 +271,18 @@ def test_every_url_segment_has_a_rule():
     # a rule on it once refused every power action (test_profiles pins that)
     unruled = sorted(segment for segment in segments - {'action'} if segment not in MATCH)
     assert unruled == [], f"URL segments without a rule, so their raw value reaches a query: {unruled}"
+
+
+def test_a_tag_name_may_carry_a_colon_or_a_plus_but_never_a_quote():
+    """Tags like ubuntu:22.04 or v1+debug existed before the rule was anchored; the anchoring is what keeps the quote out."""
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+    for key in ('osimagetag', 'tag'):
+        for value in ('ubuntu:22.04', 'v1+debug', 'stable', ''):
+            validate_input.ERROR = None
+            filter_data(value, key)
+            assert not validate_input.ERROR, f"{value!r} refused as {key}"
+        for value in ("v1' OR '1'='1", 'v1"--', 'a/b'):
+            validate_input.ERROR = None
+            filter_data(value, key)
+            assert validate_input.ERROR, f"{value!r} accepted as {key}"

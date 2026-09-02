@@ -54,6 +54,7 @@ REG_EXP = {
     # branch had no end anchor, so any value starting with a valid character passed
     # whatever followed it - a quote included - on every field using this rule
     'nameandclear': { 'regexp': r'^([a-zA-Z0-9\-\.\_\ ]+)?$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
+    'tagandclear': { 'regexp': r'^([a-zA-Z0-9\-\.\_\ \:\+]+)?$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\', \'.\', \':\' and \'+\'' },
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
     'loosecsv': { 'regexp': r'^[a-z0-9\-\.\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\', \'.\' and \',\'' },
@@ -133,10 +134,10 @@ MATCH = {
     'scope': 'profilescope',
     'object_type': 'strictname',
     'file': 'artefactfile',
-    'osimagetag': 'nameandclear',
+    'osimagetag': 'tagandclear',
     'roles': 'loosecsv',
     'scripts': 'loosecsv',
-    'tag': 'nameandclear',
+    'tag': 'tagandclear',
     'interface': 'minimal',
     'newinterfacename': 'interface',
     'gateway_metric': 'integer',

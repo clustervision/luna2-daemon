@@ -132,7 +132,10 @@ class Plugin():
                 RAC_IPADDR="$(echo "${RAC_NIC_RAW}" | awk '/IP Address/{print $4; exit}')"
                 RAC_NETMASK="$(echo "${RAC_NIC_RAW}" | awk '/Subnet Mask/{print $4; exit}')"
                 RAC_DEFGW="$(echo "${RAC_NIC_RAW}" | awk '/Gateway/{print $3; exit}')"
-                RAC_IPSRC="$(echo "${RAC_NIC_RAW}" | awk '/DHCP Enabled/{if ($4=="No") print "Static"; else print "DHCP"; exit}')"
+                # Dell's RACADM guide prints 'DHCP Enabled = 0' or '= 1'; 'No' is kept for any
+                # firmware that spells it out. Anything else has to read as DHCP, or a BMC on
+                # DHCP would be 'already static' and never be asked.
+                RAC_IPSRC="$(echo "${RAC_NIC_RAW}" | awk '/DHCP Enabled/{if ($4=="0" || $4=="No") print "Static"; else print "DHCP"; exit}')"
                 RAC_VLAN_ENABLE="$(racadm_get_first iDRAC.NIC.VLanEnable iDRAC.NIC.VLANEnable cfgLanNetworking.VLanEnable)"
                 RAC_VLAN_ID="$(racadm_get_first iDRAC.NIC.VLanID iDRAC.NIC.VLANId cfgLanNetworking.VLanId)"
                 if [[ "${RAC_VLAN_ENABLE}" == "Disabled" || "${RAC_VLAN_ENABLE}" == "0" || "${RAC_VLAN_ENABLE}" == "Off" ]]

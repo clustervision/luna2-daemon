@@ -55,7 +55,12 @@ echo "racadm $*" >> "$SIM_LOG"
 case "$1" in
   getniccfg)
     printf 'IPv4 settings:\nNIC Enabled       = 1\n'
-    printf 'DHCP Enabled      = %s\n' "$RAC_DHCP"
+    # Dell's guide prints 0/1; a firmware that spells it out prints No/Yes
+    if [ "$SIM_RAC_DIALECT" == "numeric" ]; then
+      [ "$RAC_DHCP" == "Yes" ] && printf 'DHCP Enabled      = 1\n' || printf 'DHCP Enabled      = 0\n'
+    else
+      printf 'DHCP Enabled      = %s\n' "$RAC_DHCP"
+    fi
     printf 'IP Address        = %s\n' "$RAC_IPADDR"
     printf 'Subnet Mask       = %s\n' "$RAC_NETMASK"
     printf 'Gateway           = %s\n' "$RAC_DEFGW"
@@ -87,7 +92,10 @@ def _fake(path, body):
 
 
 def run_plugin(tmp_path, name, dhcp, racadm):
-    """Run one plugin's config against the fakes; return (rc, calls that changed something)."""
+    """
+    Run one plugin's config against the fakes; return (rc, calls that changed something).
+    `racadm` is None for a box without it, else the getniccfg dialect the fake speaks.
+    """
     bins = tmp_path / 'bin'
     bins.mkdir()
     _fake(bins / 'ipmitool', IPMITOOL)
@@ -106,7 +114,8 @@ def run_plugin(tmp_path, name, dhcp, racadm):
         'modprobe() { :; }; sleep() { :; }; ls() { echo /dev/ipmi0; }\n'
         'config_bmc; echo "rc=$?" >> "$SIM_LOG"\n'
     )
-    env = dict(os.environ, PATH=f'{bins}:{os.environ["PATH"]}', SIM_STATE=str(state), SIM_LOG=str(log))
+    env = dict(os.environ, PATH=f'{bins}:{os.environ["PATH"]}', SIM_STATE=str(state), SIM_LOG=str(log),
+               SIM_RAC_DIALECT=racadm or '')
     subprocess.run(['bash', '-c', script], env=env, check=False, capture_output=True, timeout=60)
     lines = log.read_text().splitlines()
     rc = int([line for line in lines if line.startswith('rc=')][-1][3:])
@@ -124,7 +133,8 @@ def _asks_for_dhcp(call):
     return call.endswith('ipsrc dhcp') or call == 'racadm setniccfg -d'
 
 
-CASES = [(name, False) for name in shipped()] + [('dell', True)]
+# racadm is only on a Dell, and getniccfg has two dialects for the DHCP line
+CASES = [(name, None) for name in shipped()] + [('dell', 'numeric'), ('dell', 'words')]
 
 
 @pytest.mark.parametrize('name,racadm', CASES)

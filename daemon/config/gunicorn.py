@@ -28,6 +28,13 @@ bind = '[::]:7050'
 # n is the number of CPU cores present.
 workers = 4
 
+# Threaded workers: a control action talks to the BMC inline, so a slow one holds
+# its slot for the whole timeout. A thread costs far less than a process slot,
+# which keeps long-pending calls from starving the API. Tested live; the database
+# layer is thread-safe (WAL, per-thread connections). TRIX-2049.
+worker_class = 'gthread'
+threads = 4
+
 # Number of threads per worker process
 # threads = 3
 

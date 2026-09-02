@@ -128,7 +128,14 @@ DATABASE_LAYOUT_bmcsetup = [
 {"column": "netchannel",           "datatype": "INTEGER", "length": "10"},
 {"column": "mgmtchannel",          "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "TEXT"},
-{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}]
+{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"},
+# The IPMI cipher suite, as ipmitool's -C takes it: 3 is HMAC-SHA1 and the
+# default everywhere, 17 is HMAC-SHA256 and what a board in a hardened
+# configuration may insist on. A number rather than a modern/legacy flag,
+# because it is the value the tool wants and because lconsole already speaks
+# in suite numbers - one vocabulary, and a board wanting some other suite
+# needs no code.
+{"column": "cipher",               "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_redfishsetup = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

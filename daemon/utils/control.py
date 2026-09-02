@@ -194,7 +194,7 @@ class Control():
 
 
     def control_action(self, nodename=None, groupname=None, command=None, device=None,
-                       username=None, password=None, payload=None):
+                       username=None, password=None, payload=None, cipher=None):
         """
         This method will handle the power control actions.
         """
@@ -219,58 +219,65 @@ class Control():
                 candidates,
                 model
             )
+            # The cipher travels on the instance rather than as an argument to
+            # every method. plugins/control is an extension point somebody's own
+            # plugin lives in, and adding a keyword to the calls would break any
+            # of those that had not been updated for it; an attribute a plugin
+            # never reads costs it nothing.
+            plugin = control_plugin()
+            plugin.cipher = cipher
             match command:
                 case 'power on':
-                    return_code, message = control_plugin().power_on(
+                    return_code, message = plugin.power_on(
                         device=device, 
                         username=username, 
                         password=password
                     )
                 case 'power off':
-                    return_code, message = control_plugin().power_off(
+                    return_code, message = plugin.power_off(
                         device = device,
                         username = username,
                         password = password
                     )
                 case 'power status':
-                    return_code, message = control_plugin().power_status(
+                    return_code, message = plugin.power_status(
                         device = device,
                         username = username,
                         password = password
                     )
                 case 'power reset':
-                    return_code, message = control_plugin().power_reset(
+                    return_code, message = plugin.power_reset(
                         device = device,
                         username = username,
                         password = password
                     )
                 case 'power cycle':
-                    return_code, message = control_plugin().power_cycle(
+                    return_code, message = plugin.power_cycle(
                         device = device,
                         username = username,
                         password = password
                     )
                 case 'chassis identify':
-                    return_code, message = control_plugin().identify(
+                    return_code, message = plugin.identify(
                         device = device,
                         username = username,
                         password = password
                     )
                 case 'chassis noidentify':
-                    return_code, message = control_plugin().no_identify(
+                    return_code, message = plugin.no_identify(
                         device = device,
                         username = username,
                         password = password
                     )
                 case 'sel list':
-                    return_code, message = control_plugin().sel_list(
+                    return_code, message = plugin.sel_list(
                         device = device,
                         username = username,
                         password = password
                     )
                     message = message.replace("\n",";;")
                 case 'sel clear':
-                    return_code, message = control_plugin().sel_clear(
+                    return_code, message = plugin.sel_clear(
                         device = device,
                         username = username,
                         password = password

@@ -1546,6 +1546,7 @@ class Boot():
                 data['bmc']['password'] = bmcsetup[0]['password']
                 data['bmc']['netchannel'] = bmcsetup[0]['netchannel']
                 data['bmc']['mgmtchannel'] = bmcsetup[0]['mgmtchannel']
+                data['bmc']['dhcp'] = False
 #                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users'] # supposedly covered by Node().get_node
             else:
                 data['setupbmc'] = False
@@ -1607,6 +1608,15 @@ class Boot():
             if nodeinterface:
                 bond_count=0
                 for interface in nodeinterface:
+                    if interface['interface'] == 'BMC' and 'bmc' in data:
+                        # the same test the boot interface uses: the flag is a request,
+                        # and a BMC set to DHCP where nothing serves it does not fall
+                        # back - it ends up with no address at all
+                        data['bmc']['dhcp'] = bool(interface['dhcp'] and interface['networkdhcp'])
+                        if interface['dhcp'] and not interface['networkdhcp']:
+                            self.logger.error(f"{data['nodename']}: the BMC asks for DHCP but "
+                                              f"network {interface['network']} does not serve "
+                                              'it; configuring it static')
                     node_nwk, node_nwk6, netmask, netmask6 = None, None, None, None
                     if interface['ipaddress']:
                         node_nwk = f'{interface["ipaddress"]}/{interface["subnet"]}'

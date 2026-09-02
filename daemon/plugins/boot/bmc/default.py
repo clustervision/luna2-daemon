@@ -83,7 +83,9 @@ class Plugin():
         get_expected_ipmi_value() {
             case "$1" in
                 ipsrc)
-                    echo "Static"
+                    # what the board will report back, which is not the word we
+                    # set: ipmitool takes 'static'/'dhcp' and prints 'Static'/'DHCP'
+                    if [ "${IPSRC}" == "dhcp" ]; then echo "DHCP"; else echo "Static"; fi
                     ;;
                 ipaddr)
                     echo "${IPADDRESS}"
@@ -114,7 +116,7 @@ class Plugin():
             do
                 case "${FIELD}" in
                     ipsrc)
-                        ipmitool lan set ${NETCHANNEL} ipsrc static
+                        ipmitool lan set ${NETCHANNEL} ipsrc ${IPSRC}
                         ;;
                     ipaddr)
                         ipmitool lan set ${NETCHANNEL} ipaddr ${IPADDRESS}
@@ -192,13 +194,25 @@ class Plugin():
             VLANID='Disabled'
         fi
 
-        echo "Luna2: starting BMC configuration on net channel ${NETCHANNEL}"
+        # DHCP or a static address, and the difference is more than one setting:
+        # with DHCP the address, netmask and gateway are the server's to hand out,
+        # so setting them here would fight whatever it leases. The daemon only
+        # asks for DHCP where the BMC's network actually serves it - a BMC set to
+        # DHCP with nothing answering does not fall back, it simply has no address.
+        IPSRC=static
+        if [ "${DHCP}" == "True" ] || [ "${DHCP}" == "1" ]; then
+            IPSRC=dhcp
+        fi
+
+        echo "Luna2: starting BMC configuration on net channel ${NETCHANNEL} (ipsrc ${IPSRC})"
         refresh_ipmi_state
 
         ensure_ipmi_value ipsrc || return 1
-        ensure_ipmi_value ipaddr || return 1
-        ensure_ipmi_value netmask || return 1
-        ensure_ipmi_value defgw || return 1
+        if [ "${IPSRC}" == "static" ]; then
+            ensure_ipmi_value ipaddr || return 1
+            ensure_ipmi_value netmask || return 1
+            ensure_ipmi_value defgw || return 1
+        fi
         ensure_ipmi_value vlan || return 1
 
         case $UNMANAGED in

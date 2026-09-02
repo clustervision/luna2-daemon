@@ -109,6 +109,7 @@ class Control():
                             device   = node[0]['device']
                             username = bmcsetup[0]['username']
                             password = bmcsetup[0]['password']
+                            cipher   = bmcsetup[0]['cipher']
                             command = command.replace('_', '')
                             ret, status = self.control_action(
                                 node[0]['nodename'],
@@ -117,7 +118,8 @@ class Control():
                                 device,
                                 username,
                                 password,
-                                payload
+                                payload,
+                                cipher
                             )
                             self.logger.debug(f"control: ret=[{ret}], status=[{status}]")
                             runret, runstatus = self.control_hook(

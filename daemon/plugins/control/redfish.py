@@ -55,8 +55,24 @@ class Plugin():
         'cycle':  ['PowerCycle', 'ForceRestart'],
     }
 
+    # The cipher is set on the instance by the caller, but this plugin is not the
+    # one that ends up talking IPMI - it falls back to a DefaultPlugin it owns,
+    # and an attribute set here would never reach it. So it is a property that
+    # sets both. A plain attribute silently left the fallback on suite 3, which
+    # is the failure this whole setting exists to avoid.
+    _cipher = None
+
     def __init__(self):
         self.default = DefaultPlugin()
+
+    @property
+    def cipher(self):
+        return self._cipher
+
+    @cipher.setter
+    def cipher(self, value):
+        self._cipher = value
+        self.default.cipher = value
 
     # --- the control contract ------------------------------------------------
 

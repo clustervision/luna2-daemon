@@ -316,3 +316,19 @@ def test_validation_state_is_per_thread():
     assert validate_input._st().error, "the neighbour's reset must not clear this request's refusal"
     assert validate_input._st().strict_name is False, "the neighbour's strict rule must not apply here"
     validate_input._st().error = None
+
+
+def test_the_default_script_plugin_can_be_asked_for():
+    """
+    The strict name rule carries a reserved list, and 'default' is on it. A
+    boot script segment mapped to that rule refused /boot/scripts/default, and
+    the installer, which greps error messages away, wrote an empty script.
+    """
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+    validate_input._st().error = None
+    filter_data('default', 'script')
+    assert not validate_input._st().error, validate_input._st().error
+    filter_data('default"--', 'script')
+    assert validate_input._st().error
+    validate_input._st().error = None

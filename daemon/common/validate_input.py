@@ -56,6 +56,8 @@ REG_EXP = {
     # whatever followed it - a quote included - on every field using this rule
     'nameandclear': { 'regexp': r'^([a-zA-Z0-9\-\.\_\ ]+)?$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
     'tagandclear': { 'regexp': r'^([a-zA-Z0-9\-\.\_\ \:\+]+)?$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\', \'.\', \':\' and \'+\'' },
+    # a plugin file name: the strict character set, but 'default' is a real plugin
+    'plugin': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
     'loosecsv': { 'regexp': r'^[a-z0-9\-\.\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\', \'.\' and \',\'' },
@@ -125,7 +127,7 @@ MATCH = {
     'nodename': 'strictname',
     'node': 'strictname',
     'groupname': 'name',
-    'script': 'strictname',
+    'script': 'plugin',
     'tagname': 'tagandclear',
     'subset': 'strictname',
     'filename': 'filename',

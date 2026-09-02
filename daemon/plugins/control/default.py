@@ -141,7 +141,8 @@ class Plugin():
         # accepted for years and stays the default when nothing is configured;
         # a board in a hardened configuration may require 17 (HMAC-SHA256) and
         # refuse to authenticate on 3, which looks like a wrong password.
-        cipher = getattr(self, 'cipher', None) or 3
+        cipher = getattr(self, 'cipher', None)
+        cipher = 3 if cipher is None else cipher
         bash_command = f'ipmitool -I lanplus -C{cipher} -U "{username}" -P "{password}" -H "{device}" '
         bash_command += f'{subsystem} {action}'
         # 10s. This runs inline in the API request worker, so it is not just how

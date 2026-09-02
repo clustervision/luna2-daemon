@@ -422,50 +422,15 @@ def _baseline_classic_template():
 # direction it falls, and delete the entry once it lands on the baseline. What must never
 # be listed is a difference nobody meant: every osimage that has not been rebuilt runs
 # this file, so a line lost here changes nodes nobody has touched.
-# TRIX-1842: config_bmc takes named variables instead of positional arguments, and the
-# unbraced positionals past the ninth are braced. `$10` is `${1}0` in bash, so
-# config_bmc's UNMANAGED and config_interface's ZONE and OPTIONS were reading a value
-# built from the first argument. The IPv4 config_interface call also glued mtu and the
-# vlan parent into one argument, shifting everything after them. Delete both blocks
-# once these lines land on the baseline.
-BLESSED_CLASSIC_REMOVALS = [
-    '    NETCHANNEL=$1',
-    '    IPADDRESS=$2',
-    '    NETMASK=$3',
-    '    GATEWAY=$4',
-    '    VLANID=$5',
-    '    MGMTCHANNEL=$6',
-    '    USERID=$7',
-    '    USERNAME=$8',
-    '    PASSWORD=$9',
-    '    UNMANAGED=$10',
-    '    config_bmc "{{ LUNA_BMC[\'netchannel\'] }}" "{{ LUNA_BMC[\'ipaddress\'] }}" "{{ LUNA_BMC[\'netmask\'] }}" "{{ LUNA_BMC[\'gateway\'] }}" "{{ LUNA_BMC[\'vlanid\'] }}" "{{ LUNA_BMC[\'mgmtchannel\'] }}" "{{ LUNA_BMC[\'userid\'] }}" "{{ LUNA_BMC[\'username\'] }}" "{{ LUNA_BMC[\'password\'] }}" "{{ LUNA_UNMANAGED_BMC_USERS }}"',
-    '    ZONE=$10',
-    '    OPTIONS=$11',
-    '    ZONE=$10',
-    '    OPTIONS=$11',
-    '            config_interface "${interface_name}" "{{ LUNA_INTERFACES[interface][\'ipaddress\'] }}" "{{ LUNA_INTERFACES[interface][\'prefix\'] }}" "{{ LUNA_INTERFACES[interface][\'netmask\'] }}" "{{ LUNA_INTERFACES[interface][\'mtu\'] }}""${parent_name}" "{{ LUNA_INTERFACES[interface][\'vlanid\'] }}"  "{{ LUNA_INTERFACES[interface][\'type\'] }}" "{{ LUNA_INTERFACES[interface][\'networktype\'] }}" "{{ LUNA_INTERFACES[interface][\'zone\'] }}" "${OPTIONS}"',
-]
-BLESSED_CLASSIC_ADDITIONS = [
-    '    : # the spliced segment below is the body; this keeps it valid bash when empty',
-    '    NETCHANNEL="{{ LUNA_BMC[\'netchannel\'] }}"',
-    '    IPADDRESS="{{ LUNA_BMC[\'ipaddress\'] }}"',
-    '    NETMASK="{{ LUNA_BMC[\'netmask\'] }}"',
-    '    GATEWAY="{{ LUNA_BMC[\'gateway\'] }}"',
-    '    VLANID="{{ LUNA_BMC[\'vlanid\'] }}"',
-    '    DHCP="{{ LUNA_BMC[\'dhcp\'] }}"',
-    '    MGMTCHANNEL="{{ LUNA_BMC[\'mgmtchannel\'] }}"',
-    '    USERID="{{ LUNA_BMC[\'userid\'] }}"',
-    '    USERNAME="{{ LUNA_BMC[\'username\'] }}"',
-    '    PASSWORD="{{ LUNA_BMC[\'password\'] }}"',
-    '    UNMANAGED="{{ LUNA_UNMANAGED_BMC_USERS }}"',
-    '    config_bmc',
-    '    ZONE=${10}',
-    '    OPTIONS=${11}',
-    '    ZONE=${10}',
-    '    OPTIONS=${11}',
-    '            config_interface "${interface_name}" "{{ LUNA_INTERFACES[interface][\'ipaddress\'] }}" "{{ LUNA_INTERFACES[interface][\'prefix\'] }}" "{{ LUNA_INTERFACES[interface][\'netmask\'] }}" "{{ LUNA_INTERFACES[interface][\'mtu\'] }}" "${parent_name}" "{{ LUNA_INTERFACES[interface][\'vlanid\'] }}"  "{{ LUNA_INTERFACES[interface][\'type\'] }}" "{{ LUNA_INTERFACES[interface][\'networktype\'] }}" "{{ LUNA_INTERFACES[interface][\'zone\'] }}" "${OPTIONS}"',
-]
+BLESSED_CLASSIC_REMOVALS = []
+BLESSED_CLASSIC_ADDITIONS = []
+
+
+MERGED_HINT = (
+    '\nIf these lines are now on the baseline -- i.e. the branch carrying them has '
+    'merged -- then the difference no longer exists and the fix is to empty both '
+    'lists. That removal is part of landing the branch, not a follow-up.'
+)
 
 
 def test_classic_installer_only_differs_from_its_owner_by_what_we_blessed():
@@ -504,13 +469,13 @@ def test_classic_installer_only_differs_from_its_owner_by_what_we_blessed():
         f'blessed:\n  expected: {BLESSED_CLASSIC_REMOVALS}\n  found:    {removed}\n'
         f'Every osimage that has not been rebuilt executes this file, so a line lost '
         f'here changes nodes nobody has touched. If this is a port that fell behind, '
-        f'finish the port rather than blessing the gap.'
+        f'finish the port rather than blessing the gap.' + MERGED_HINT
     )
     assert added == BLESSED_CLASSIC_ADDITIONS, (
         f'the classic installer gained lines that {ref} does not have and nobody '
         f'blessed:\n  expected: {BLESSED_CLASSIC_ADDITIONS}\n  found:    {added}\n'
         f'Changes to the classic installer belong to whoever owns it -- land them '
-        f'there and port them, rather than blessing them here.'
+        f'there and port them, rather than blessing them here.' + MERGED_HINT
     )
 
 

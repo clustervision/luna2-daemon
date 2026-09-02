@@ -317,17 +317,17 @@ def test_an_assignment_can_be_cleared_through_the_shared_validator():
     import common.validate_input as validate_input
     # the decorators set these at request time; outside a request they are the
     # non-strict defaults, as the validator's own tests prime them
-    validate_input.STRICT_NAME = False
-    validate_input.STRICT_MATCH = None
-    validate_input.SKIP_LIST = []
-    validate_input.ERROR = None
+    validate_input._st().strict_name = False
+    validate_input._st().strict_match = None
+    validate_input._st().skip_list = []
+    validate_input._st().error = None
     assert validate_input.filter_data('', 'biosconfig') == ''
-    assert validate_input.ERROR is None
+    assert validate_input._st().error is None
     assert validate_input.filter_data('hpc-nosmt', 'biosconfig') == 'hpc-nosmt'
-    assert validate_input.ERROR is None
+    assert validate_input._st().error is None
     assert validate_input.filter_data('hpc"nosmt', 'biosconfig') is None
-    assert validate_input.ERROR
-    validate_input.ERROR = None
+    assert validate_input._st().error
+    validate_input._st().error = None
 
 
 def test_an_assigned_configuration_cannot_be_removed(cluster):

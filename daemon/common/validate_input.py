@@ -32,6 +32,7 @@ __status__      = 'Development'
 
 
 import re
+import threading
 from sys import maxunicode
 from itertools import chain
 from functools import wraps
@@ -184,8 +185,19 @@ STRICT_NAMES = ['config_profile_post','config_profile_clone',
 
 STRICT_MATCHES = {'config_network_get': 'domainname', 'config_network_post': 'domainname'}
 
-ERROR = None
-SKIP_LIST = []
+# Per-request validation state. The daemon serves several requests per
+# process (gthread), so this must be thread-local: a module global here let one
+# request's strict rule or error land in another request's decision.
+_state = threading.local()
+
+
+def _st():
+    if not hasattr(_state, 'error'):
+        _state.error = None
+        _state.strict_name = False
+        _state.strict_match = None
+        _state.skip_list = []
+    return _state
 LOGGER = Log.get_logger()
 
 
@@ -194,19 +206,15 @@ def input_filter(checks=None, skip=None, json=True):
     def decorator(function):
         @wraps(function)
         def filter_input(*args, **kwargs):
-            global SKIP_LIST
-            global ERROR
-            global STRICT_NAME
-            global STRICT_MATCH
             data=None
-            ERROR = None
-            STRICT_NAME = True
-            STRICT_MATCH = None
+            _st().error = None
+            _st().strict_name = True
+            _st().strict_match = None
             if function.__name__ not in STRICT_NAMES:
-                STRICT_NAME = False
+                _st().strict_name = False
             elif function.__name__ in STRICT_MATCHES.keys():
-                STRICT_MATCH = STRICT_MATCHES[function.__name__]
-            LOGGER.debug(f"STRICT CHECKING: STRICT_NAME: {STRICT_NAME}, STRICT_MATCH: {STRICT_MATCH}")
+                _st().strict_match = STRICT_MATCHES[function.__name__]
+            LOGGER.debug(f"STRICT CHECKING: strict_name: {_st().strict_name}, strict_match: {_st().strict_match}")
             if json:
                 if not Helper().check_json(request.data):
                     response = {'message': "data is not valid json"}
@@ -217,10 +225,10 @@ def input_filter(checks=None, skip=None, json=True):
             if skip:
                 if isinstance(skip, str):
                     # data = request.args.getlist('info_hash') ## For Tracker - Sumit
-                    SKIP_LIST.append(str(skip))
+                    _st().skip_list.append(str(skip))
                 else:
                     # data = request.args.to_dict() ## For Tracker - Sumit
-                    SKIP_LIST = skip
+                    _st().skip_list = skip
             LOGGER.debug(f"---- START ---- {data}")
             # Checking for Name in kwargs and appending the name in checks - Sumit
             if 'name' in kwargs:
@@ -231,11 +239,11 @@ def input_filter(checks=None, skip=None, json=True):
             # Checking for Name in kwargs and appending the name in checks - Sumit
             if check_structure(data, check_list):
                 data = parse_item(data)
-                SKIP_LIST = []
+                _st().skip_list = []
                 LOGGER.debug(f"----- END ----- {data}")
-                if ERROR:
-                    response = {'message': f"{ERROR}"}
-                    ERROR = None
+                if _st().error:
+                    response = {'message': f"{_st().error}"}
+                    _st().error = None
                     return response, 400
                 request.data = data
                 return function(*args, **kwargs)
@@ -251,23 +259,20 @@ def validate_name(function):
     """
     @wraps(function)
     def decorator(*args, **kwargs):
-        global STRICT_NAME
-        global STRICT_MATCH
-        STRICT_NAME = True
-        STRICT_MATCH = None
+        _st().strict_name = True
+        _st().strict_match = None
         if function.__name__ not in STRICT_NAMES:
-            STRICT_NAME = False
+            _st().strict_name = False
         elif function.__name__ in STRICT_MATCHES.keys():
-            STRICT_MATCH = STRICT_MATCHES[function.__name__]
-        LOGGER.debug(f"STRICT CHECKING: STRICT_NAME: {STRICT_NAME}, STRICT_MATCH: {STRICT_MATCH}")
+            _st().strict_match = STRICT_MATCHES[function.__name__]
+        LOGGER.debug(f"STRICT CHECKING: strict_name: {_st().strict_name}, strict_match: {_st().strict_match}")
         for name_key, name_value in kwargs.items():
-            global ERROR
             filter_data(name_value, name_key)
-            if ERROR:
-                message = f"Incorrect Naming convention with {name_key} {name_value}: {ERROR}"
+            if _st().error:
+                message = f"Incorrect Naming convention with {name_key} {name_value}: {_st().error}"
                 response = {'message': message}
-                LOGGER.debug(f"{ERROR}")
-                ERROR = None
+                LOGGER.debug(f"{_st().error}")
+                _st().error = None
                 return response, 400
         return function(*args, **kwargs)
     return decorator
@@ -313,11 +318,10 @@ def filter_data(data=None, name=None):
     """
     This method will filter the provided data.
     """
-    global ERROR
-    if STRICT_NAME and name == 'name':
-        name=STRICT_MATCH or 'strictname'
+    if _st().strict_name and name == 'name':
+        name=_st().strict_match or 'strictname'
         LOGGER.debug(f"Applying strict {name} rules")
-    if name in SKIP_LIST:
+    if name in _st().skip_list:
         LOGGER.debug(f"Skipping filter on {name}")
         return data
     data = control_char_re.sub('', data)
@@ -335,20 +339,20 @@ def filter_data(data=None, name=None):
     if name in MAXLENGTH.keys():
         if len(data) > MAXLENGTH[name]:
             LOGGER.info(f"length of {name} exceeds {MAXLENGTH[name]}")
-            ERROR = f"length of {name} exceeds {MAXLENGTH[name]}"
+            _st().error = f"length of {name} exceeds {MAXLENGTH[name]}"
             return
     if name in MATCH.keys():
         if MATCH[name] in RESERVED.keys():
             for reserved in RESERVED[MATCH['name']]:
                 if str(data) == reserved:
                     LOGGER.info(f"RESERVED name = {name} with data = {data} is a reserved keyword")
-                    ERROR = f"field {name} with content {data} is a reserved keyword: {reserved}"
+                    _st().error = f"field {name} with content {data} is a reserved keyword: {reserved}"
                     return
         regex = re.compile(r"" + REG_EXP[MATCH[name]]['regexp'])
         if not regex.match(unfiltered):
             LOGGER.info(f"MATCH name = {name} with data = {unfiltered} mismatch with:")
             LOGGER.info(f"    REG_EXP['{MATCH[name]}']['regexp'] = {REG_EXP[MATCH[name]]['regexp']}")
-            ERROR = f"field {name} with content {data} does not match criteria {REG_EXP[MATCH[name]]['error']}"
+            _st().error = f"field {name} with content {data} does not match criteria {REG_EXP[MATCH[name]]['error']}"
             return
         if MATCH[name] in CONVERT.keys():
             LOGGER.debug(f"CONVERT IN {MATCH[name]} = {data}")

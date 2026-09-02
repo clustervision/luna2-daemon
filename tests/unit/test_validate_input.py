@@ -95,6 +95,30 @@ def test_the_network_key_takes_an_address_as_well_as_a_name():
         assert validate_input.ERROR, f"{payload!r} must be rejected"
 
 
+def test_a_profile_name_that_can_be_created_can_also_be_assigned():
+    """A profile created under one rule and assigned under another (`profiles`, a csv) could never be assigned."""
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data, STRICT_MATCHES
+
+    validate_input.STRICT_NAME = True
+    validate_input.STRICT_MATCH = STRICT_MATCHES.get('config_profile_post')
+    try:
+        for name in ('slurm-node', 'ntp.v2'):
+            for key in ('name', 'newprofilename', 'profiles', 'profile'):
+                validate_input.ERROR = None
+                filter_data(name, key)
+                assert not validate_input.ERROR, f"{name!r} refused as {key}: {validate_input.ERROR}"
+        for name in ('Slurm_Node', 'ntp v2', 'node"--'):
+            for key in ('name', 'newprofilename', 'profile'):
+                validate_input.ERROR = None
+                filter_data(name, key)
+                assert validate_input.ERROR, f"{name!r} accepted as {key} but the assignment list would refuse it"
+    finally:
+        validate_input.STRICT_NAME = False
+        validate_input.STRICT_MATCH = None
+        validate_input.ERROR = None
+
+
 def test_cleaning_still_happens_for_fields_with_no_regex():
     """
     Only the check moved to the raw value; the sanitising is untouched. A field

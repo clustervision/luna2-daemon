@@ -55,7 +55,7 @@ REG_EXP = {
     'nameandclear': { 'regexp': r'^([a-zA-Z0-9\-\.\_\ ]+)?$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
-    'loosecsv': { 'regexp': r'^[a-z0-9\-\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
+    'loosecsv': { 'regexp': r'^[a-z0-9\-\.\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\', \'.\' and \',\'' },
     'interfacecsv': { 'regexp': r'^[a-zA-Z0-9\.\-\,\ \:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, whitespace, \'.\', \':\', \'-\' and \',\'' },
     'interface': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
     'intfandclear': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}|$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
@@ -115,7 +115,8 @@ MATCH = {
     'owner': 'fileowner',
     'mode': 'filemode',
     'profiles': 'loosecsv',
-    'newprofilename': 'name',
+    'newprofilename': 'strictname',
+    'profile': 'strictname',
     'scope': 'profilescope',
     'object_type': 'strictname',
     'file': 'artefactfile',
@@ -155,7 +156,8 @@ MAXLENGTH = {
 
 # Strict names is a bit of a hack where i use the name of the function to determine whether we have
 # a node name, switch name or any sort like names on our hand, or just a group name, image name, etc - Antoine
-STRICT_NAMES = ['config_node_get','config_node_post','config_node_clone','config_node_delete',
+STRICT_NAMES = ['config_profile_post','config_profile_clone',
+                'config_node_get','config_node_post','config_node_clone','config_node_delete',
                 'config_node_osgrab','config_node_ospush','config_node_biosgrab',
                 'config_node_get_interfaces',
                 'config_node_post_interfaces','config_node_interface_get','config_node_delete_interface',

@@ -125,7 +125,7 @@ MATCH = {
     'node': 'strictname',
     'groupname': 'name',
     'script': 'strictname',
-    'tagname': 'nameandclear',
+    'tagname': 'tagandclear',
     'subset': 'strictname',
     'filename': 'filename',
     'subsystem': 'strictname',

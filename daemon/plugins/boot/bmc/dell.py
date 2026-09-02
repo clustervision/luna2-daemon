@@ -53,6 +53,13 @@ class Plugin():
     modprobe ipmi_msghandler
     sleep 2
 
+    # DHCP or static is decided once, the same way default.py decides it, and
+    # both the racadm and the ipmitool path below read it.
+    IPSRC=static
+    if [ "${DHCP}" == "True" ] || [ "${DHCP}" == "1" ]; then
+        IPSRC=dhcp
+    fi
+
     if command -v racadm >/dev/null 2>&1
     then
         if racadm getniccfg >/dev/null 2>&1 || racadm get iDRAC.NIC.Enable >/dev/null 2>&1
@@ -85,7 +92,7 @@ class Plugin():
                         if [[ "$VLANID" == 'Disabled' ]]; then echo 'Disabled'; else echo "${VLANID}"; fi
                         ;;
                     ipsrc)
-                        echo 'Static'
+                        if [[ "${IPSRC}" == "dhcp" ]]; then echo 'DHCP'; else echo 'Static'; fi
                         ;;
                 esac
             }
@@ -160,7 +167,11 @@ class Plugin():
             run_racadm_command() {
                 case "$1" in
                     ipsrc)
-                        racadm setniccfg -s ${IPADDRESS} ${NETMASK} ${GATEWAY}
+                        if [[ "${IPSRC}" == "dhcp" ]]; then
+                            racadm setniccfg -d
+                        else
+                            racadm setniccfg -s ${IPADDRESS} ${NETMASK} ${GATEWAY}
+                        fi
                         ;;
                     ipaddr)
                         racadm setniccfg -s ${IPADDRESS} ${NETMASK} ${GATEWAY}
@@ -231,9 +242,9 @@ class Plugin():
             racadm_set_first 1 iDRAC.NIC.Enable cfgLanNetworking.Enable >/dev/null || true
 
             ensure_racadm_value ipsrc || DELL_BMC_RACADM_READY=0
-            if [[ "${DELL_BMC_RACADM_READY}" == "1" ]]; then ensure_racadm_value ipaddr || DELL_BMC_RACADM_READY=0; fi
-            if [[ "${DELL_BMC_RACADM_READY}" == "1" ]]; then ensure_racadm_value netmask || DELL_BMC_RACADM_READY=0; fi
-            if [[ "${DELL_BMC_RACADM_READY}" == "1" ]]; then ensure_racadm_value defgw || DELL_BMC_RACADM_READY=0; fi
+            if [[ "${DELL_BMC_RACADM_READY}" == "1" && "${IPSRC}" == "static" ]]; then ensure_racadm_value ipaddr || DELL_BMC_RACADM_READY=0; fi
+            if [[ "${DELL_BMC_RACADM_READY}" == "1" && "${IPSRC}" == "static" ]]; then ensure_racadm_value netmask || DELL_BMC_RACADM_READY=0; fi
+            if [[ "${DELL_BMC_RACADM_READY}" == "1" && "${IPSRC}" == "static" ]]; then ensure_racadm_value defgw || DELL_BMC_RACADM_READY=0; fi
             if [[ "${DELL_BMC_RACADM_READY}" == "1" ]]; then ensure_racadm_value vlan_enable || DELL_BMC_RACADM_READY=0; fi
             if [[ "${DELL_BMC_RACADM_READY}" == "1" && "$VLANID" != 'Disabled' ]]; then ensure_racadm_value vlan_id || DELL_BMC_RACADM_READY=0; fi
 
@@ -309,7 +320,7 @@ class Plugin():
             get_expected_ipmi_value() {
                 case "$1" in
                     ipsrc)
-                        echo "Static"
+                        if [ "${IPSRC}" == "dhcp" ]; then echo "DHCP"; else echo "Static"; fi
                         ;;
                     ipaddr)
                         echo "${IPADDRESS}"
@@ -340,7 +351,7 @@ class Plugin():
                 do
                     case "${FIELD}" in
                         ipsrc)
-                            ipmitool lan set ${NETCHANNEL} ipsrc static
+                            ipmitool lan set ${NETCHANNEL} ipsrc ${IPSRC}
                             ;;
                         ipaddr)
                             ipmitool lan set ${NETCHANNEL} ipaddr ${IPADDRESS}
@@ -418,13 +429,15 @@ class Plugin():
                 VLANID='Disabled'
             fi
 
-            echo "Luna2: starting BMC configuration on net channel ${NETCHANNEL}"
+            echo "Luna2: starting BMC configuration on net channel ${NETCHANNEL} (ipsrc ${IPSRC})"
             refresh_ipmi_state
 
             ensure_ipmi_value ipsrc || return 1
-            ensure_ipmi_value ipaddr || return 1
-            ensure_ipmi_value netmask || return 1
-            ensure_ipmi_value defgw || return 1
+            if [ "${IPSRC}" == "static" ]; then
+                ensure_ipmi_value ipaddr || return 1
+                ensure_ipmi_value netmask || return 1
+                ensure_ipmi_value defgw || return 1
+            fi
             ensure_ipmi_value vlan || return 1
 
             case $UNMANAGED in

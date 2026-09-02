@@ -49,6 +49,7 @@ TEMPLATES = os.path.join(
 )
 CLASSIC = os.path.join(TEMPLATES, 'templ_install.cfg')
 LPART = os.path.join(TEMPLATES, 'templ_install_lpart.cfg')
+KICKSTART = os.path.join(TEMPLATES, 'templ_install_kickstart.cfg')
 
 # Only these may exist in the lpart template and not the classic one.
 LPART_ONLY_FUNCTIONS = {'lpart_phase', 'write_provisioning_inputs'}
@@ -235,3 +236,20 @@ def test_install_context_carries_provision_fields():
             f'templ_install_lpart.cfg install-context.json must write {field} '
             f'(expected {needle!r}); lpart reads it from that file.'
         )
+
+
+def test_kickstart_exports_every_variable_the_classic_bmcsetup_sets():
+    """
+    The kickstart path runs the same spliced BMC plugin, but hands it its inputs
+    as exports in %post rather than through bmcsetup. Two lists of the same
+    variables drift: the classic template grew DHCP and the kickstart one did
+    not, so the plugin read an empty string there and quietly configured static.
+    Derived from the classic bmcsetup, so the next variable is covered too.
+    """
+    classic = _functions(_read(CLASSIC))['bmcsetup']
+    names = re.findall(r'^\s*([A-Z]+)="\{\{', classic, re.M)
+    assert names, 'bmcsetup no longer sets its variables inline'
+    kickstart = _read(KICKSTART)
+    block = kickstart[kickstart.index('{% if LUNA_SETUPBMC %}'):kickstart.index('## BMC CODE SEGMENT')]
+    missing = [name for name in names if f'export {name}=' not in block]
+    assert missing == [], f'kickstart %post does not export {missing} for the BMC plugin'

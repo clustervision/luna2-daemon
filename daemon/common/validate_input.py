@@ -62,6 +62,8 @@ REG_EXP = {
     'ipaddress': { 'regexp': r'^[0-9a-f:\.]*$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
     'macaddress': { 'regexp': r'^(([0-9A-Fa-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
     'domainname': { 'regexp': r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.?$', 'error': "lowercase a-z, numbers 0-9, '-', labels 1-63 chars, labels not starting/ending with '-'" },
+    # a network's name in most payloads, its address (optionally /prefix) in the network table's own
+    'network': { 'regexp': r'^(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.?|[0-9a-f:\.]+(?:/[0-9]{1,3})?)$', 'error': "a network name (lowercase a-z, numbers 0-9, '-', '.') or an address with an optional /prefix" },
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
     'integer': { 'regexp': r'^[0-9]+$', 'error': 'integers only' },
     'intandnone': { 'regexp': r'^[0-9]*$', 'error': 'integers or empty only' },
@@ -109,7 +111,7 @@ MATCH = {
     'newcloudname': 'name',
     'tableref': 'strictname',
     'target': 'name',
-    'network': 'domainname',
+    'network': 'network',
     'owner': 'fileowner',
     'mode': 'filemode',
     'profiles': 'loosecsv',

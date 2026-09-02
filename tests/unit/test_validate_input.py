@@ -79,6 +79,22 @@ def test_a_quoted_name_is_rejected_rather_than_cleaned_into_a_valid_one():
     assert not validate_input.ERROR, "an ordinary value must still pass"
 
 
+def test_the_network_key_takes_an_address_as_well_as_a_name():
+    """The key is a name in interface payloads and the address in the network table; a domain-name rule refused every `network add`."""
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+
+    for payload in ('10.150.0.0/24', '10.150.0.0', 'fd00:1::/64', 'ipmi', 'ipmi.cluster'):
+        validate_input.ERROR = None
+        assert filter_data(payload, 'network') == payload
+        assert not validate_input.ERROR, f"{payload!r} is a valid network value and was refused"
+
+    for payload in ("ipmi' OR '1'='1", '10.150.0.0/24;', 'IPMI', 'a b'):
+        validate_input.ERROR = None
+        filter_data(payload, 'network')
+        assert validate_input.ERROR, f"{payload!r} must be rejected"
+
+
 def test_cleaning_still_happens_for_fields_with_no_regex():
     """
     Only the check moved to the raw value; the sanitising is untouched. A field

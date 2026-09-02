@@ -649,6 +649,15 @@ class FirmwarePush():
         while True:
             try:
                 if (not ha_object.get_hastate()) or ha_object.get_role():
+                    if not self.peer_takes_writes(ha_object):
+                        # every claim is journaled and waits five seconds before
+                        # refusing; with N requests pending that is 5N seconds and
+                        # N warnings per sweep for as long as the peer is away
+                        self.logger.debug('firmware sweep skipped: not in sync with the peer')
+                        if event.is_set():
+                            return
+                        sleep(5)
+                        continue
                     requests.reclaim_abandoned()
                     pipeline = Helper().Pipeline()
                     for row in requests.pending():
@@ -665,6 +674,16 @@ class FirmwarePush():
             if event.is_set():
                 return
             sleep(5)
+
+
+    def peer_takes_writes(self, ha_object=None):
+        """
+        Whether a journaled write would be accepted right now: a single controller
+        always, an HA controller when in sync or overruled.
+        """
+        if not ha_object.get_hastate():
+            return True
+        return bool(ha_object.get_overrule() or ha_object.get_insync())
 
 
     def sweep_batches(self, pipeline, requests=None):

@@ -258,7 +258,7 @@ class ProfileSync():
                     pipeline = Helper().Pipeline()
                     claimed = {}
                     while next_id := Queue().next_task_in_queue('profile', status='queued', window=None):
-                        task = Database().get_record(table='queue', where=f'id = "{next_id}"')
+                        task = Database().get_record(table='queue', where=f"id = '{next_id}'")
                         if task and task[0]['task'] == 'sync_profiles' and task[0]['param']:
                             pipeline.add_nodes({task[0]['param']: 'sync_profiles'})
                             claimed[task[0]['param']] = next_id
@@ -325,7 +325,7 @@ class ProfileSync():
                 continue
             recent = Database().get_record(
                 table='monitor',
-                where=f'tableref = "{OUTCOME_REF}" AND tablerefid = "{node["id"]}" '
+                where=f"tableref = '{OUTCOME_REF}' AND tablerefid = '{node['id']}' "
                       f'AND state LIKE "failed%" '
                       f'AND updated > datetime("now","-{FAILURE_COOLOFF} minute")')
             if recent:
@@ -411,7 +411,7 @@ class ProfileSync():
                     pipeline.del_message(key)
                     continue
                 # for the operator's benefit the log names the node, resolved now
-                node = Database().get_record(table='node', where=f'id = "{key}"')
+                node = Database().get_record(table='node', where=f"id = '{key}'")
                 label = node[0]['name'] if node else f'node id {key}'
                 if node:
                     # a node that has been deleted gets no outcome row: nothing will ever

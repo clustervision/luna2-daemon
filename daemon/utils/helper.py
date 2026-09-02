@@ -417,7 +417,7 @@ class Helper(object):
         if 'ipaddress' in data:
             if self.check_ip(data['ipaddress']):
                 ipaddr = data["ipaddress"]
-                where = f'ipaddress = "{ipaddr}";'
+                where = f"ipaddress = '{ipaddr}';"
                 record = Database().get_record(table='ipaddress', where=where)
                 if not record:
                     subnet = self.get_netmask(data['ipaddress'])
@@ -916,7 +916,7 @@ class Helper(object):
             gid = str(entry.gr_gid) if entry else None
         if uid and (gid or not group):
             resolved = f"{uid}:{gid}" if group else uid
-        record = Database().get_record(table='ownercache', where=f'name = "{owner}"')
+        record = Database().get_record(table='ownercache', where=f"name = '{owner}'")
         if resolved:
             if record:
                 if record[0]['resolved'] != resolved:

@@ -176,7 +176,7 @@ class Boot():
 
     def clear_existing_mac(self, macaddress, exclude_nodeid=None):
         # clear mac if it already exists.
-        where=[f'nodeinterface.macaddress="{macaddress}"']
+        where=[f"nodeinterface.macaddress='{macaddress}'"]
         if exclude_nodeid:
             where.append(f"nodeinterface.nodeid!='{exclude_nodeid}'")
         nodeinterface_check = Database().get_record_join(
@@ -406,7 +406,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         if not Helper().check_jinja(template_path):
             return False, self.failed_boot("switch ztp template does not exist")
-        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        switch = Database().get_record(table='switch', where=f"name='{name}'")
         if not switch:
             return False, self.failed_boot(f"switch {name} does not exist")
         switch = switch[0]
@@ -445,7 +445,7 @@ class Boot():
         An admin-supplied ztpconfig (base64) is decoded and served; otherwise a minimal default
         is generated from the switch identity.
         """
-        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        switch = Database().get_record(table='switch', where=f"name='{name}'")
         if not switch:
             return False, self.failed_boot(f"switch {name} does not exist")
         switch = switch[0]

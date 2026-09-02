@@ -118,7 +118,7 @@ class OSImage():
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
         os_image_plugin=Helper().plugin_load(self.osimage_plugins,
                                            'osimage/filesystem',filesystem_plugin)
-        all_records = Database().get_record(table='osimage', where=f'name = "{name}"')
+        all_records = Database().get_record(table='osimage', where=f"name = '{name}'")
         if all_records:
             status = True
             response = {'config': {self.table: {} }}
@@ -147,7 +147,7 @@ class OSImage():
             record['tag'] = tagname or 'default'
             image_tags = []
             all_tags = Database().get_record(table='osimagetag',
-                                             where=f'osimageid = "{record_id}"')
+                                             where=f"osimageid = '{record_id}'")
             if all_tags:
                 for tag in all_tags:
                     image_tags.append(tag['name'])
@@ -261,7 +261,7 @@ class OSImage():
         }
         if request_data:
             data = request_data['config']['osimage'][name]
-            image = Database().get_record(table='osimage', where=f'name = "{name}"')
+            image = Database().get_record(table='osimage', where=f"name = '{name}'")
             if image:
                 image_id = image[0]['id']
                 if 'tag' in data:
@@ -269,7 +269,7 @@ class OSImage():
                     tagname = data['tag']
                 if 'newosimage' in data:
                     newosimage = data['newosimage']
-                    where = f'name = "{newosimage}"'
+                    where = f"name = '{newosimage}'"
                     osimage_check = Database().get_record(table='osimage', where=where)
                     if osimage_check:
                         status=False
@@ -313,7 +313,7 @@ class OSImage():
                     if tagname == "": # to clear tag
                         data['tagid'] = ""
                     elif tagname != current_tag:
-                        imagetag = Database().get_record(table='osimagetag', where=f'osimageid = "{image_id}" AND name = "{tagname}"')
+                        imagetag = Database().get_record(table='osimagetag', where=f"osimageid = '{image_id}' AND name = '{tagname}'")
                         if imagetag:
                             new_tagid = imagetag[0]['id']
                         if (not new_tagid) and image_id:
@@ -390,11 +390,11 @@ class OSImage():
             if 'tag' in data and data['tag']:
                 tag = data['tag']
                 del data['tag']
-            image = Database().get_record(table='osimage', where=f'name = "{name}"')
+            image = Database().get_record(table='osimage', where=f"name = '{name}'")
             if image:
                 if 'newosimage' in data:
                     newosimage = data['newosimage']
-                    where = f'name = "{newosimage}"'
+                    where = f"name = '{newosimage}'"
                     osimage_check = Database().get_record(table='osimage', where=where)
                     if osimage_check:
                         status=False
@@ -470,7 +470,7 @@ class OSImage():
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
                 sleep(1)
-                where = f'request_id = "{request_id}"'
+                where = f"request_id = '{request_id}'"
                 status = Database().get_record(table='status', where=where)
                 if status:
                     response = f"osimage clone for {data['name']} queued"
@@ -510,7 +510,7 @@ class OSImage():
             response = f"Invalid request: osimage {name} currently in use by "+', '.join(inuseby)+" ..."
             return False, response
 
-        image = Database().get_record(table='osimage', where=f'name = "{name}"')
+        image = Database().get_record(table='osimage', where=f"name = '{name}'")
         if image:
             for item in ['kernelfile','initrdfile','imagefile']:
                 if image[0][item]:
@@ -581,7 +581,7 @@ class OSImage():
         if not tag_details:
             status = False
             return status, f"image {name} and/or tag {tagname} not found or incorrect combination"
-        cur_tag = Database().get_record(table='osimage', where=f'name="{name}"')
+        cur_tag = Database().get_record(table='osimage', where=f"name='{name}'")
         if cur_tag and cur_tag[0]['tagid'] == tag_details[0]['tagid']:
             udata={}
             udata['tagid'] = ""
@@ -693,7 +693,7 @@ class OSImage():
                 else:
                     Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
             sleep(1)
-            status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
+            status = Database().get_record(table='status', where=f"request_id = '{request_id}'")
             if status:
                 response = f"osimage grab from {node} to {osimage} queued"
                 status=True
@@ -799,7 +799,7 @@ class OSImage():
                 else:
                     Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
             sleep(1)
-            status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
+            status = Database().get_record(table='status', where=f"request_id = '{request_id}'")
             if status:
                 status=True
                 response = f"osimage push from {entity_name} to {osimage} queued"
@@ -817,7 +817,7 @@ class OSImage():
         response="unknown state"
         response = {"message": f'Internal error: OS image {name} packing failed. No sign of life of spawned thread'}
         # Antoine
-        image = Database().get_record(table='osimage', where=f'name = "{name}"')
+        image = Database().get_record(table='osimage', where=f"name = '{name}'")
         force = False
         # force lets a genuinely-changed image rebuild despite a recent identical request (staleness),
         # but it must never create a second concurrent chain: if this image is already being packed,
@@ -870,7 +870,7 @@ class OSImage():
             else:
                 Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
         sleep(1)
-        status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
+        status = Database().get_record(table='status', where=f"request_id = '{request_id}'")
         if status:
             status=True
             response = f"osimage pack for {name} queued"
@@ -923,7 +923,7 @@ class OSImage():
         """
         status=False
         response = {"message": f'Internal error: OS image {name} certificate update failed. No sign of life of spawned thread'}
-        image = Database().get_record(table='osimage', where=f'name = "{name}"')
+        image = Database().get_record(table='osimage', where=f"name = '{name}'")
         if not image:
             return False, f'OS image {name} does not exist'
         request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
@@ -963,7 +963,7 @@ class OSImage():
             else:
                 Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
         sleep(1)
-        status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
+        status = Database().get_record(table='status', where=f"request_id = '{request_id}'")
         if status:
             status=True
             response = f"osimage certificate update for {name} queued"
@@ -986,7 +986,7 @@ class OSImage():
                 bare = data['bare']
                 bare = Helper().make_bool(bare)
                 del data['bare']
-            image = Database().get_record(table='osimage', where=f'name = "{name}"')
+            image = Database().get_record(table='osimage', where=f"name = '{name}'")
             if image:
                 image_id = image[0]['id']
                 osimage_columns = Database().get_columns('osimage')
@@ -1040,7 +1040,7 @@ class OSImage():
                     # we should check after a few seconds if there is a status update for us.
                     # if so, that means mother is taking care of things
                     sleep(1)
-                    where = f'request_id = "{request_id}"'
+                    where = f"request_id = '{request_id}'"
                     status = Database().get_record(table='status', where=where)
                     if status:
                         response = f"osimage pack for {name} queued"
@@ -1069,14 +1069,14 @@ class OSImage():
         if request_data:
             data = request_data['config']['osimage'][name]
             if 'tag' in data:
-                image = Database().get_record(table='osimage', where=f'name = "{name}"')
+                image = Database().get_record(table='osimage', where=f"name = '{name}'")
                 if image:
                     image_id = image[0]['id']
                     tagname, new_tagid = data['tag'], None
                     if tagname == "":
                         new_tagid = ""
                     else:
-                        imagetag = Database().get_record(table='osimagetag', where=f'osimageid = "{image_id}" AND name = "{tagname}"')
+                        imagetag = Database().get_record(table='osimagetag', where=f"osimageid = '{image_id}' AND name = '{tagname}'")
                         if imagetag:
                             new_tagid = imagetag[0]['id']
                         if not new_tagid:

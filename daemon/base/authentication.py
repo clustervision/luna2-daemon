@@ -149,7 +149,7 @@ class Authentication():
         if cluster and 'security' in cluster[0] and cluster[0]['security']:
             self.logger.info(f"cluster security = {cluster[0]['security']}")
             if 'tpm_sha256' in request_data:
-                node = Database().get_record(table='node', where=f'name = "{nodename}"')
+                node = Database().get_record(table='node', where=f"name = '{nodename}'")
                 if node:
                     if 'tpm_sha256' in node[0]:
                         if request_data['tpm_sha256'] == node[0]['tpm_sha256']:

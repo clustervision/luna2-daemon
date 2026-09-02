@@ -461,7 +461,7 @@ class Database():
             query = f'DELETE FROM "{table}";'
             local_thread.cursor.execute(query)
             self.commit()
-            query = f'DELETE FROM sqlite_sequence WHERE name ="{table}";'
+            query = f"DELETE FROM sqlite_sequence WHERE name ='{table}';"
             local_thread.cursor.execute(query)
             self.commit()
             response = True
@@ -758,7 +758,7 @@ class Database():
         Input - tablename, name
         Output - id.
         """
-        query = f'SELECT id FROM "{table}" WHERE `name` == "{name}";'
+        query = f"SELECT id FROM \"{table}\" WHERE `name` == '{name}';"
         self.logger.debug(f'Query executing => {query}.')
         try:
             local_thread.cursor.execute(query)
@@ -777,7 +777,7 @@ class Database():
         Input - tablename, id
         Output - name.
         """
-        query = f'SELECT name FROM "{table}" WHERE `id` == "{tableid}";'
+        query = f"SELECT name FROM \"{table}\" WHERE `id` == '{tableid}';"
         self.logger.debug(f'Query executing => {query}.')
         try:
             local_thread.cursor.execute(query)

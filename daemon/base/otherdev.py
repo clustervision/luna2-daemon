@@ -91,7 +91,7 @@ class OtherDev():
             if 'nonetwork' in data:
                 nonetwork = Helper().make_bool(data['nonetwork'])
                 del data['nonetwork']
-            device = Database().get_record(table=self.table, where=f'name = "{name}"')
+            device = Database().get_record(table=self.table, where=f"name = '{name}'")
             if device:
                 device_id = device[0]['id']
                 if 'newotherdevname' in request_data['config']['otherdev'][name]:
@@ -177,7 +177,7 @@ class OtherDev():
             else:
                 status=False
                 return status, 'Invalid request: New device name not provided'
-            where = f'name = "{newotherdevname}"'
+            where = f"name = '{newotherdevname}'"
             device = Database().get_record(table=self.table, where=where)
             if device:
                 status=False
@@ -193,7 +193,7 @@ class OtherDev():
             column_check = Helper().compare_list(data, device_columns)
             if data:
                 if column_check:
-                    where=f'name = "{name}"'
+                    where=f"name = '{name}'"
                     device = Database().get_record(table=self.table, where=where)
                     if not device:
                         status = False
@@ -243,7 +243,7 @@ class OtherDev():
                     ipaddress6, result, result6, avail = None, False, True, None
                     if not ipaddress:
                         if not network:
-                            where = f'name = "{networkname}"'
+                            where = f"name = '{networkname}'"
                             network = Database().get_record(table='network', where=where)
                             if network:
                                 networkname = network[0]['networkname']
@@ -316,7 +316,7 @@ class OtherDev():
         """
         This method will delete an other-device.
         """
-        device = Database().get_record(table='otherdevices', where=f'name = "{name}"')
+        device = Database().get_record(table='otherdevices', where=f"name = '{name}'")
         if device:
             Database().delete_row('rackinventory', [{"column": "tablerefid", "value": device[0]['id']},
                                                     {"column": "tableref", "value": "otherdevices"}])

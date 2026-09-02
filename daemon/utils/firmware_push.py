@@ -879,12 +879,12 @@ class FirmwarePush():
         """
         snapshot = Database().get_record(
             table='nodeinventory',
-            where=f'nodeid IN (SELECT id FROM node WHERE name = "{nodename}") '
+            where=f"nodeid IN (SELECT id FROM node WHERE name = '{nodename}') "
                   'AND source = "redfish"')
         configname = str((snapshot or [{}])[0].get('bios_config') or '').strip()
         if not configname:
             return None, {}
-        record = Database().get_record(table='biosconfig', where=f'name = "{configname}"')
+        record = Database().get_record(table='biosconfig', where=f"name = '{configname}'")
         if not record:
             return None, {}
         from base.bios import Bios
@@ -939,7 +939,7 @@ class FirmwarePush():
         install for exactly this, so the restore starts now and waits for the BMC
         itself, bounded.
         """
-        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        node = Database().get_record(table='node', where=f"name = '{nodename}'")
         if not node:
             return 0
         pending = FirmwareRequest().restore_pending(nodeid=node[0]['id'])
@@ -960,7 +960,7 @@ class FirmwarePush():
         from the daemon afterwards: it waits a fixed, bounded time after setupbmc and
         continues regardless, and a daemon that stops cannot deadlock a node.
         """
-        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        node = Database().get_record(table='node', where=f"name = '{nodename}'")
         if not node:
             return False, 'unknown node'
         if FirmwareRequest().restore_pending(nodeid=node[0]['id']):
@@ -969,7 +969,7 @@ class FirmwarePush():
             # holding for that would cost every plain BMC flash ten idle minutes
             snapshot = Database().get_record(
                 table='nodeinventory',
-                where=f'nodeid = "{node[0]["id"]}" AND source = "redfish"')
+                where=f"nodeid = '{node[0]['id']}' AND source = 'redfish'")
             row = (snapshot or [{}])[0]
             # ... and only on a board that can take the write. A board whose last
             # inventory found no settings object cannot be restored by a staged
@@ -981,7 +981,7 @@ class FirmwarePush():
         # a BIOS task carries the node as its parameter: bare for a restore,
         # node:config:policy for a push
         if Database().get_record(table='queue',
-                                 where=f'subsystem = "bios" AND (param = "{nodename}" '
+                                 where=f"subsystem = 'bios' AND (param = '{nodename}' "
                                        f'OR param LIKE "{nodename}:%")'):
             return True, 'a BIOS task is scheduled'
         return False, 'nothing scheduled'
@@ -1014,7 +1014,7 @@ class FirmwarePush():
         from utils.bios_push import BiosPush
         from utils.redfish import Redfish
 
-        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        node = Database().get_record(table='node', where=f"name = '{nodename}'")
         if not node:
             return None, f'{nodename} no longer exists'
         pending = FirmwareRequest().restore_pending(nodeid=node[0]['id'])
@@ -1057,12 +1057,12 @@ class FirmwarePush():
         verified = f'BMC at {access["device"]} answers with the stored credentials'
         snapshot = Database().get_record(
             table='nodeinventory',
-            where=f'nodeid IN (SELECT id FROM node WHERE name = "{nodename}") '
+            where=f"nodeid IN (SELECT id FROM node WHERE name = '{nodename}') "
                   'AND source = "redfish"')
         configname = str((snapshot or [{}])[0].get('bios_config') or '').strip()
         if not configname:
             return True, f'{verified}; no BIOS configuration recorded for this node, nothing to restore'
-        record = Database().get_record(table='biosconfig', where=f'name = "{configname}"')
+        record = Database().get_record(table='biosconfig', where=f"name = '{configname}'")
         if not record:
             return False, (f'{verified}; the BIOS configuration {configname} recorded for '
                            'this node no longer exists, so it was not restored')

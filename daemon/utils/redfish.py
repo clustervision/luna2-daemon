@@ -496,14 +496,14 @@ class RedfishAccess():
         This method will resolve the redfishsetup a node points at - the node
         first, then its group, which is exactly how bmcsetup and osimage resolve.
         """
-        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        node = Database().get_record(table='node', where=f"name = '{nodename}'")
         if not node:
             return None
         setupid = node[0]['redfishsetupid'] if 'redfishsetupid' in node[0] else None
         if setupid:
             return setupid
         groupid = node[0]['groupid']
-        group = Database().get_record(table='group', where=f'id = "{groupid}"')
+        group = Database().get_record(table='group', where=f"id = '{groupid}'")
         if group and 'redfishsetupid' in group[0]:
             return group[0]['redfishsetupid']
         return None
@@ -580,11 +580,11 @@ class RedfishAccess():
         if not setupid:
             return False, (f'{nodename} has no redfishsetup assigned, so Redfish is '
                            'not configured for it')
-        setup = Database().get_record(table='redfishsetup', where=f'id = "{setupid}"')
+        setup = Database().get_record(table='redfishsetup', where=f"id = '{setupid}'")
         if not setup:
             return False, f'redfishsetup {setupid} assigned to {nodename} no longer exists'
         accounts = Database().get_record(table='redfishaccount',
-                                         where=f'redfishsetupid = "{setupid}"')
+                                         where=f"redfishsetupid = '{setupid}'")
         if not accounts:
             return False, f"redfishsetup {setup[0]['name']} has no accounts"
         account = self.pick_account(accounts=accounts, needs=needs)
@@ -619,7 +619,7 @@ class RedfishAccess():
         and it is the one that exists before a node has ever been provisioned.
         """
         rows = Database().get_record(table='nodeinventory',
-                                     where=f'nodeid IN (SELECT id FROM node WHERE name = "{nodename}")')
+                                     where=f"nodeid IN (SELECT id FROM node WHERE name = '{nodename}')")
         if not rows:
             return None, None
         chosen = None
@@ -667,7 +667,7 @@ class RedfishAccess():
             return True
         rows = Database().get_record(
             table='nodeinventory',
-            where=f'source = "redfish" AND nodeid IN (SELECT id FROM node WHERE name = "{nodename}")')
+            where=f"source = 'redfish' AND nodeid IN (SELECT id FROM node WHERE name = '{nodename}')")
         return bool(rows)
 
 

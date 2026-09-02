@@ -84,7 +84,7 @@ class Firmware():
         """
         This method will return one catalogue entry.
         """
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
             return False, f'{self.table_cap} {name} is not available'
         return True, {'config': {self.table: {name: self.detail(record[0])}}}
@@ -119,7 +119,7 @@ class Firmware():
         status, reason = self.image_file_is_usable(data.get('imagefile'))
         if not status:
             return False, f'Invalid request: {reason}'
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
             missing = [field for field in ('manufacturer', 'model', 'component', 'version')
                        if not data.get(field)]
@@ -199,7 +199,7 @@ class Firmware():
         """
         This method will delete one catalogue entry.
         """
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
             return False, f'{self.table_cap} {name} is not available'
         Database().delete_row(self.table, [{"column": "id", "value": record[0]['id']}])
@@ -233,15 +233,15 @@ class Firmware():
             # 'group' is a reserved SQL word, so a where clause naming it is a
             # syntax error that the daemon logs and swallows - leaving the caller
             # an empty result, and a group that exists reported as having no nodes
-            group = Database().get_record(table='group', where=f'name = "{name}"')
+            group = Database().get_record(table='group', where=f"name = '{name}'")
             if not group:
                 return False, f'group {name} does not exist'
             nodes = Database().get_record(table='node',
-                                          where=f"groupid = \"{group[0]['id']}\"")
+                                          where=f"groupid = '{group[0]['id']}'")
             if not nodes:
                 return False, f'group {name} has no nodes'
             return True, [node['name'] for node in nodes]
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if not node:
             return False, f'node {name} does not exist'
         return True, [name]
@@ -281,9 +281,9 @@ class Firmware():
         if not wanted:
             return False, ('Nothing to update: '
                            + '; '.join(answer['summary']))
-        names = '", "'.join(sorted(wanted))
+        names = "', '".join(sorted(wanted))
         nodeids = [record['id'] for record in Database().get_record(
-            table='node', where=f'name IN ("{names}")') or []]
+            table='node', where=f"name IN ('{names}')") or []]
         request_id = Status().gen_request_id()
         written = FirmwareRequest().record(nodeids=nodeids, component=component,
                                            request_id=request_id)
@@ -310,16 +310,16 @@ class Firmware():
         """
         where = []
         if name:
-            where.append(f'node.name="{name}"')
+            where.append(f"node.name='{name}'")
         elif group:
             # the group is resolved on its own rather than joined on group.name.
             # 'group' is a reserved SQL word, so a where clause naming it bare is a
             # syntax error the daemon logs and swallows, leaving the caller an empty
             # result that reads exactly like a group nobody put a node in
-            record = Database().get_record(table='group', where=f'name = "{group}"')
+            record = Database().get_record(table='group', where=f"name = '{group}'")
             if not record:
                 return False, f'Group {group} is not available'
-            where.append(f"node.groupid=\"{record[0]['id']}\"")
+            where.append(f"node.groupid='{record[0]['id']}'")
         records = Database().get_record_join(
             ['firmwarerequest.id as id', 'firmwarerequest.component as component',
              'firmwarerequest.request_id as request_id',

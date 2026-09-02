@@ -55,7 +55,7 @@ class Interface():
         This method will return all the node interfaces in detailed format.
         """
         status=False
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
             nodeid = node[0]['id']
@@ -122,7 +122,7 @@ class Interface():
         if request_data:
             if name in request_data['config']['node'] and 'interfaces' in request_data['config']['node'][name]:
                 new_data = request_data['config']['node'][name]['interfaces']
-                node = Database().get_record(table='node', where=f'name = "{name}"')
+                node = Database().get_record(table='node', where=f"name = '{name}'")
                 if node:
                     status, response = self.change_node_interface(node[0]['id'], new_data)
                 else:
@@ -472,7 +472,7 @@ class Interface():
                             options=group_interface['options']
                         )
                         if result:
-                            where = f"name = \"{group_interface['network']}\""
+                            where = f"name = '{group_interface['network']}'"
                             network = Database().get_record(table='network', where=where)
                             if network:
                                 if network[0]['network'] and not network[0]['dhcp_nodes_in_pool']:
@@ -556,7 +556,7 @@ class Interface():
         This method will provide a node interface.
         """
         status=False
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
             nodeid = node[0]['id']
@@ -624,7 +624,7 @@ class Interface():
         same as function below but this one can be called by node name
         """
         status=False
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if node:
             status, response = self.delete_node_interface(node[0]['id'], interface)
         else:
@@ -668,7 +668,7 @@ class Interface():
                 response = f'Interface {interface} removed successfully'
                 status=True
             else:
-                where = f'interface = "{interface}" AND `nodeid` = "{nodeid}"'
+                where = f"interface = '{interface}' AND `nodeid` = '{nodeid}'"
                 node_interface = Database().get_record(table='nodeinterface', where=where)
                 if node_interface:
                     where = [{"column": "id", "value": node_interface[0]['id']}]
@@ -689,7 +689,7 @@ class Interface():
         This method will return all the group interfaces in detailed format for a desired group.
         """
         status=False
-        groups = Database().get_record(table='group', where=f'name = "{name}"')
+        groups = Database().get_record(table='group', where=f"name = '{name}'")
         if groups:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
             for group in groups:
@@ -743,7 +743,7 @@ class Interface():
         status=False
         response="Internal error"
         if request_data:
-            group = Database().get_record(table='group', where=f'name = "{name}"')
+            group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 group_id = group[0]['id']
                 if 'interfaces' in request_data['config']['group'][name]:
@@ -754,7 +754,7 @@ class Interface():
                         interface_name = ifx['interface']
                         new_interface_name = None
 
-                        where_interface = f'groupid = "{group_id}" AND interface = "{interface_name}"'
+                        where_interface = f"groupid = '{group_id}' AND interface = '{interface_name}'"
                         check_interface = Database().get_record(table='groupinterface', where=where_interface)
 
                         network, bond_mode, bond_slaves, mtu = None, None, None, None
@@ -854,7 +854,7 @@ class Interface():
         This method will provide detailed interface info for a group.
         """
         status=False
-        group = Database().get_record(table='group', where=f'name = "{name}"')
+        group = Database().get_record(table='group', where=f"name = '{name}'")
         if group:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
             groupid = group[0]['id']
@@ -905,10 +905,10 @@ class Interface():
         """
         response="Internal error"
         status=False
-        group = Database().get_record(table='group', where=f'name = "{name}"')
+        group = Database().get_record(table='group', where=f"name = '{name}'")
         if group:
             groupid = group[0]['id']
-            where = f'interface = "{interface}" AND `groupid` = "{groupid}"'
+            where = f"interface = '{interface}' AND `groupid` = '{groupid}'"
             group_interface = Database().get_record(table='groupinterface', where=where)
             if group_interface:
                 where = [{"column": "id", "value": group_interface[0]['id']}]
@@ -949,7 +949,7 @@ class Interface():
 
     def get_all_switch_interface(self, name=None):
         """Return all interfaces of a switch (the management one carries mgmt=1)."""
-        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        switch = Database().get_record(table='switch', where=f"name='{name}'")
         if not switch:
             return False, f'Switch {name} not present in database'
         response = {'config': {'switch': {name: {'interfaces': []}}}}
@@ -983,7 +983,7 @@ class Interface():
         """Add or update one or more interfaces of a switch."""
         if not request_data:
             return False, 'Invalid request: Did not receive data'
-        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        switch = Database().get_record(table='switch', where=f"name='{name}'")
         if not switch:
             return False, f'Switch {name} not present in database'
         switchid = switch[0]['id']
@@ -995,20 +995,20 @@ class Interface():
                 return False, 'Invalid request: interface name is required for this operation'
             interface = ifx['interface']
             existing = Database().get_record(
-                table='switchinterface', where=f'switchid="{switchid}" AND interface="{interface}"')
+                table='switchinterface', where=f"switchid='{switchid}' AND interface='{interface}'")
             # rename: the name is just a label (mgmt-ness is the mgmt flag), so any interface renames.
             new_name = ifx.get('newinterfacename')
             if new_name:
                 if not existing:
                     return False, f'Switch {name} interface {interface} not present in database'
                 if Database().get_record(table='switchinterface',
-                                         where=f'switchid="{switchid}" AND interface="{new_name}"'):
+                                         where=f"switchid='{switchid}' AND interface='{new_name}'"):
                     return False, f'Invalid request: switch {name} already has an interface {new_name}'
                 Database().update('switchinterface', [{'column': 'interface', 'value': new_name}],
                                   [{'column': 'id', 'value': existing[0]['id']}])
                 interface = new_name
                 existing = Database().get_record(
-                    table='switchinterface', where=f'switchid="{switchid}" AND interface="{interface}"')
+                    table='switchinterface', where=f"switchid='{switchid}' AND interface='{interface}'")
             row = [{'column': 'switchid', 'value': switchid},
                    {'column': 'interface', 'value': interface}]
             if ifx.get('macaddress') is not None:
@@ -1027,7 +1027,7 @@ class Interface():
                     Database().update('switchinterface', [{'column': 'mgmt', 'value': 1}],
                                       [{'column': 'id', 'value': interface_id}])
                 elif Database().get_record(table='switchinterface',
-                        where=f'switchid="{switchid}" AND mgmt=1 AND id!="{interface_id}"'):
+                        where=f"switchid='{switchid}' AND mgmt=1 AND id!='{interface_id}'"):
                     Database().update('switchinterface', [{'column': 'mgmt', 'value': 0}],
                                       [{'column': 'id', 'value': interface_id}])
                 else:
@@ -1063,18 +1063,18 @@ class Interface():
 
     def delete_switch_interface(self, name=None, interface=None):
         """Remove one interface of a switch (and its ipaddress row)."""
-        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        switch = Database().get_record(table='switch', where=f"name='{name}'")
         if not switch:
             return False, f'Switch {name} not present in database'
         switchid = switch[0]['id']
         existing = Database().get_record(
-            table='switchinterface', where=f'switchid="{switchid}" AND interface="{interface}"')
+            table='switchinterface', where=f"switchid='{switchid}' AND interface='{interface}'")
         if not existing:
             return False, f'Switch {name} interface {interface} not present in database'
         interface_id = existing[0]['id']
         # refuse to remove the sole management interface (a switch must keep a prime)
         if existing[0].get('mgmt') and not Database().get_record(table='switchinterface',
-                where=f'switchid="{switchid}" AND mgmt=1 AND id!="{interface_id}"'):
+                where=f"switchid='{switchid}' AND mgmt=1 AND id!='{interface_id}'"):
             return False, (f'Invalid request: {interface} is the management interface; flag another '
                            'interface with --mgmt first, or remove the switch')
         Database().delete_row('ipaddress', [{'column': 'tablerefid', 'value': interface_id},

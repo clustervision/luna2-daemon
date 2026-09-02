@@ -140,7 +140,7 @@ class Rack():
                 devices = data['devices']
                 del data['devices']
             rackid = None
-            check_rack = Database().get_record(table='rack', where=f'name = "{name}"')
+            check_rack = Database().get_record(table='rack', where=f"name = '{name}'")
             if check_rack:
                 rackid = check_rack[0]['id']
                 if 'newrackname' in request_data['config']['rack'][name]:
@@ -238,7 +238,7 @@ class Rack():
         """
         status = False
         response = f"Rack {name} not in inventory"
-        check_rack = Database().get_record(table='rack', where=f'name = "{name}"')
+        check_rack = Database().get_record(table='rack', where=f"name = '{name}'")
         if check_rack:
             device_data = { 'rackid': None, 'position': None }
             where = [{"column": "rackid", "value": check_rack[0]['id']}]

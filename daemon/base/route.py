@@ -275,7 +275,7 @@ class Route():
         try:
             if not interfaces or not nodeid:
                 return
-            node = Database().get_record(table='node', where=f'id="{nodeid}"')
+            node = Database().get_record(table='node', where=f"id='{nodeid}'")
             groupid = node[0]['groupid'] if node else None
             networkids = [i['networkid'] for i in interfaces.values() if i.get('networkid')]
             routes = self.effective_for_node(nodeid, groupid, networkids)

@@ -8,7 +8,7 @@
 TRIX-1999 / TRIX-1954: choosing a control plugin by what the hardware is.
 
 Control plugins were selected by name alone - node name, then group name, then
-default - and neither table has a vendor column. So plugins/control/dell.py, the
+default - and neither table has a vendor column. So a plugins/control/dell.py, the
 only Redfish implementation in the product, loaded only if a customer happened to
 have a node or a group called "dell". On any real cluster it never ran.
 
@@ -246,19 +246,23 @@ def test_allowable_values_are_read_from_the_action_info_resource():
 
 # --- the vendor file ---------------------------------------------------------
 
-def test_dell_inherits_the_whole_control_contract():
+def test_no_shipped_vendor_file_bypasses_the_redfish_gate():
     """
-    dell.py overrides nothing today. It exists as the name the search path resolves
-    for a Dell node and as the place Dell behaviour goes when a board needs it - so
-    what matters is that it still answers every mandatory method.
+    The generic redfish plugin is offered only with evidence that the BMC speaks
+    Redfish, because trying it blind costs a connect timeout per node before the
+    ipmitool fallback runs. A vendor file that merely inherits it is selected by
+    manufacturer, evidence or not, and undoes that gate for the whole fleet of
+    that vendor. So no vendor file ships here: vendor behaviour lives in
+    plugins/redfish/<vendor>.py, and control stays default plus redfish.
     """
-    from plugins.control.dell import Plugin as DellPlugin
-    from plugins.control.redfish import Plugin as RedfishControl
+    import os
 
-    assert issubclass(DellPlugin, RedfishControl)
-    for method in ('power_on', 'power_off', 'power_reset', 'power_cycle', 'power_status',
-                   'identify', 'no_identify', 'sel_list', 'sel_clear'):
-        assert callable(getattr(DellPlugin(), method)), method
+    control = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__)))), 'daemon', 'plugins', 'control')
+    shipped = sorted(name[:-3] for name in os.listdir(control)
+                     if name.endswith('.py') and not name.startswith('_'))
+    assert shipped == ['default', 'redfish'], \
+        f'a control vendor file would be selected by manufacturer ahead of the redfish gate: {shipped}'
 
 
 def test_every_shipped_control_plugin_answers_the_whole_contract():
@@ -276,7 +280,7 @@ def test_every_shipped_control_plugin_answers_the_whole_contract():
                 'identify', 'no_identify', 'sel_list', 'sel_clear')
     shipped = [name[:-3] for name in sorted(os.listdir(control))
                if name.endswith('.py') and not name.startswith('_')]
-    assert 'default' in shipped and 'redfish' in shipped and 'dell' in shipped
+    assert 'default' in shipped and 'redfish' in shipped
     for name in shipped:
         module = importlib.import_module(f'plugins.control.{name}')
         instance = module.Plugin()

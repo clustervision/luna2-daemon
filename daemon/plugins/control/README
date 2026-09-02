@@ -28,6 +28,12 @@
 #
 # so hardware that differs within one vendor gets its own file without the vendor
 # file having to know about it.
+#
+# No vendor file ships here. The redfish plugin is offered only with evidence that
+# the BMC speaks Redfish (a redfishsetup or a redfish inventory snapshot); a vendor
+# file that inherits it is selected by manufacturer regardless, and costs every
+# node of that vendor without Redfish a connect timeout before the ipmitool
+# fallback. Vendor behaviour belongs in plugins/redfish/<vendor>.py.
 
 # The manufacturer and the model are DERIVED, from the node's nodeinventory row -
 # there is no column for an administrator to set. Where both an inband and a

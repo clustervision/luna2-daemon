@@ -257,7 +257,7 @@ class ProfileSync():
                         self.reconcile()
                     pipeline = Helper().Pipeline()
                     claimed = {}
-                    while next_id := Queue().next_task_in_queue('profile', status='queued'):
+                    while next_id := Queue().next_task_in_queue('profile', status='queued', window=None):
                         task = Database().get_record(table='queue', where=f'id = "{next_id}"')
                         if task and task[0]['task'] == 'sync_profiles' and task[0]['param']:
                             pipeline.add_nodes({task[0]['param']: 'sync_profiles'})

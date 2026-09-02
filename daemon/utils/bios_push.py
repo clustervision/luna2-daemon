@@ -418,7 +418,7 @@ class BiosPush():
                 if (not ha_object.get_hastate()) or ha_object.get_role():
                     self.collect_queued_inventory()
                     self.reclaim_abandoned()
-                    while next_id := Queue().next_task_in_queue('bios', status='queued'):
+                    while next_id := Queue().next_task_in_queue('bios', status='queued', window=None):
                         task = Database().get_record(table='queue', where=f'id = "{next_id}"')
                         if not task:
                             continue
@@ -548,7 +548,7 @@ class BiosPush():
         from base.nodeinventory import NodeInventory
 
         pending = []
-        while next_id := Queue().next_task_in_queue('redfish', status='queued'):
+        while next_id := Queue().next_task_in_queue('redfish', status='queued', window=None):
             task = Database().get_record(table='queue', where=f'id = "{next_id}"')
             if task and task[0].get('task') == 'collect_redfish_inventory':
                 pending.append(task[0]['param'])

@@ -173,7 +173,11 @@ class Queue(object):
                 tasks.append(row['id'])
         return tasks
 
-    def next_task_in_queue(self,subsystem,status=None,request_id=None,owner_pid=None):
+    def next_task_in_queue(self,subsystem,status=None,request_id=None,owner_pid=None,window='-60 minute'):
+        # The window drops tasks older than an hour, which suits the short-lived
+        # subsystems it was written for. A drain that can legitimately take longer
+        # than that per batch - a BIOS push reboots each node, a delivery waits on
+        # nodes - passes window=None, or the tail of its queue is never served.
         where=None
         status_query, request_id_query = "", ""
         if status:
@@ -186,7 +190,8 @@ class Queue(object):
         # co-processing a chain a per-request mother is on. The atomic claim can't do this: the two
         # mothers take different task ids of one chain, so only a chain-level check catches it.
         limit = "" if owner_pid is not None else " LIMIT 1"
-        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC{limit}"
+        window_query = f"created>datetime('now','{window}') AND" if window else ""
+        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} {window_query} created<=datetime('now') ORDER BY id ASC{limit}"
         task = Database().get_record(table='queue', where=where)
         if not task:
             return False

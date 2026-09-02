@@ -78,41 +78,62 @@ def token_required(function):
     return decorator
 
 
-def provision_token_required(function):
+def provision_token_required(function=None, *, node_in_payload=None, only=None):
     """
     Input - Token
     Process - Accept an admin token, or a node-scoped provision token whose
-    'node' claim matches the node/name in the request. Used only on the
-    endpoints the in-install kickstart script must reach.
+    'node' claim matches the node in the request: the node/name path segment
+    by default, or the payload field named by node_in_payload where the path
+    names something else (an importer, say). `only` restricts a provision
+    token to the named values of the route's name segment; an admin token is
+    never restricted.
     Output - Success or Failure.
     """
-    @wraps(function)
-    def decorator(*args, **kwargs):
-        token = None
-        if 'x-access-tokens' in request.headers:
-            token = request.headers['x-access-tokens']
-        if not token:
-            LOGGER.error('A valid token is missing. None supplied')
-            response = {'message': 'A valid token is missing'}
-            return json.dumps(response), 401
-        try:
-            claims = jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256'])
-        except jwt.exceptions.DecodeError:
-            LOGGER.error('Token is invalid. Cannot decode')
-            response = {'message': 'Token is invalid'}
-            return json.dumps(response), 401
-        except Exception as exp:
-            LOGGER.error(f'Token is invalid. {exp}')
-            response = {'message': 'Token is invalid'}
-            return json.dumps(response), 401
-        if claims.get('scope') == 'provision':
-            target = kwargs.get('node') or kwargs.get('name')
-            if target and claims.get('node') != target:
-                LOGGER.error(f"Provision token for {claims.get('node')} used on {target}")
-                response = {'message': 'Token is not valid for this node'}
-                return json.dumps(response), 403
-        return function(**kwargs)
-    return decorator
+    def wrap(function):
+        @wraps(function)
+        def decorator(*args, **kwargs):
+            token = None
+            if 'x-access-tokens' in request.headers:
+                token = request.headers['x-access-tokens']
+            if not token:
+                LOGGER.error('A valid token is missing. None supplied')
+                response = {'message': 'A valid token is missing'}
+                return json.dumps(response), 401
+            try:
+                claims = jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256'])
+            except jwt.exceptions.DecodeError:
+                LOGGER.error('Token is invalid. Cannot decode')
+                response = {'message': 'Token is invalid'}
+                return json.dumps(response), 401
+            except Exception as exp:
+                LOGGER.error(f'Token is invalid. {exp}')
+                response = {'message': 'Token is invalid'}
+                return json.dumps(response), 401
+            if claims.get('scope') == 'provision':
+                if only is not None and kwargs.get('name') not in only:
+                    LOGGER.error(f"Provision token for {claims.get('node')} used on {kwargs.get('name')}")
+                    response = {'message': 'Token is not permitted for this endpoint'}
+                    return json.dumps(response), 403
+                if node_in_payload:
+                    # a dict, or a list of dicts, each naming a host; a host may be
+                    # given as an FQDN while the token carries the short node name
+                    payload = request.get_json(silent=True)
+                    entries = payload if isinstance(payload, list) else [payload]
+                    targets = [entry.get(node_in_payload) for entry in entries if isinstance(entry, dict)]
+                    if not targets or any(not target or str(target).split('.')[0] != claims.get('node')
+                                          for target in targets):
+                        LOGGER.error(f"Provision token for {claims.get('node')} used for {targets}")
+                        response = {'message': 'Token is not valid for this node'}
+                        return json.dumps(response), 403
+                else:
+                    target = kwargs.get('node') or kwargs.get('name')
+                    if target and claims.get('node') != target:
+                        LOGGER.error(f"Provision token for {claims.get('node')} used on {target}")
+                        response = {'message': 'Token is not valid for this node'}
+                        return json.dumps(response), 403
+            return function(**kwargs)
+        return decorator
+    return wrap(function) if function is not None else wrap
 
 
 def agent_check(function):

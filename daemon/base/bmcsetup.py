@@ -33,6 +33,7 @@ import uuid
 from utils.log import Log
 from utils.model import Model
 from utils.database import Database
+from utils.helper import Helper
 
 
 class BMCSetup():

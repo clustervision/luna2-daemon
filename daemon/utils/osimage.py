@@ -768,6 +768,7 @@ class OsImage(object):
                         return False
 
                     if not image[0]['path']:
+                        image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                         filesystem_plugin = 'default'
                         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
                             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']

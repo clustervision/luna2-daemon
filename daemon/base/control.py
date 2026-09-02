@@ -99,6 +99,7 @@ class Control():
             if bmcsetup and 'device' in node[0] and node[0]['device']:
                 username = bmcsetup[0]['username']
                 password = bmcsetup[0]['password']
+                cipher = bmcsetup[0]['cipher']
                 action = action.replace('_', '')
                 result, message = NodeControl().control_action(
                     node[0]['nodename'],
@@ -107,7 +108,7 @@ class Control():
                     node[0]['device'],
                     username,
                     password,
-                    cipher=bmcsetup[0].get('cipher')
+                    cipher=cipher
                 )
                 response = {'control': {subsystem: message}}
                 if 'power' in action:

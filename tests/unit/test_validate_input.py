@@ -79,6 +79,46 @@ def test_a_quoted_name_is_rejected_rather_than_cleaned_into_a_valid_one():
     assert not validate_input.ERROR, "an ordinary value must still pass"
 
 
+def test_the_network_key_takes_an_address_as_well_as_a_name():
+    """The key is a name in interface payloads and the address in the network table; a domain-name rule refused every `network add`."""
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+
+    for payload in ('10.150.0.0/24', '10.150.0.0', 'fd00:1::/64', 'ipmi', 'ipmi.cluster'):
+        validate_input.ERROR = None
+        assert filter_data(payload, 'network') == payload
+        assert not validate_input.ERROR, f"{payload!r} is a valid network value and was refused"
+
+    for payload in ("ipmi' OR '1'='1", '10.150.0.0/24;', 'IPMI', 'a b'):
+        validate_input.ERROR = None
+        filter_data(payload, 'network')
+        assert validate_input.ERROR, f"{payload!r} must be rejected"
+
+
+def test_a_profile_name_that_can_be_created_can_also_be_assigned():
+    """A profile created under one rule and assigned under another (`profiles`, a csv) could never be assigned."""
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data, STRICT_MATCHES
+
+    validate_input.STRICT_NAME = True
+    validate_input.STRICT_MATCH = STRICT_MATCHES.get('config_profile_post')
+    try:
+        for name in ('slurm-node', 'ntp.v2'):
+            for key in ('name', 'newprofilename', 'profiles', 'profile'):
+                validate_input.ERROR = None
+                filter_data(name, key)
+                assert not validate_input.ERROR, f"{name!r} refused as {key}: {validate_input.ERROR}"
+        for name in ('Slurm_Node', 'ntp v2', 'node"--'):
+            for key in ('name', 'newprofilename', 'profile'):
+                validate_input.ERROR = None
+                filter_data(name, key)
+                assert validate_input.ERROR, f"{name!r} accepted as {key} but the assignment list would refuse it"
+    finally:
+        validate_input.STRICT_NAME = False
+        validate_input.STRICT_MATCH = None
+        validate_input.ERROR = None
+
+
 def test_cleaning_still_happens_for_fields_with_no_regex():
     """
     Only the check moved to the raw value; the sanitising is untouched. A field
@@ -217,3 +257,32 @@ def test_every_route_with_a_name_in_its_path_validates_it():
     assert not offenders, (
         "routes with a <string:...> path segment but neither @validate_name nor "
         "@input_filter (the segment reaches a query unvalidated): " + ', '.join(sorted(offenders)))
+
+
+def test_every_url_segment_has_a_rule():
+    """@validate_name only refuses a segment that has a MATCH rule; without one the raw value reaches the query."""
+    import glob, re
+    from common.validate_input import MATCH
+    segments = set()
+    for path in glob.glob(os.path.join(DAEMON_DIR, 'routes', '*.py')):
+        with open(path, encoding='utf-8') as source:
+            segments |= set(re.findall(r'<string:([a-z_]+)>', source.read()))
+    # action is matched against a fixed set in base/control.py and never reaches a query;
+    # a rule on it once refused every power action (test_profiles pins that)
+    unruled = sorted(segment for segment in segments - {'action'} if segment not in MATCH)
+    assert unruled == [], f"URL segments without a rule, so their raw value reaches a query: {unruled}"
+
+
+def test_a_tag_name_may_carry_a_colon_or_a_plus_but_never_a_quote():
+    """Tags like ubuntu:22.04 or v1+debug existed before the rule was anchored; the anchoring is what keeps the quote out."""
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+    for key in ('osimagetag', 'tag'):
+        for value in ('ubuntu:22.04', 'v1+debug', 'stable', ''):
+            validate_input.ERROR = None
+            filter_data(value, key)
+            assert not validate_input.ERROR, f"{value!r} refused as {key}"
+        for value in ("v1' OR '1'='1", 'v1"--', 'a/b'):
+            validate_input.ERROR = None
+            filter_data(value, key)
+            assert validate_input.ERROR, f"{value!r} accepted as {key}"

@@ -997,33 +997,6 @@ class Helper(object):
         return response
 
 
-    def ipmi_action(self, hostname=None, action=None, username=None, password=None):
-        """
-        This method will perform below operations on node:
-        on, off, reset, identify, noidentify, status
-        RAW Command:
-        ipmitool -U admin -P password chassis power status -H 127.0.0.1 -I lanplus -C3
-        """
-        ## TODO
-        ## Uncomment line 534 with real hostname, and remove line 535.
-        ## Line 535 is for testing purpose.
-        # command =
-        # ipmitool -U {username} -P {password} chassis power {action} -H {hostname} -I lanplus -C3
-        self.logger.info(f'hostname: {hostname}.')
-        command = f'ipmitool -U {username} -P {password} chassis power {action} -H 127.0.0.1 -I lanplus -C3'
-        log_command = command if self.logger.isEnabledFor(logging.DEBUG) else command.replace(password, '******')
-        self.logger.info(f'IPMI command to be executed: {log_command}.')
-        output,exit_code = self.runcommand(command,True,10)
-        if output and exit_code == 0:
-            response = str(output[0].decode())
-            response = response.replace('Chassis Power is ', '')
-            response = response.replace('\n', '')
-        else:
-            response = f"Command execution failed with exit code {exit_code}"
-        self.logger.info(f'response: [{response}]')
-        return response
-
-
     def chunks(self, lst, num):
         """
         Yield successive n-sized chunks from lst.

@@ -217,3 +217,59 @@ def test_no_installer_call_site_glues_two_arguments_together():
     for name in ('templ_install.cfg', 'templ_install_lpart.cfg'):
         body = open(os.path.join(here, 'daemon', 'templates', name), encoding='utf-8').read()
         assert '}}""' not in body, f'{name} has two arguments glued into one'
+
+
+def test_the_bulk_path_carries_the_cipher_too():
+    """
+    Review finding: the cipher reached the single-node route and not the bulk one,
+    so `luna control power status node001,node002` and every multi-node lpower
+    silently fell back to suite 3 - the more common path of the two.
+    """
+    import os, re
+    here = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    body = open(os.path.join(here, 'daemon', 'utils', 'control.py'), encoding='utf-8').read()
+    calls = re.findall(r'self\.control_action\(\s*(.*?)\)', body, re.S)
+    assert calls, 'no internal control_action call found'
+    for call in calls:
+        assert 'cipher' in call, f'a control_action call omits the cipher:\n{call}'
+
+
+def test_a_composing_plugin_hands_the_cipher_to_the_plugin_it_delegates_to():
+    """
+    Review finding: the redfish plugin does not talk IPMI itself - it owns a
+    DefaultPlugin and falls back to it. An attribute set on the outer instance
+    never reached the inner one, so the fallback stayed on suite 3, which is
+    exactly the case this setting exists for. Dell inherits the same shape.
+    """
+    import os, re
+    here = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    folder = os.path.join(here, 'daemon', 'plugins', 'control')
+    for name in os.listdir(folder):
+        if not name.endswith('.py') or name.startswith('__'):
+            continue
+        body = open(os.path.join(folder, name), encoding='utf-8').read()
+        if not re.search(r'self\.\w+\s*=\s*DefaultPlugin\(\)', body):
+            continue
+        inner = re.search(r'self\.(\w+)\s*=\s*DefaultPlugin\(\)', body).group(1)
+        assert '@cipher.setter' in body, \
+            f'{name} delegates to a DefaultPlugin but has no cipher setter'
+        assert f'self.{inner}.cipher = value' in body, \
+            f'{name} does not pass the cipher to the plugin it delegates to'
+
+
+def test_nothing_hardcodes_a_cipher_suite_anywhere_in_the_daemon():
+    """The dead ipmi_action carried its own -C3 for years. Sweep, do not spot-check."""
+    import os, re
+    here = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    offenders = []
+    for root, _dirs, files in os.walk(os.path.join(here, 'daemon')):
+        if '__pycache__' in root:
+            continue
+        for name in files:
+            if not name.endswith('.py'):
+                continue
+            path = os.path.join(root, name)
+            for n, line in enumerate(open(path, encoding='utf-8'), 1):
+                if re.search(r'-C\s*3\b', line) and 'cipher' not in line:
+                    offenders.append(f'{os.path.relpath(path, here)}:{n}')
+    assert offenders == [], f'hardcoded cipher suite: {offenders}'

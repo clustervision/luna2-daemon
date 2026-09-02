@@ -257,3 +257,17 @@ def test_every_route_with_a_name_in_its_path_validates_it():
     assert not offenders, (
         "routes with a <string:...> path segment but neither @validate_name nor "
         "@input_filter (the segment reaches a query unvalidated): " + ', '.join(sorted(offenders)))
+
+
+def test_every_url_segment_has_a_rule():
+    """@validate_name only refuses a segment that has a MATCH rule; without one the raw value reaches the query."""
+    import glob, re
+    from common.validate_input import MATCH
+    segments = set()
+    for path in glob.glob(os.path.join(DAEMON_DIR, 'routes', '*.py')):
+        with open(path, encoding='utf-8') as source:
+            segments |= set(re.findall(r'<string:([a-z_]+)>', source.read()))
+    # action is matched against a fixed set in base/control.py and never reaches a query;
+    # a rule on it once refused every power action (test_profiles pins that)
+    unruled = sorted(segment for segment in segments - {'action'} if segment not in MATCH)
+    assert unruled == [], f"URL segments without a rule, so their raw value reaches a query: {unruled}"

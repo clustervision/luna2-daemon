@@ -49,6 +49,7 @@ control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 REG_EXP = {
     'name': { 'regexp': r'^[a-zA-Z0-9\-\.\_\ ]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
     'artefactfile': { 'regexp': r'^[a-zA-Z0-9\-\.\_\+]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, \'-\', \'_\', \'.\' and \'+\'' },
+    'filename': { 'regexp': r'^[a-zA-Z0-9\-\.\_\+\ ]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\', \'.\' and \'+\'' },
     # anchored as a whole: the earlier '^[...]+|$' was an alternation whose first
     # branch had no end anchor, so any value starting with a valid character passed
     # whatever followed it - a quote included - on every field using this rule
@@ -117,6 +118,18 @@ MATCH = {
     'profiles': 'loosecsv',
     'newprofilename': 'strictname',
     'profile': 'strictname',
+    # URL segments: each reaches a query, so each carries the rule of what it names
+    'secret': 'name',
+    'nodename': 'strictname',
+    'node': 'strictname',
+    'groupname': 'name',
+    'script': 'strictname',
+    'tagname': 'nameandclear',
+    'subset': 'strictname',
+    'filename': 'filename',
+    'subsystem': 'strictname',
+    'request_id': 'strictname',
+    'device_type': 'strictname',
     'scope': 'profilescope',
     'object_type': 'strictname',
     'file': 'artefactfile',

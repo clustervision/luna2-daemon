@@ -106,7 +106,8 @@ class Control():
                     command,
                     node[0]['device'],
                     username,
-                    password
+                    password,
+                    cipher=bmcsetup[0].get('cipher')
                 )
                 response = {'control': {subsystem: message}}
                 if 'power' in action:

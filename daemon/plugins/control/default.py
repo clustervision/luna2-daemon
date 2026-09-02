@@ -136,7 +136,13 @@ class Plugin():
         """
         status = False
         response = ''
-        bash_command = f'ipmitool -I lanplus -C3 -U "{username}" -P "{password}" -H "{device}" '
+        # The cipher suite the board wants, set on this instance by the caller
+        # from the node's bmcsetup. 3 (HMAC-SHA1) is what every board has
+        # accepted for years and stays the default when nothing is configured;
+        # a board in a hardened configuration may require 17 (HMAC-SHA256) and
+        # refuse to authenticate on 3, which looks like a wrong password.
+        cipher = getattr(self, 'cipher', None) or 3
+        bash_command = f'ipmitool -I lanplus -C{cipher} -U "{username}" -P "{password}" -H "{device}" '
         bash_command += f'{subsystem} {action}'
         # 10s. This runs inline in the API request worker, so it is not just how
         # long we wait for this BMC - it is how long this worker is unavailable

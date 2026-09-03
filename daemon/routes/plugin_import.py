@@ -34,7 +34,7 @@ __status__      = "Development"
 from flask import Blueprint, request
 from json import dumps,loads
 from utils.log import Log
-from common.validate_auth import token_required
+from common.validate_auth import provision_token_required
 from common.validate_input import validate_name
 from utils.journal import Journal
 from base.plugin_import import Import
@@ -44,7 +44,9 @@ import_blueprint = Blueprint('import', __name__)
 
 
 @import_blueprint.route('/import/<string:name>', methods=['POST'])
-@token_required
+# a node imports its own hardware alert rules after boot with the provision
+# token it holds; that importer, that node, nothing else
+@provision_token_required(node_in_payload='hostname', only=('prometheus_hw_rules',))
 @validate_name
 def import_data(name=None):
     """

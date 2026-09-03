@@ -257,13 +257,14 @@ def test_dell_inherits_the_whole_control_contract():
 
     assert issubclass(DellPlugin, RedfishControl)
     for method in ('power_on', 'power_off', 'power_reset', 'power_cycle', 'power_status',
-                   'identify', 'no_identify', 'sel_list', 'sel_clear'):
+                   'identify', 'no_identify', 'sel_list', 'sel_clear',
+                   'boot_bios', 'boot_status', 'boot_clear'):
         assert callable(getattr(DellPlugin(), method)), method
 
 
 def test_every_shipped_control_plugin_answers_the_whole_contract():
     """
-    The README calls nine methods mandatory. A vendor file that implements eight of
+    The README calls twelve methods mandatory. A vendor file that implements eleven of
     them raises AttributeError on a live cluster, from inside a thread, on the path
     that powers machines - so it is checked here instead.
     """
@@ -273,7 +274,8 @@ def test_every_shipped_control_plugin_answers_the_whole_contract():
     control = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__)))), 'daemon', 'plugins', 'control')
     required = ('power_on', 'power_off', 'power_reset', 'power_cycle', 'power_status',
-                'identify', 'no_identify', 'sel_list', 'sel_clear')
+                'identify', 'no_identify', 'sel_list', 'sel_clear',
+                'boot_bios', 'boot_status', 'boot_clear')
     shipped = [name[:-3] for name in sorted(os.listdir(control))
                if name.endswith('.py') and not name.startswith('_')]
     assert 'default' in shipped and 'redfish' in shipped and 'dell' in shipped

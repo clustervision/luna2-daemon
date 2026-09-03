@@ -213,6 +213,20 @@ def test_a_patch_returns_the_services_etag_as_if_match():
     assert patch_call['headers'] == {'If-Match': 'W/"abc"'}
 
 
+def test_a_caller_that_hands_in_the_etag_saves_the_read():
+    """A caller that has just read the resource already holds its ETag; on a slow
+    BMC the extra GET is seconds an operator waits, so it is skipped."""
+    redfish = client(routes={
+        ('GET', '/redfish/v1/Systems/1'): FakeResponse(payload={'@odata.etag': 'W/"stale"'}),
+        ('PATCH', '/redfish/v1/Systems/1'): FakeResponse(status_code=204),
+    })
+    status, _ = redfish.patch(path='/redfish/v1/Systems/1', payload={'AssetTag': 'x'},
+                              etag='W/"held"')
+    assert status is True
+    assert [c['method'] for c in redfish.session.calls] == ['PATCH']
+    assert redfish.session.calls[0]['headers'] == {'If-Match': 'W/"held"'}
+
+
 def test_a_resource_without_an_etag_gets_no_if_match_header():
     """
     The header is omitted rather than invented. A service that then refuses the

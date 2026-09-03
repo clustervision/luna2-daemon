@@ -38,7 +38,8 @@ class Plugin():
 
     def __init__(self):
         """
-        on, off, reset, status, cycle, identify, no_identify are required methods
+        on, off, reset, status, cycle, identify, no_identify, sel_list, sel_clear,
+        boot_bios, boot_status and boot_clear are required methods
         """
 
     def power_on(self, device=None, username=None, password=None):
@@ -129,6 +130,20 @@ class Plugin():
             return False, f"{exp}"
         return True, "success"
 
+
+    def boot_bios(self, device=None, username=None, password=None):
+        """
+        Boot targets are Redfish only. The IPMI boot flags are not reliable, and a
+        reset sent without a confirmed override is an ordinary reboot that reads as
+        success, so this refuses rather than tries.
+        """
+        return False, 'boot targets need Redfish; this node has no redfishsetup or Redfish inventory'
+
+    def boot_status(self, device=None, username=None, password=None):
+        return False, 'boot targets need Redfish; this node has no redfishsetup or Redfish inventory'
+
+    def boot_clear(self, device=None, username=None, password=None):
+        return False, 'boot targets need Redfish; this node has no redfishsetup or Redfish inventory'
 
     def execute(self, device=None, subsystem=None, action=None, username=None, password=None, newlines=False):
         """

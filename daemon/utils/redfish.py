@@ -239,7 +239,7 @@ class Redfish():
         return status, data
 
 
-    def patch(self, path=None, payload=None):
+    def patch(self, path=None, payload=None, etag=None):
         """
         This method will modify properties of an existing Redfish resource.
 
@@ -247,13 +247,17 @@ class Redfish():
         If-Match, and refuses the write without it. Where there is no ETag the
         header is left off rather than invented - a service refusing the write is
         an answer, and papering over it would hide a concurrent change.
+
+        A caller that has just read the resource can hand its ETag in and save
+        the read; on a slow BMC every round trip is time an operator waits.
         """
         headers = None
-        status, current = self.get(path=path)
-        if status and isinstance(current, dict):
-            etag = current.get('@odata.etag')
-            if etag:
-                headers = {'If-Match': etag}
+        if not etag:
+            status, current = self.get(path=path)
+            if status and isinstance(current, dict):
+                etag = current.get('@odata.etag')
+        if etag:
+            headers = {'If-Match': etag}
         status, _, data, _ = self.call(method='PATCH', path=path, payload=payload, headers=headers)
         return status, data
 

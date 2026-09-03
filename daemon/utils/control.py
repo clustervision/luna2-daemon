@@ -193,6 +193,20 @@ class Control():
         )
 
 
+    def boot_call(self, control_plugin=None, method=None, device=None,
+                  username=None, password=None):
+        """
+        This method calls one of the boot methods on the selected control plugin.
+
+        They joined the contract after the power ones, so a site plugin written
+        against the nine-method contract lacks them. That is answered per node
+        rather than raised from inside a thread.
+        """
+        function = getattr(control_plugin(), method, None)
+        if not callable(function):
+            return False, f'plugin {control_plugin.__module__} does not implement {method}'
+        return function(device=device, username=username, password=password)
+
     def control_action(self, nodename=None, groupname=None, command=None, device=None,
                        username=None, password=None, payload=None):
         """
@@ -274,6 +288,18 @@ class Control():
                         device = device,
                         username = username,
                         password = password
+                    )
+                case 'nextboot bios':
+                    return_code, message = self.boot_call(
+                        control_plugin, 'boot_bios', device, username, password
+                    )
+                case 'nextboot status':
+                    return_code, message = self.boot_call(
+                        control_plugin, 'boot_status', device, username, password
+                    )
+                case 'nextboot clear':
+                    return_code, message = self.boot_call(
+                        control_plugin, 'boot_clear', device, username, password
                     )
                 case 'redfish setting':
                     return_code, message = self.redfish_interact(
@@ -358,6 +384,14 @@ class Control():
                     return_code, message = hook_plugin().sel_clear(
                         nodename=nodename, groupname=groupname
                     )
+                case 'nextboot bios':
+                    # a boot into BIOS setup is a reset, and a site hook that
+                    # reacts to resets should see this one too
+                    return_code, message = hook_plugin().power_reset(
+                        nodename=nodename, groupname=groupname
+                    )
+                case 'nextboot status' | 'nextboot clear':
+                    return_code, message = True, 'no hook for the boot override itself'
                 case _:
                     return_code, message = False, "Instruction not implemented"
 

@@ -212,6 +212,7 @@ def input_filter(checks=None, skip=None, json=True):
             _st().error = None
             _st().strict_name = True
             _st().strict_match = None
+            _st().skip_list = []
             if function.__name__ not in STRICT_NAMES:
                 _st().strict_name = False
             elif function.__name__ in STRICT_MATCHES.keys():
@@ -230,7 +231,7 @@ def input_filter(checks=None, skip=None, json=True):
                     _st().skip_list.append(str(skip))
                 else:
                     # data = request.args.to_dict() ## For Tracker - Sumit
-                    _st().skip_list = skip
+                    _st().skip_list = list(skip)
             LOGGER.debug(f"---- START ---- {data}")
             # Checking for Name in kwargs and appending the name in checks - Sumit
             if 'name' in kwargs:
@@ -345,7 +346,7 @@ def filter_data(data=None, name=None):
             return
     if name in MATCH.keys():
         if MATCH[name] in RESERVED.keys():
-            for reserved in RESERVED[MATCH['name']]:
+            for reserved in RESERVED[MATCH[name]]:
                 if str(data) == reserved:
                     LOGGER.info(f"RESERVED name = {name} with data = {data} is a reserved keyword")
                     _st().error = f"field {name} with content {data} is a reserved keyword: {reserved}"

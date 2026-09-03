@@ -333,3 +333,66 @@ def test_the_default_script_plugin_can_be_asked_for():
     filter_data('default"--', 'script')
     assert validate_input._st().error
     validate_input._st().error = None
+
+
+def _skip_app(skip_list, checks):
+    """Two routes as the tracker has them: a list-form skip and a string-form skip."""
+    import json as jsonlib
+    from flask import Flask, request
+    from common.validate_input import input_filter
+    app = Flask(__name__)
+
+    @app.route('/list', methods=['POST'])
+    @input_filter(checks=checks, skip=skip_list)
+    def list_form():
+        return jsonlib.dumps({'ok': True}), 200
+
+    @app.route('/string', methods=['POST'])
+    @input_filter(checks=None, skip='other')
+    def string_form():
+        return jsonlib.dumps(request.data), 200
+    return app.test_client()
+
+
+def test_a_refused_structure_leaves_no_skip_list_on_the_thread():
+    """
+    The decorator resets the error and the strict state on entry but used to leave
+    the skip list to the success path, so a request refused on its structure left
+    its skip list on the thread for the next request to inherit.
+    """
+    import json as jsonlib
+    client = _skip_app(['note'], ['config'])
+    assert client.post('/list', json={'nothing': 1}).status_code == 400
+    filtered = jsonlib.loads(client.post('/string', json={'note': "it's"}).get_data(as_text=True))
+    assert filtered['note'] == 'its', 'the next request must filter the field the refused one skipped'
+
+
+def test_the_decorators_own_list_is_never_mutated():
+    """
+    The list form bound the decorator's list object itself, so a later string-form
+    append on the same thread grew that list for every request in the process.
+    """
+    shared = ['note']
+    client = _skip_app(shared, ['config'])
+    client.post('/list', json={'nothing': 1})
+    client.post('/string', json={})
+    assert shared == ['note'], 'the decorator argument must not change under it'
+
+
+def test_reserved_words_are_the_rules_own_not_the_name_rules():
+    """
+    A rule with its own reserved list must refuse only its own words. The lookup
+    used the name rule's list for every rule, which only went unnoticed because
+    no field maps to the one rule whose list differs.
+    """
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+    validate_input.MATCH['freeform'] = 'anything'
+    try:
+        assert filter_data('inventory', 'freeform') == 'inventory'
+        assert validate_input._st().error is None, "the anything rule does not reserve 'inventory'"
+        filter_data('default', 'freeform')
+        assert validate_input._st().error, "the anything rule does reserve 'default'"
+    finally:
+        del validate_input.MATCH['freeform']
+        validate_input._st().error = None

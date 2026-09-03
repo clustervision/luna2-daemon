@@ -556,6 +556,11 @@ def bootstrap(bootstrapfile=None):
             {'column': 'partscript', 'value': "bW91bnQgLW8gbXBvbD1pbnRlcmxlYXZlIC10IHRtcGZzIHRtcGZzIC9zeXNyb290Cg=="},
             {'column': 'postscript', 'value': "ZWNobyAndG1wZnMgLyB0bXBmcyBtcG9sPWludGVybGVhdmUgMCAwJyA+PiAvc3lzcm9vdC9ldGMvZnN0YWIK"}
         ]
+    if default_redfishsetup()[0]:
+        # the default profile is row 1, the way the bmcsetup one is; the flag is
+        # what lets Luna create its accounts on the nodes' BMCs
+        default_group += [{'column': 'redfishsetupid', 'value': '1'},
+                          {'column': 'setupredfish', 'value': '1'}]
     Database().insert('group', default_group)
 
     # we call create plugin after group creation
@@ -677,11 +682,50 @@ def bootstrap(bootstrapfile=None):
     Database().insert('groupinterface', default_group_interface)
     Database().insert('groupinterface', bmc_group_interface)
     Database().insert('bmcsetup', default_bmcsetup)
+    redfishsetup, redfishaccount = default_redfishsetup()
+    if redfishsetup:
+        Database().insert('redfishsetup', redfishsetup)
+        Database().insert('redfishaccount', redfishaccount)
     Database().insert('switch', default_switch)
     current_time = str(time.time()).replace('.', '')
     new_bootstrapfile = f'/trinity/local/luna/daemon/config/bootstrap-{current_time}.ini'
     os.rename(bootstrapfile, new_bootstrapfile)
     return True
+
+
+def default_redfishsetup(parser=None):
+    """
+    The default Redfish profile, from an optional [REDFISHSETUP] section: one
+    account with the role a site wants Luna to work with. Optional so that a
+    bootstrap.ini written before the section existed still starts a daemon; the
+    installer renders it, with a generated password, the way it renders BMCSETUP.
+
+    Returns the redfishsetup row and its account row, or (None, None).
+    """
+    parser = parser or configParser
+    if not parser.has_section('REDFISHSETUP'):
+        return None, None
+    section = {key.upper(): value for key, value in parser.items('REDFISHSETUP')}
+    username = section.get('USERNAME')
+    password = section.get('PASSWORD')
+    if not username or not password:
+        LOGGER.warning('[REDFISHSETUP] needs USERNAME and PASSWORD; no default Redfish profile made')
+        return None, None
+    name = section.get('NAME') or 'default-redfishsetup'
+    role = section.get('ROLE') or 'Administrator'
+    redfishsetup = [
+        {'column': 'name', 'value': name},
+        {'column': 'scheme', 'value': 'https'},
+        {'column': 'verify', 'value': '0'}
+    ]
+    redfishaccount = [
+        {'column': 'redfishsetupid', 'value': '1'},
+        {'column': 'name', 'value': 'default'},
+        {'column': 'username', 'value': username},
+        {'column': 'password', 'value': password},
+        {'column': 'role', 'value': role}
+    ]
+    return redfishsetup, redfishaccount
 
 
 def validate_bootstrap():

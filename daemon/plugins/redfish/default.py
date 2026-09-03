@@ -41,7 +41,7 @@ class Plugin():
 
     def __init__(self):
         """
-        setting and upload are required methods.
+        setting, upload and create_account are required methods.
         """
 
     def setting(self, redfish=None, uri=None, payload=None):
@@ -125,6 +125,42 @@ class Plugin():
         registry, so a stale mapping refuses rather than misfires.
         """
         return {}
+
+    def create_account(self, redfish=None, collection=None, username=None, password=None,
+                       role=None):
+        """
+        This method creates one account on the AccountService.
+
+        Two shapes exist in the field. The standard one is a POST to the Accounts
+        collection, which AMI and HPE accept. iDRAC and older MegaRAC refuse it and
+        expect the first empty slot to be filled with a PATCH instead - the slots
+        exist from the factory with an empty UserName. The POST is tried first and
+        its refusal is what selects the second shape, so a board is never asked
+        which it is.
+        """
+        if not collection or not username:
+            return False, 'no collection or user name to create an account with'
+        body = {'UserName': username, 'Password': password, 'RoleId': role, 'Enabled': True}
+        status, response = redfish.post(path=collection, payload=body)
+        if status:
+            return True, 'created'
+        refusal = response
+        status, members = redfish.get(path=collection)
+        if not status:
+            return False, f'POST refused ({refusal}) and the collection is unreadable: {members}'
+        for member in members.get('Members', []):
+            path = member.get('@odata.id')
+            if not path:
+                continue
+            status, data = redfish.get(path=path)
+            if not status or str(data.get('UserName') or ''):
+                continue
+            status, response = redfish.patch(path=path, payload=body,
+                                             etag=data.get('@odata.etag'))
+            if status:
+                return True, f'created in slot {data.get("Id", path)}'
+            return False, f'POST refused ({refusal}); PATCH of slot {data.get("Id", path)} refused: {response}'
+        return False, f'POST refused ({refusal}) and the board has no empty account slot'
 
 
     def probe(self, redfish=None, uri=None):

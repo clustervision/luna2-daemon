@@ -36,6 +36,7 @@ from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.redfishsetup import RedfishSetup
+from utils.redfish_accounts import RedfishAccounts
 from utils.journal import Journal
 from utils.helper import Helper
 
@@ -158,4 +159,22 @@ def config_redfishsetup_account_delete(name=None, account=None):
         status, response = RedfishSetup().delete_redfishsetup_account(name, account)
     access_code = Helper().get_access_code(status, response)
     response = {'message': response}
+    return response, access_code
+
+
+@redfishsetup_blueprint.route("/config/node/redfishaccounts/_provision", methods=['POST'])
+@token_required
+@input_filter(checks=['config:node'], skip=None)
+def config_node_redfishaccounts_provision():
+    """
+    This route makes the Redfish accounts of a hostlist or a group match their
+    redfishsetup, on demand. The same work an install queues, without the wait.
+    """
+    access_code = 404
+    status, response = RedfishAccounts().bulk_provision(request.data)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code

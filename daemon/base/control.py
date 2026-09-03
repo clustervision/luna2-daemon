@@ -113,7 +113,8 @@ class Control():
                 response = {'control': {subsystem: message}}
                 if 'power' in action:
                     action=action.replace('power ','') # wee ugly but we need to review the API response design - Antoine
-                if result and subsystem == "power" and action in ['on','off','reset','cycle']:
+                if result and ((subsystem == "power" and action in ['on','off','reset','cycle'])
+                               or (subsystem == "nextboot" and action == 'bios')):
                     state = {'monitor': {'status': {hostname: {'state': command} } } }
                     Monitor().update_nodestatus(hostname, state)
                 runresult, runmessage = NodeControl().control_hook(
@@ -222,7 +223,8 @@ class Control():
                                 # data is message is like 'node:result:message'
                                 self.logger.debug(f"control POST regexp match: [{node}], [{message}], [{result}]")
 
-                                if result == 'True' and subsystem == "power" and action in ['on','off','reset','cycle']:
+                                if result == 'True' and ((subsystem == "power" and action in ['on','off','reset','cycle'])
+                                                         or (subsystem == "nextboot" and action == 'bios')):
                                     state = {'monitor': {'status': {node: {'state': command} } } }
                                     Monitor().update_nodestatus(node, state)
 

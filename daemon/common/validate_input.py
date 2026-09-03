@@ -65,7 +65,7 @@ REG_EXP = {
     'interface': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
     'intfandclear': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}|$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
     'ipaddress': { 'regexp': r'^[0-9a-f:\.]*$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
-    'macaddress': { 'regexp': r'^(([0-9A-Fa-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
+    'macaddress': { 'regexp': r'^(([0-9A-Fa-f]{2}((-|:)[0-9A-Fa-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
     'domainname': { 'regexp': r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.?$', 'error': "lowercase a-z, numbers 0-9, '-', labels 1-63 chars, labels not starting/ending with '-'" },
     # a network's name in most payloads, its address (optionally /prefix) in the network table's own
     'network': { 'regexp': r'^(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.?|[0-9a-f:\.]+(?:/[0-9]{1,3})?)$', 'error': "a network name (lowercase a-z, numbers 0-9, '-', '.') or an address with an optional /prefix" },

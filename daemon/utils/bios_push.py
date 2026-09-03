@@ -546,18 +546,30 @@ class BiosPush():
         stall every BIOS push on the cluster and nothing would say why.
         """
         from base.nodeinventory import NodeInventory
+        from utils.redfish_accounts import RedfishAccounts
 
-        pending = []
+        pending, provision = [], []
         while next_id := Queue().next_task_in_queue('redfish', status='queued', window=None):
             task = Database().get_record(table='queue', where=f"id = '{next_id}'")
             if task and task[0].get('task') == 'collect_redfish_inventory':
                 pending.append(task[0]['param'])
+            elif task and task[0].get('task') == 'provision_redfish_accounts':
+                provision.append(task[0]['param'])
             # removed at claim time on purpose, unlike a push: a lost collection
             # costs one stale inventory row until the next one, where a lost push
-            # leaves a machine part-configured
+            # leaves a machine part-configured. A lost provisioning is the same:
+            # the next install queues it again
             Queue().remove_task_from_queue(next_id)
-        if not pending:
+        if not pending and not provision:
             return False
+        if provision:
+            # one sweep for both: a node is provisioned before it is collected,
+            # because the collection logs in as the account being created
+            self.logger.info(f'provisioning Redfish accounts for {len(provision)} node(s) '
+                             f'and collecting inventory for {len(pending)} that reported '
+                             'their BMC configured')
+            RedfishAccounts().settle(provision=provision, collect=pending)
+            return True
         self.logger.info(f'collecting Redfish inventory for {len(pending)} node(s) '
                          'that reported their BMC configured')
         NodeInventory().bulk_collect_redfish(

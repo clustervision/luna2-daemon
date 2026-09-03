@@ -422,10 +422,8 @@ def _baseline_classic_template():
 # direction it falls, and delete the entry once it lands on the baseline. What must never
 # be listed is a difference nobody meant: every osimage that has not been rebuilt runs
 # this file, so a line lost here changes nodes nobody has touched.
-# the LUNA_URL block tested the literal word LUNA_API_PROTOCOL, so an IPv6 controller
-# address was never bracketed; it now tests the rendered controller address
-BLESSED_CLASSIC_REMOVALS = ['if [ "$(echo LUNA_API_PROTOCOL | grep \':\')" ]; then']
-BLESSED_CLASSIC_ADDITIONS = ['if [ "$(echo "{{ LUNA_CONTROLLER }}" | grep \':\')" ]; then']
+BLESSED_CLASSIC_REMOVALS = []
+BLESSED_CLASSIC_ADDITIONS = []
 
 
 MERGED_HINT = (

@@ -57,7 +57,7 @@ class Plugin():
     # -------------------------------
     fetch = """
     echo "Luna2: Downloading imagefile {{ WEBSERVER_PROTOCOL }}://{{ LUNA_CONTROLLER }}:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }} to /{{ LUNA_SYSTEMROOT }}/{{ LUNA_IMAGEFILE }}"
-    if [ "$(echo LUNA_API_PROTOCOL | grep ':')" ]; then
+    if [ "$(echo "{{ LUNA_CONTROLLER }}" | grep ':')" ]; then
         curl $INTERFACE -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://[{{ LUNA_CONTROLLER }}]:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }} > /{{ LUNA_SYSTEMROOT }}/{{ LUNA_IMAGEFILE }}
     else
         curl $INTERFACE -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://{{ LUNA_CONTROLLER }}:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }} > /{{ LUNA_SYSTEMROOT }}/{{ LUNA_IMAGEFILE }}

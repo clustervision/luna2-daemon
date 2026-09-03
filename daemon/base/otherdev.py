@@ -91,7 +91,7 @@ class OtherDev():
             if 'nonetwork' in data:
                 nonetwork = Helper().make_bool(data['nonetwork'])
                 del data['nonetwork']
-            device = Database().get_record(table=self.table, where=f'name = "{name}"')
+            device = Database().get_record(table=self.table, where=f"name = '{name}'")
             if device:
                 device_id = device[0]['id']
                 if 'newotherdevname' in request_data['config']['otherdev'][name]:
@@ -108,6 +108,8 @@ class OtherDev():
             if 'network' in data.keys():
                 network = data['network']
                 del data['network']
+            if data.get('macaddress'):
+                data['macaddress'] = data['macaddress'].lower()
             column_check = Helper().compare_list(data, device_columns)
             data = Helper().check_ip_exist(data)
             if data:
@@ -177,7 +179,7 @@ class OtherDev():
             else:
                 status=False
                 return status, 'Invalid request: New device name not provided'
-            where = f'name = "{newotherdevname}"'
+            where = f"name = '{newotherdevname}'"
             device = Database().get_record(table=self.table, where=where)
             if device:
                 status=False
@@ -193,7 +195,7 @@ class OtherDev():
             column_check = Helper().compare_list(data, device_columns)
             if data:
                 if column_check:
-                    where=f'name = "{name}"'
+                    where=f"name = '{name}'"
                     device = Database().get_record(table=self.table, where=where)
                     if not device:
                         status = False
@@ -202,6 +204,8 @@ class OtherDev():
                     for key in device[0]:
                         if key not in data:
                             data[key] = device[0][key]
+                    if data.get('macaddress'):
+                        data['macaddress'] = data['macaddress'].lower()
 
                     row = Helper().make_rows(data)
                     device_id = Database().insert(self.table, row)
@@ -236,14 +240,14 @@ class OtherDev():
                                 'network.id=ipaddress.networkid',
                                 'ipaddress.tablerefid=otherdevices.id'
                             ],
-                            [f'otherdevices.name="{name}"', 'ipaddress.tableref="otherdevices"']
+                            [f"otherdevices.name='{name}'", 'ipaddress.tableref="otherdevices"']
                         )
                         if network:
                             networkname = network[0]['networkname']
                     ipaddress6, result, result6, avail = None, False, True, None
                     if not ipaddress:
                         if not network:
-                            where = f'name = "{networkname}"'
+                            where = f"name = '{networkname}'"
                             network = Database().get_record(table='network', where=where)
                             if network:
                                 networkname = network[0]['networkname']
@@ -316,7 +320,7 @@ class OtherDev():
         """
         This method will delete an other-device.
         """
-        device = Database().get_record(table='otherdevices', where=f'name = "{name}"')
+        device = Database().get_record(table='otherdevices', where=f"name = '{name}'")
         if device:
             Database().delete_row('rackinventory', [{"column": "tablerefid", "value": device[0]['id']},
                                                     {"column": "tableref", "value": "otherdevices"}])

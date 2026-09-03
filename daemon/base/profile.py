@@ -95,7 +95,7 @@ class Profile():
             'enabled': self.is_enabled(profile),
             'files': []
         }
-        where = f'profileid = "{profile["id"]}"'
+        where = f"profileid = '{profile['id']}'"
         for record in Database().get_record(table='profilefile', where=where) or []:
             del record['id']
             del record['profileid']
@@ -127,7 +127,7 @@ class Profile():
         This method will return a requested profile in detailed format.
         """
         status=False
-        profile = Database().get_record(table='profile', where=f'name = "{name}"')
+        profile = Database().get_record(table='profile', where=f"name = '{name}'")
         if profile:
             response = {'config': {'profiles': {name: self._profile_with_files(profile[0])} }}
             status=True
@@ -152,7 +152,7 @@ class Profile():
             # popped before the column check: it is a request about the name, not a
             # column of its own, exactly as the other entities take theirs
             newprofilename = data.pop('newprofilename', None)
-            profile = Database().get_record(table='profile', where=f'name = "{name}"')
+            profile = Database().get_record(table='profile', where=f"name = '{name}'")
             profile_columns = Database().get_columns('profile')
             column_check = Helper().compare_list(data, profile_columns)
             if not column_check:
@@ -163,7 +163,7 @@ class Profile():
                     # created reads as though they had asked for a create, and sends
                     # them looking in the wrong place for the typo
                     return False, f'Profile {name} is not available'
-                if Database().get_record(table='profile', where=f'name = "{newprofilename}"'):
+                if Database().get_record(table='profile', where=f"name = '{newprofilename}'"):
                     return False, f'Invalid request: {newprofilename} already present in database'
                 data['name'] = newprofilename
             # a profile that writes nothing and acts on nothing does nothing, and it
@@ -182,7 +182,7 @@ class Profile():
             service = data.get('service', profile[0]['service'] if profile else None)
             existing_files = Database().get_record(
                 table='profilefile',
-                where=f'profileid = "{profile[0]["id"]}"') if profile else None
+                where=f"profileid = '{profile[0]['id']}'") if profile else None
             if not service and not files and not existing_files:
                 return False, ('Invalid request: a profile needs either a service to act '
                                'on or at least one file')
@@ -218,7 +218,7 @@ class Profile():
                     if entry.get('owner') and not Helper().check_owner(entry['owner']):
                         unresolvable.append(f"{entry['name']}: {entry['owner']}")
                     file_name = entry['name']
-                    where = f'profileid = "{profileid}" AND name = "{file_name}"'
+                    where = f"profileid = '{profileid}' AND name = '{file_name}'"
                     existing = Database().get_record(table='profilefile', where=where)
                     # a change carries only what is changing: 'give this file mode 600'
                     # says nothing about its content, and demanding one would make the
@@ -258,11 +258,11 @@ class Profile():
         response="Internal error"
         if request_data:
             data = request_data['config']['profiles'][name]
-            profile = Database().get_record(table='profile', where=f'name = "{name}"')
+            profile = Database().get_record(table='profile', where=f"name = '{name}'")
             if profile:
                 if 'newprofilename' in data:
                     newname = data['newprofilename']
-                    existing = Database().get_record(table='profile', where=f'name = "{newname}"')
+                    existing = Database().get_record(table='profile', where=f"name = '{newname}'")
                     if existing:
                         response = f'Invalid request: Profile {newname} already present'
                         status=False
@@ -273,7 +273,7 @@ class Profile():
                         newprofile['name'] = newname
                         row = Helper().make_rows(newprofile)
                         new_profileid = Database().insert('profile', row)
-                        where = f'profileid = "{profileid}"'
+                        where = f"profileid = '{profileid}'"
                         for record in Database().get_record(table='profilefile', where=where) or []:
                             del record['id']
                             record['profileid'] = new_profileid
@@ -298,7 +298,7 @@ class Profile():
         This method will delete a requested profile and its files.
         """
         status=False
-        profile = Database().get_record(table='profile', where=f'name = "{name}"')
+        profile = Database().get_record(table='profile', where=f"name = '{name}'")
         if profile:
             profileid = profile[0]['id']
             # in use means still assigned somewhere, exactly as an osimage is guarded.
@@ -325,17 +325,17 @@ class Profile():
         This method will delete one file of a profile.
         """
         status=False
-        profile = Database().get_record(table='profile', where=f'name = "{name}"')
+        profile = Database().get_record(table='profile', where=f"name = '{name}'")
         if profile:
             profileid = profile[0]['id']
-            where = f'profileid = "{profileid}" AND name = "{filename}"'
+            where = f"profileid = '{profileid}' AND name = '{filename}'"
             existing = Database().get_record(table='profilefile', where=where)
             if existing:
                 # the same invariant the create path enforces: a profile with no files
                 # and no service writes nothing and acts on nothing, while still sitting
                 # in the assignment lists looking like configuration
                 remaining = Database().get_record(
-                    table='profilefile', where=f'profileid = "{profileid}"')
+                    table='profilefile', where=f"profileid = '{profileid}'")
                 if len(remaining) == 1 and not profile[0]['service']:
                     return False, (f'Invalid request: {filename} is the last file of '
                                    f'profile {name} and it has no service to act on. '
@@ -375,7 +375,7 @@ class Profile():
             if entry.isdigit():
                 ids.append(int(entry))
                 continue
-            row = Database().get_record(table='profile', where=f'name = "{entry}"')
+            row = Database().get_record(table='profile', where=f"name = '{entry}'")
             if row:
                 ids.append(row[0]['id'])
         return ids
@@ -389,7 +389,7 @@ class Profile():
         """
         names = []
         for profileid in self.profile_ids(assigned):
-            row = Database().get_record(table='profile', where=f'id = "{profileid}"')
+            row = Database().get_record(table='profile', where=f"id = '{profileid}'")
             if row:
                 names.append(row[0]['name'])
         return names
@@ -414,7 +414,7 @@ class Profile():
             ['group.profiles as group_profiles', 'node.profiles as node_profiles'],
             ['group.id=node.groupid'], [f"node.id='{nodeid}'"])
         if not rows:
-            rows = Database().get_record(table='node', where=f'id = "{nodeid}"')
+            rows = Database().get_record(table='node', where=f"id = '{nodeid}'")
             if rows:
                 rows = [{'group_profiles': None, 'node_profiles': rows[0]['profiles']}]
         for row in rows or []:
@@ -445,7 +445,7 @@ class Profile():
         This method returns what a node needs to apply one profile at install time.
         """
         status=False
-        profile = Database().get_record(table='profile', where=f'name = "{name}"')
+        profile = Database().get_record(table='profile', where=f"name = '{name}'")
         if profile:
             response = {'profile': {name: self._boot_detail(profile[0])}}
             status=True
@@ -468,7 +468,7 @@ class Profile():
         if nodeid is None:
             if not name:
                 return False
-            node = Database().get_record(table='node', where=f'name = "{name}"')
+            node = Database().get_record(table='node', where=f"name = '{name}'")
             if not node:
                 return False
             nodeid = node[0]['id']
@@ -476,7 +476,7 @@ class Profile():
         # queueing it only spends a worker chasing an empty delivery, and for an
         # unreachable node that retry then repeats every cool-off forever. Same test the
         # reconcile sweep applies in profile_sync.nodes_behind.
-        record = Database().get_record(table='node', where=f'id = "{nodeid}"')
+        record = Database().get_record(table='node', where=f"id = '{nodeid}'")
         delivered = record[0]['profiles_digest'] if record else None
         if not delivered and not self.merged_profiles(nodeid):
             return False
@@ -503,7 +503,7 @@ class Profile():
         it, and a success wipes it by replacing the row.
         """
         row = Database().get_record(table='monitor',
-                                    where=f'tableref = "{OUTCOME_REF}" '
+                                    where=f"tableref = '{OUTCOME_REF}' "
                                           f'AND tablerefid = "{nodeid}"')
         state = str(row[0]['state']) if row else ''
         if not state.startswith('failed'):
@@ -557,7 +557,7 @@ class Profile():
         an operator who cannot delete a profile should be able to see what is holding it.
         """
         status=False
-        profile = Database().get_record(table='profile', where=f'name = "{name}"')
+        profile = Database().get_record(table='profile', where=f"name = '{name}'")
         if not profile:
             return status, f'Profile {name} is not available'
         members = {'groups': [], 'nodes': []}
@@ -611,7 +611,7 @@ class Profile():
                        operator should not have to remember it
           not applied  no profiles, and nothing was ever delivered: uninvolved
         """
-        where = f'name = "{name}"' if name else None
+        where = f"name = '{name}'" if name else None
         nodes = Database().get_record(table='node', where=where)
         if not nodes:
             return False, f'Node {name} is not available' if name else 'No nodes available'
@@ -625,7 +625,7 @@ class Profile():
             desired = self.node_digest(node['name'])
             frozen = [profile for profile in assigned_list if known.get(profile) is False]
             outcome = Database().get_record(table='monitor',
-                                            where=f'tableref = "{OUTCOME_REF}" '
+                                            where=f"tableref = '{OUTCOME_REF}' "
                                                   f'AND tablerefid = "{node["id"]}"')
             detail, since, failed = '', '', False
             if outcome:
@@ -676,7 +676,7 @@ class Profile():
         exactly the files that disabling is supposed to leave alone.
         """
         status=False
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if not node:
             return False, f'Node {name} is not available'
         # a node with no profiles is a real answer, not an absence: it is precisely the
@@ -686,7 +686,7 @@ class Profile():
         payload = {'node': name, 'profiles': [], 'frozen': []}
         merged = self.merged_profiles(node[0]['id'])
         for profile_name in merged.split(',') if merged else []:
-            profile = Database().get_record(table='profile', where=f'name = "{profile_name}"')
+            profile = Database().get_record(table='profile', where=f"name = '{profile_name}'")
             if not profile:
                 # assigned but since deleted: the rest still applies, and this one's files
                 # are reclaimed like any other removal
@@ -750,12 +750,12 @@ class Profile():
         one call a node needs to apply its profiles without knowing their names.
         """
         status=False
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if node:
             response = {'config': {'profiles': {} }}
             merged = self.merged_profiles(node[0]['id'])
             for profile_name in merged.split(',') if merged else []:
-                profile = Database().get_record(table='profile', where=f'name = "{profile_name}"')
+                profile = Database().get_record(table='profile', where=f"name = '{profile_name}'")
                 if profile:
                     response['config']['profiles'][profile_name] = self._boot_detail(profile[0])
                 else:

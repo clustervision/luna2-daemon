@@ -273,3 +273,20 @@ def test_nothing_hardcodes_a_cipher_suite_anywhere_in_the_daemon():
                 if re.search(r'-C\s*3\b', line) and 'cipher' not in line:
                     offenders.append(f'{os.path.relpath(path, here)}:{n}')
     assert offenders == [], f'hardcoded cipher suite: {offenders}'
+
+
+def test_cipher_suite_zero_is_a_cipher_suite_not_an_absence(monkeypatch):
+    """`or 3` turned a stored 0 into suite 3 without a word; only None means unset."""
+    from plugins.control.default import Plugin
+    from utils import helper as helper_module
+    seen = {}
+
+    def fake_runcommand(self, command, return_exit_code=False, timeout_sec=7200):
+        seen['command'] = command
+        return (b'Chassis Power is on', b'', 0) if return_exit_code else (b'Chassis Power is on', b'')
+
+    monkeypatch.setattr(helper_module.Helper, 'runcommand', fake_runcommand)
+    plugin = Plugin()
+    plugin.cipher = 0
+    plugin.power_status(device='10.0.0.1', username='u', password='p')
+    assert '-C0' in seen['command'], seen['command']

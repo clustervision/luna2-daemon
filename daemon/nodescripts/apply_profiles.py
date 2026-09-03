@@ -216,18 +216,36 @@ def write_file(entry):
     content = base64.b64decode(entry.get('content') or '')
     changed = False
 
+    mode = entry.get('mode') or '644'
+    try:
+        wanted = int(str(mode), 8)
+    except ValueError:
+        wanted = None
+    wanted_owner = entry.get('resolved_owner') or entry.get('owner')
+    uid, gid = resolve_owner(wanted_owner)
+
     made = []
     if file_hash(path) != hashlib.sha256(content).hexdigest():
         made = make_parents(path)
         tmp = path + '.luna.new'
-        with open(tmp, 'wb') as handle:
-            handle.write(content)
+        # mode and owner go on the temporary file before it takes the path's
+        # name, so a key meant for one user is never readable by everyone,
+        # not even between the rename and a chmod
+        descriptor = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            os.write(descriptor, content)
+            if wanted is not None:
+                os.fchmod(descriptor, wanted)
+            if uid is not None:
+                os.fchown(descriptor, uid, gid if gid is not None else -1)
+        finally:
+            os.close(descriptor)
         os.replace(tmp, path)
         changed = True
 
-    mode = entry.get('mode') or '644'
     try:
-        wanted = int(str(mode), 8)
+        if wanted is None:
+            raise ValueError(mode)
         if (os.stat(path).st_mode & 0o7777) != wanted:
             os.chmod(path, wanted)
             changed = True
@@ -238,8 +256,6 @@ def write_file(entry):
     # because this node may have no directory at all - which is the whole reason that
     # resolution happens up there. The name is only the fallback, for a user that
     # exists here and not there. The installer path has always used it this way
-    wanted_owner = entry.get('resolved_owner') or entry.get('owner')
-    uid, gid = resolve_owner(wanted_owner)
     if uid is not None:
         try:
             stat = os.stat(path)
@@ -361,6 +377,11 @@ def apply_payload(payload):
                 'action': profile.get('action'),
                 'created_dirs': made or manifest.get(path, {}).get('created_dirs') or [],
             }
+            # recorded now, not at the end: a later file that cannot be written
+            # aborts the run, and a file that landed but is in no manifest can
+            # never be reverted - the next run backs up our own content as the
+            # original and restores it over itself for good
+            write_manifest({**manifest, **new_manifest})
 
     # what a disabled profile owns: left exactly as it is, and kept in the manifest so
     # nothing below reclaims it. this is the whole of what disabling does.

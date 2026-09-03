@@ -95,13 +95,13 @@ class Secret():
         This method will return all secrets of a requested node in detailed format.
         """
         status=False
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if node:
             nodeid  = node[0]['id']
             groupid  = node[0]['groupid']
-            where =  f'nodeid = "{nodeid}"'
+            where =  f"nodeid = '{nodeid}'"
             nodesecrets = Database().get_record(table='nodesecrets', where=where)
-            where =  f'groupid = "{groupid}"'
+            where =  f"groupid = '{groupid}'"
             groupsecrets = Database().get_record(table='groupsecrets', where=where)
             clustersecrets = Database().get_record(table='clustersecrets')
             if nodesecrets or groupsecrets or clustersecrets:
@@ -172,7 +172,7 @@ class Secret():
         unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['node'][name]
-            node = Database().get_record(table='node', where=f'name = "{name}"')
+            node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
                 if data:
@@ -183,7 +183,7 @@ class Secret():
                         secret_name = secret['name']
                         if secret.get('owner') and not Helper().check_owner(secret['owner']):
                             unresolvable.append(f"{secret_name}: {secret['owner']}")
-                        where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
+                        where = f"nodeid = '{nodeid}' AND name = '{secret_name}'"
                         secret_data = Database().get_record(table='nodesecrets', where=where)
                         if secret_data:
                             node_secret_columns = Database().get_columns('nodesecrets')
@@ -237,10 +237,10 @@ class Secret():
         This method will return a requested secret of a node in detailed format.
         """
         status=False
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if node:
             nodeid  = node[0]['id']
-            where = f'nodeid = "{nodeid}" AND name = "{secret}"'
+            where = f"nodeid = '{nodeid}' AND name = '{secret}'"
             secret_data = Database().get_record(table='nodesecrets', where=where)
             if secret_data:
                 response = {'config': {'secrets': {'node': {name: [] } } } }
@@ -269,7 +269,7 @@ class Secret():
         warning = ''
         if request_data:
             data = request_data['config']['secrets']['node'][name]
-            node = Database().get_record(table='node', where=f'name = "{name}"')
+            node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
                 if data:
@@ -278,7 +278,7 @@ class Secret():
                     secret_name = data[0]['name']
                     if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
                         warning = f". Warning: owner {data[0]['owner']} is not currently resolvable (a numeric uid:gid works without a directory)"
-                    where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
+                    where = f"nodeid = '{nodeid}' AND name = '{secret_name}'"
                     secret_data = Database().get_record(table='nodesecrets', where=where)
                     if column_check:
                         if secret_data:
@@ -335,12 +335,12 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['node'][name]
-            node = Database().get_record(table='node', where=f'name = "{name}"')
+            node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
                 if data:
                     secret_name = data[0]['name']
-                    where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
+                    where = f"nodeid = '{nodeid}' AND name = '{secret_name}'"
                     secret_data = Database().get_record(table='nodesecrets', where=where)
                     if secret_data:
                         if 'newsecretname' in data[0]:
@@ -348,7 +348,7 @@ class Secret():
                             del data[0]['newsecretname']
                             data[0]['nodeid'] = nodeid
                             data[0]['name'] = newsecretname
-                            where = f'nodeid = "{nodeid}" AND name = "{newsecretname}"'
+                            where = f"nodeid = '{nodeid}' AND name = '{newsecretname}'"
                             new_secret_data = Database().get_record(table='nodesecrets', where=where)
                             if new_secret_data:
                                 response = f'Invalid request: Secret {newsecretname} already present'
@@ -396,10 +396,10 @@ class Secret():
         """
         status=False
         response="Internal error"
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if node:
             nodeid  = node[0]['id']
-            where = f'nodeid = "{nodeid}" AND name = "{secret}"'
+            where = f"nodeid = '{nodeid}' AND name = '{secret}'"
             secret_data = Database().get_record(table='nodesecrets', where=where)
             if secret_data:
                 where = [{"column": "nodeid", "value": nodeid}, {"column": "name", "value": secret}]
@@ -420,10 +420,10 @@ class Secret():
         This method will return all secrets of a requested group in detailed format.
         """
         status=False
-        group = Database().get_record(table='group', where=f'name = "{name}"')
+        group = Database().get_record(table='group', where=f"name = '{name}'")
         if group:
             groupid  = group[0]['id']
-            where = f'groupid = "{groupid}"'
+            where = f"groupid = '{groupid}'"
             groupsecrets = Database().get_record(table='groupsecrets', where=where)
             if groupsecrets:
                 response = {'config': {'secrets': {'group': {name: [] } } } }
@@ -454,7 +454,7 @@ class Secret():
         unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['group'][name]
-            group = Database().get_record(table='group', where=f'name = "{name}"')
+            group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 groupid = group[0]['id']
                 if data:
@@ -465,7 +465,7 @@ class Secret():
                         secret_name = secret['name']
                         if secret.get('owner') and not Helper().check_owner(secret['owner']):
                             unresolvable.append(f"{secret_name}: {secret['owner']}")
-                        where = f'groupid = "{groupid}" AND name = "{secret_name}"'
+                        where = f"groupid = '{groupid}' AND name = '{secret_name}'"
                         secret_data = Database().get_record(table='groupsecrets', where=where)
                         if secret_data:
                             group_secret_columns = Database().get_columns('groupsecrets')
@@ -515,10 +515,10 @@ class Secret():
         This method will return a requested secret of a group in detailed format.
         """
         status=False
-        group = Database().get_record(table='group', where=f'name = "{name}"')
+        group = Database().get_record(table='group', where=f"name = '{name}'")
         if group:
             groupid  = group[0]['id']
-            where = f'groupid = "{groupid}" AND name = "{secret}"'
+            where = f"groupid = '{groupid}' AND name = '{secret}'"
             secret_data = Database().get_record(table='groupsecrets', where=where)
             if secret_data:
                 response = {'config': {'secrets': {'group': {name: [] } } } }
@@ -546,7 +546,7 @@ class Secret():
         warning = ''
         if request_data:
             data = request_data['config']['secrets']['group'][name]
-            group = Database().get_record(table='group', where=f'name = "{name}"')
+            group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 groupid = group[0]['id']
                 if data:
@@ -555,7 +555,7 @@ class Secret():
                     secret_name = data[0]['name']
                     if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
                         warning = f". Warning: owner {data[0]['owner']} is not currently resolvable (a numeric uid:gid works without a directory)"
-                    where = f'groupid = "{groupid}" AND name = "{secret_name}"'
+                    where = f"groupid = '{groupid}' AND name = '{secret_name}'"
                     secret_data = Database().get_record(table='groupsecrets', where=where)
                     if column_check:
                         if secret_data:
@@ -614,12 +614,12 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['group'][name]
-            group = Database().get_record(table='group', where=f'name = "{name}"')
+            group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 groupid = group[0]['id']
                 if data:
                     secret_name = data[0]['name']
-                    where = f'groupid = "{groupid}" AND name = "{secret_name}"'
+                    where = f"groupid = '{groupid}' AND name = '{secret_name}'"
                     secret_data = Database().get_record(table='groupsecrets', where=where)
                     if secret_data:
                         if 'newsecretname' in data[0]:
@@ -627,7 +627,7 @@ class Secret():
                             del data[0]['newsecretname']
                             data[0]['groupid'] = groupid
                             data[0]['name'] = newsecretname
-                            where = f'groupid = "{groupid}" AND name = "{newsecretname}"'
+                            where = f"groupid = '{groupid}' AND name = '{newsecretname}'"
                             new_secret_data = Database().get_record(table='groupsecrets', where=where)
                             if new_secret_data:
                                 self.logger.error(f'Secret {newsecretname} already present.')
@@ -676,10 +676,10 @@ class Secret():
         """
         status=False
         response="Internal error"
-        group = Database().get_record(table='group', where=f'name = "{name}"')
+        group = Database().get_record(table='group', where=f"name = '{name}'")
         if group:
             groupid  = group[0]['id']
-            where = f'groupid = "{groupid}" AND name = "{secret}"'
+            where = f"groupid = '{groupid}' AND name = '{secret}'"
             db_secret = Database().get_record(table='groupsecrets', where=where)
             if db_secret:
                 where = [
@@ -742,7 +742,7 @@ class Secret():
                         secret_name = secret['name']
                         if secret.get('owner') and not Helper().check_owner(secret['owner']):
                             unresolvable.append(f"{secret_name}: {secret['owner']}")
-                        where = f'clusterid = "{clusterid}" AND name = "{secret_name}"'
+                        where = f"clusterid = '{clusterid}' AND name = '{secret_name}'"
                         secret_data = Database().get_record(table='clustersecrets', where=where)
                         if secret_data:
                             cluster_secret_columns = Database().get_columns('clustersecrets')
@@ -796,7 +796,7 @@ class Secret():
         This method will return a requested secret of the cluster in detailed format.
         """
         status=False
-        where = f'name = "{secret}"'
+        where = f"name = '{secret}'"
         secret_data = Database().get_record(table='clustersecrets', where=where)
         if secret_data:
             response = {'config': {'secrets': {'cluster': [] } } }
@@ -831,7 +831,7 @@ class Secret():
                     secret_name = data[0]['name']
                     if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
                         warning = f". Warning: owner {data[0]['owner']} is not currently resolvable (a numeric uid:gid works without a directory)"
-                    where = f'clusterid = "{clusterid}" AND name = "{secret_name}"'
+                    where = f"clusterid = '{clusterid}' AND name = '{secret_name}'"
                     secret_data = Database().get_record(table='clustersecrets', where=where)
                     if column_check:
                         if secret_data:
@@ -893,7 +893,7 @@ class Secret():
                 clusterid = cluster[0]['id']
                 if data:
                     secret_name = data[0]['name']
-                    where = f'clusterid = "{clusterid}" AND name = "{secret_name}"'
+                    where = f"clusterid = '{clusterid}' AND name = '{secret_name}'"
                     secret_data = Database().get_record(table='clustersecrets', where=where)
                     if secret_data:
                         if 'newsecretname' in data[0]:
@@ -901,7 +901,7 @@ class Secret():
                             del data[0]['newsecretname']
                             data[0]['clusterid'] = clusterid
                             data[0]['name'] = newsecretname
-                            where = f'clusterid = "{clusterid}" AND name = "{newsecretname}"'
+                            where = f"clusterid = '{clusterid}' AND name = '{newsecretname}'"
                             new_secret_data = Database().get_record(table='clustersecrets', where=where)
                             if new_secret_data:
                                 response = f'Invalid request: Secret {newsecretname} already present'
@@ -949,7 +949,7 @@ class Secret():
         """
         status=False
         response="Internal error"
-        where = f'name = "{secret}"'
+        where = f"name = '{secret}'"
         db_secret = Database().get_record(table='clustersecrets', where=where)
         if db_secret:
             where = [{"column": "name", "value": secret}]

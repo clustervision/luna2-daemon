@@ -23,10 +23,10 @@ def validate_state():
     state before each test -- exactly what a non-strict route would see.
     """
     import common.validate_input as validate_input
-    validate_input.STRICT_NAME = False
-    validate_input.STRICT_MATCH = None
-    validate_input.ERROR = None
-    validate_input.SKIP_LIST = []
+    validate_input._st().strict_name = False
+    validate_input._st().strict_match = None
+    validate_input._st().error = None
+    validate_input._st().skip_list = []
 
 
 @pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
@@ -70,13 +70,13 @@ def test_a_quoted_name_is_rejected_rather_than_cleaned_into_a_valid_one():
     from common.validate_input import filter_data
 
     for payload in ("osimage'--", 'osimage"--', "compute' OR '1'='1", "node'"):
-        validate_input.ERROR = None
+        validate_input._st().error = None
         filter_data(payload, 'object_type')
-        assert validate_input.ERROR, f"{payload!r} must be rejected, not cleaned into a valid name"
+        assert validate_input._st().error, f"{payload!r} must be rejected, not cleaned into a valid name"
 
-    validate_input.ERROR = None
+    validate_input._st().error = None
     assert filter_data('osimage', 'object_type') == 'osimage'
-    assert not validate_input.ERROR, "an ordinary value must still pass"
+    assert not validate_input._st().error, "an ordinary value must still pass"
 
 
 def test_the_network_key_takes_an_address_as_well_as_a_name():
@@ -85,14 +85,14 @@ def test_the_network_key_takes_an_address_as_well_as_a_name():
     from common.validate_input import filter_data
 
     for payload in ('10.150.0.0/24', '10.150.0.0', 'fd00:1::/64', 'ipmi', 'ipmi.cluster'):
-        validate_input.ERROR = None
+        validate_input._st().error = None
         assert filter_data(payload, 'network') == payload
-        assert not validate_input.ERROR, f"{payload!r} is a valid network value and was refused"
+        assert not validate_input._st().error, f"{payload!r} is a valid network value and was refused"
 
     for payload in ("ipmi' OR '1'='1", '10.150.0.0/24;', 'IPMI', 'a b'):
-        validate_input.ERROR = None
+        validate_input._st().error = None
         filter_data(payload, 'network')
-        assert validate_input.ERROR, f"{payload!r} must be rejected"
+        assert validate_input._st().error, f"{payload!r} must be rejected"
 
 
 def test_a_profile_name_that_can_be_created_can_also_be_assigned():
@@ -100,23 +100,23 @@ def test_a_profile_name_that_can_be_created_can_also_be_assigned():
     import common.validate_input as validate_input
     from common.validate_input import filter_data, STRICT_MATCHES
 
-    validate_input.STRICT_NAME = True
-    validate_input.STRICT_MATCH = STRICT_MATCHES.get('config_profile_post')
+    validate_input._st().strict_name = True
+    validate_input._st().strict_match = STRICT_MATCHES.get('config_profile_post')
     try:
         for name in ('slurm-node', 'ntp.v2'):
             for key in ('name', 'newprofilename', 'profiles', 'profile'):
-                validate_input.ERROR = None
+                validate_input._st().error = None
                 filter_data(name, key)
-                assert not validate_input.ERROR, f"{name!r} refused as {key}: {validate_input.ERROR}"
+                assert not validate_input._st().error, f"{name!r} refused as {key}: {validate_input._st().error}"
         for name in ('Slurm_Node', 'ntp v2', 'node"--'):
             for key in ('name', 'newprofilename', 'profile'):
-                validate_input.ERROR = None
+                validate_input._st().error = None
                 filter_data(name, key)
-                assert validate_input.ERROR, f"{name!r} accepted as {key} but the assignment list would refuse it"
+                assert validate_input._st().error, f"{name!r} accepted as {key} but the assignment list would refuse it"
     finally:
-        validate_input.STRICT_NAME = False
-        validate_input.STRICT_MATCH = None
-        validate_input.ERROR = None
+        validate_input._st().strict_name = False
+        validate_input._st().strict_match = None
+        validate_input._st().error = None
 
 
 def test_cleaning_still_happens_for_fields_with_no_regex():
@@ -279,10 +279,57 @@ def test_a_tag_name_may_carry_a_colon_or_a_plus_but_never_a_quote():
     from common.validate_input import filter_data
     for key in ('osimagetag', 'tag', 'tagname'):
         for value in ('ubuntu:22.04', 'v1+debug', 'stable', ''):
-            validate_input.ERROR = None
+            validate_input._st().error = None
             filter_data(value, key)
-            assert not validate_input.ERROR, f"{value!r} refused as {key}"
+            assert not validate_input._st().error, f"{value!r} refused as {key}"
         for value in ("v1' OR '1'='1", 'v1"--', 'a/b'):
-            validate_input.ERROR = None
+            validate_input._st().error = None
             filter_data(value, key)
-            assert validate_input.ERROR, f"{value!r} accepted as {key}"
+            assert validate_input._st().error, f"{value!r} accepted as {key}"
+
+
+def test_validation_state_is_per_thread():
+    """
+    Four requests share one process under gthread. With module globals, one
+    request's refusal was reset by another entering its decorator, and the
+    quoted name reached the query; a strict rule leaked the other way. The
+    state is thread-local now, so a neighbour cannot touch it.
+    """
+    import threading
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+
+    validate_input._st().error = None
+    filter_data("osimage'--", 'object_type')
+    assert validate_input._st().error, 'the quoted name must be refused'
+    seen = {}
+
+    def neighbour():
+        seen['before'] = validate_input._st().error
+        validate_input._st().error = None
+        validate_input._st().strict_name = True
+
+    thread = threading.Thread(target=neighbour)
+    thread.start()
+    thread.join()
+    assert seen['before'] is None, 'a new thread must start with no error from another request'
+    assert validate_input._st().error, "the neighbour's reset must not clear this request's refusal"
+    assert validate_input._st().strict_name is False, "the neighbour's strict rule must not apply here"
+    validate_input._st().error = None
+
+
+def test_the_default_script_plugin_can_be_asked_for():
+    """
+    The strict name rule carries a reserved list, and 'default' is on it. A
+    boot script segment mapped to that rule refused /boot/scripts/default, and
+    the installer, which greps error messages away, wrote an empty script.
+    """
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+    for segment in ('script', 'role'):
+        validate_input._st().error = None
+        filter_data('default', segment)
+        assert not validate_input._st().error, f'{segment}: {validate_input._st().error}'
+    filter_data('default"--', 'script')
+    assert validate_input._st().error
+    validate_input._st().error = None

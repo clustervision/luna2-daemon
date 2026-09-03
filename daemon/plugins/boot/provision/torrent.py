@@ -124,7 +124,7 @@ class Plugin():
     fetch = """
     echo "Luna2: Downloading torrent" | tee -a /tmp/luna_install.log
     cd /{{ LUNA_SYSTEMROOT }}
-    if [ "$(echo LUNA_API_PROTOCOL | grep ':')" ]; then
+    if [ "$(echo "{{ LUNA_CONTROLLER }}" | grep ':')" ]; then
         curl $INTERFACE -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://[{{ LUNA_CONTROLLER }}]:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }}.torrent > {{ LUNA_IMAGEFILE }}.torrent
     else
         curl $INTERFACE -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://{{ LUNA_CONTROLLER }}:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }}.torrent > {{ LUNA_IMAGEFILE }}.torrent

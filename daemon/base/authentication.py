@@ -149,7 +149,7 @@ class Authentication():
         if cluster and 'security' in cluster[0] and cluster[0]['security']:
             self.logger.info(f"cluster security = {cluster[0]['security']}")
             if 'tpm_sha256' in request_data:
-                node = Database().get_record(table='node', where=f'name = "{nodename}"')
+                node = Database().get_record(table='node', where=f"name = '{nodename}'")
                 if node:
                     if 'tpm_sha256' in node[0]:
                         if request_data['tpm_sha256'] == node[0]['tpm_sha256']:
@@ -170,11 +170,16 @@ class Authentication():
             if fstatus is False:
                 return fstatus, fresponse
             # we do not enforce security. just return the token
-            # we store the string though
-            if nodename and 'tpm_sha256' in request_data:
-                where = [{"column": "name", "value": nodename}]
-                row = [{"column": "tpm_sha256", "value": request_data['tpm_sha256']}]
-                Database().update('node', row, where)
+            # we store the string though - only a real one, and only when it changed.
+            # the write is local to the controller that answered, so one per boot
+            # keeps the node table differing between the controllers
+            tpm_sha256 = request_data.get('tpm_sha256')
+            if nodename and tpm_sha256:
+                node = Database().get_record(table='node', where=f"name = '{nodename}'")
+                if node and node[0]['tpm_sha256'] != tpm_sha256:
+                    where = [{"column": "name", "value": nodename}]
+                    row = [{"column": "tpm_sha256", "value": tpm_sha256}]
+                    Database().update('node', row, where)
             create_token=True
 
         if create_token:

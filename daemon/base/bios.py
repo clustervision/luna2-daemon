@@ -128,7 +128,7 @@ class Bios():
         """
         This method will return one BIOS configuration, with its attributes.
         """
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
             return False, f'BIOS configuration {name} is not available'
         detail = self.detail(record[0])
@@ -224,7 +224,7 @@ class Bios():
         if unknown:
             return False, f"Cannot set {', '.join(sorted(unknown))} on a BIOS configuration"
 
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         row = {}
         if 'grab_exclude' in data:
             # It arrives base64 and it is stored base64: grab_exclude is one of the
@@ -240,7 +240,7 @@ class Bios():
             return False, (f'BIOS configuration {name} is not available; '
                            'it is created by grabbing one from a node')
         if 'newbiosname' in data:
-            if Database().get_record(table=self.table, where=f"name = \"{data['newbiosname']}\""):
+            if Database().get_record(table=self.table, where=f"name = '{data['newbiosname']}'"):
                 return False, f"BIOS configuration {data['newbiosname']} already exists"
             row['name'] = data['newbiosname']
         if 'set' in data:
@@ -263,7 +263,7 @@ class Bios():
         assigned to it, in which case the assignment would be left pointing at
         nothing and the next push would silently have nothing to push.
         """
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
             return False, f'BIOS configuration {name} is not available'
         inuse = self.assigned_to(name)
@@ -280,13 +280,13 @@ class Bios():
         """
         This method lists every node and group assigned a BIOS configuration.
         """
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
             return []
         assigned = []
         for table in ['node', 'group']:
             rows = Database().get_record(table=table,
-                                         where=f"biosconfigid = \"{record[0]['id']}\"")
+                                         where=f"biosconfigid = '{record[0]['id']}'")
             for row in rows or []:
                 assigned.append(f"{table} {row['name']}")
         return assigned
@@ -310,10 +310,10 @@ class Bios():
         newname = data.get('newbiosname')
         if not newname:
             return False, 'Invalid request: New BIOS configuration name not provided'
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
             return False, f'BIOS configuration {name} is not available'
-        if Database().get_record(table=self.table, where=f'name = "{newname}"'):
+        if Database().get_record(table=self.table, where=f"name = '{newname}'"):
             return False, f'BIOS configuration {newname} already exists'
         row = dict(record[0])
         del row['id']
@@ -416,7 +416,7 @@ class Bios():
         we cannot filter is one we would push identity values out of, and the
         node it came from is the only machine that can tell us which those are.
         """
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         exclude = self.exclude_list(record[0]) if record else list(DEFAULT_EXCLUDE)
 
         status, board = self.board_bios(node=node)
@@ -557,7 +557,7 @@ class Bios():
             return True, request_data
         if not isinstance(entries, dict) or not entries:
             return False, 'Invalid request: set carries no entries'
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
             return False, f'BIOS configuration {name} is not available'
         status, registry, node = self.registry_for(record[0])
@@ -581,7 +581,7 @@ class Bios():
             data = payload['config'][self.table][name]
         except (KeyError, TypeError):
             return False, 'Invalid request: BIOS configuration data not found in structure'
-        node = Database().get_record(table='node', where=f"name = \"{data.get('node')}\"")
+        node = Database().get_record(table='node', where=f"name = '{data.get('node')}'")
         row = {
             'name': name,
             'manufacturer': data.get('manufacturer'),
@@ -591,7 +591,7 @@ class Bios():
             'attributes': self.encode(dumps(data.get('attributes') or {})),
             'updated': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         }
-        record = Database().get_record(table=self.table, where=f'name = "{name}"')
+        record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if record:
             Database().update(self.table, Helper().make_rows(row),
                               [{"column": "id", "value": record[0]['id']}])
@@ -623,15 +623,15 @@ class Bios():
             # logged and swallowed, so the caller gets an empty result and
             # reports the group as having no nodes. Empty and broken look
             # identical, which is exactly why this is not written the short way
-            group = Database().get_record(table='group', where=f'name = "{name}"')
+            group = Database().get_record(table='group', where=f"name = '{name}'")
             if not group:
                 return False, f'group {name} does not exist'
             nodes = Database().get_record(table='node',
-                                          where=f"groupid = \"{group[0]['id']}\"")
+                                          where=f"groupid = '{group[0]['id']}'")
             if not nodes:
                 return False, f'group {name} has no nodes'
             return True, [node['name'] for node in nodes]
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if not node:
             return False, f'node {name} does not exist'
         return True, [name]
@@ -721,14 +721,14 @@ class Bios():
                 ['group.id=node.groupid'], [f'`group`.name="{group}"'])
         else:
             nodes = Database().get_record(
-                table='node', where=f'name = "{name}"' if name else None)
+                table='node', where=f"name = '{name}'" if name else None)
         if not nodes:
             if name:
                 return False, f'Node {name} is not available'
             if group:
                 # only on the empty path, and only to tell the two apart: a group
                 # nobody made and a group nobody put a node in want different answers
-                exists = Database().get_record(table='group', where=f'name = "{group}"')
+                exists = Database().get_record(table='group', where=f"name = '{group}'")
                 return False, (f'Group {group} has no nodes' if exists
                                else f'Group {group} is not available')
             return False, 'No nodes available'
@@ -823,11 +823,11 @@ class Bios():
         """
         config = (payload or {}).get('config') or ''
         digest = (payload or {}).get('digest') or ''
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if not node:
             return False
         if not Database().get_record(table='nodeinventory',
-                                     where=f"nodeid = \"{node[0]['id']}\" "
+                                     where=f"nodeid = '{node[0]['id']}' "
                                            f'AND source = "redfish"'):
             # nothing collected from this machine, so there is no observation to
             # annotate. Inventing the row would put a BIOS record beside no inventory
@@ -836,7 +836,7 @@ class Bios():
         # entry changed on it later shows the node as stale. Read from this
         # controller's own copy of the replicated row, so both sides record the
         # same value without it travelling in the payload
-        record = Database().get_record(table=self.table, where=f'name = "{config}"') if config else None
+        record = Database().get_record(table=self.table, where=f"name = '{config}'") if config else None
         content = self.content_digest(record[0]) if record else ''
         Database().update('nodeinventory',
                           Helper().make_rows({'bios_config': config,
@@ -882,7 +882,7 @@ class Bios():
             if not status:
                 return False, plan
         for configname in sorted(set(plan.values())):
-            record = Database().get_record(table=self.table, where=f'name = "{configname}"')
+            record = Database().get_record(table=self.table, where=f"name = '{configname}'")
             if not record:
                 return False, f'BIOS configuration {configname} is not available'
             if not self.stored_attributes(record[0]):

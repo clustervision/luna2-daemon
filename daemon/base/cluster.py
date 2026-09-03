@@ -74,7 +74,7 @@ class Cluster():
             controllers = Database().get_record_join(
                 ['controller.*', 'ipaddress.ipaddress'],
                 ['ipaddress.tablerefid=controller.id', 'cluster.id=controller.clusterid'],
-                ['tableref="controller"', f'cluster.id="{cluster_id}"']
+                ['tableref="controller"', f"cluster.id='{cluster_id}'"]
             )
             for controller in controllers:
                 del controller['id']

@@ -96,7 +96,11 @@ class Tables():
                     elif 'hostname' in dbcolumns:
                         order='hostname'
                 #order=f"ORDER BY {order} ASC"
-                dbcolumns.sort()
+                # created and updated are stamped by each controller's own clock when a
+                # journaled write lands there, seconds apart. They are not what the sweep
+                # compares controllers on; hashing them made every table carrying them
+                # differ on every sweep and be repaired every hour with identical content.
+                dbcolumns = sorted(column for column in dbcolumns if column not in ('created', 'updated'))
                 data=Database().get_record(select=Database().quote_columns(dbcolumns),table=table,orderby=order)
                 if data:
                     # An encrypted column is hashed by what it means, not by how it happens to be

@@ -418,8 +418,8 @@ class BiosPush():
                 if (not ha_object.get_hastate()) or ha_object.get_role():
                     self.collect_queued_inventory()
                     self.reclaim_abandoned()
-                    while next_id := Queue().next_task_in_queue('bios', status='queued'):
-                        task = Database().get_record(table='queue', where=f'id = "{next_id}"')
+                    while next_id := Queue().next_task_in_queue('bios', status='queued', window=None):
+                        task = Database().get_record(table='queue', where=f"id = '{next_id}'")
                         if not task:
                             continue
                         # marked, not removed: a task removed at claim time is lost
@@ -454,7 +454,7 @@ class BiosPush():
             return
         nodename, configname, policy, *_ = (str(task.get('param') or '').split(':')
                                             + [None] + [None])
-        record = Database().get_record(table='biosconfig', where=f'name = "{configname}"')
+        record = Database().get_record(table='biosconfig', where=f"name = '{configname}'")
         if not record:
             self.report(request_id, f'{nodename}: BIOS configuration {configname} '
                                     'no longer exists', status=404)
@@ -548,8 +548,8 @@ class BiosPush():
         from base.nodeinventory import NodeInventory
 
         pending = []
-        while next_id := Queue().next_task_in_queue('redfish', status='queued'):
-            task = Database().get_record(table='queue', where=f'id = "{next_id}"')
+        while next_id := Queue().next_task_in_queue('redfish', status='queued', window=None):
+            task = Database().get_record(table='queue', where=f"id = '{next_id}'")
             if task and task[0].get('task') == 'collect_redfish_inventory':
                 pending.append(task[0]['param'])
             # removed at claim time on purpose, unlike a push: a lost collection

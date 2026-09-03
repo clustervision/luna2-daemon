@@ -313,7 +313,7 @@ class Node():
         This method will return requested node in detailed format.
         """
         status = False
-        nodes = Database().get_record(table='node', where=f'name = "{name}"')
+        nodes = Database().get_record(table='node', where=f"name = '{name}'")
         all_nodes = Database().get_record_join(
             [
                 'node.*',
@@ -708,14 +708,14 @@ class Node():
                         validate_disklayout(disklayout_json)
                     except DisklayoutInvalid as exp:
                         return False, f'Invalid request: {exp}'
-            node = Database().get_record(table='node', where=f'name = "{name}"')
+            node = Database().get_record(table='node', where=f"name = '{name}'")
             oldnodename, nodename_new = None, None
             if node:
                 nodeid = node[0]['id']
                 if 'newnodename' in data: # is mentioned as newhostname in design documents!
                     nodename_new = data['newnodename']
                     oldnodename = name
-                    where = f'name = "{nodename_new}"'
+                    where = f"name = '{nodename_new}'"
                     node_check = Database().get_record(table='node', where=where)
                     if node_check:
                         return False, f'Invalid request: {nodename_new} already present in database'
@@ -942,12 +942,12 @@ class Node():
 
             newnodename=None
             data = request_data['config']['node'][name]
-            node = Database().get_record(table='node', where=f'name = "{name}"')
+            node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
                 if 'newnodename' in data:
                     newnodename = data['newnodename']
-                    where = f'name = "{newnodename}"'
+                    where = f"name = '{newnodename}'"
                     node_check = Database().get_record(table='node', where=where)
                     if node_check:
                         return False, f'Invalid request: {newnodename} already present in database'
@@ -1002,7 +1002,7 @@ class Node():
                 Route().copy_couplings('node', nodeid, new_nodeid)
 
                 # ------ secrets ------
-                secrets = Database().get_record(table='nodesecrets', where=f'nodeid = "{nodeid}"')
+                secrets = Database().get_record(table='nodesecrets', where=f"nodeid = '{nodeid}'")
                 for secret in secrets:
                     del secret['id']
                     secret['nodeid'] = new_nodeid
@@ -1081,7 +1081,7 @@ class Node():
                         )
                         if result:
                             if networkname and not ipaddress:
-                                where = f'name = "{networkname}"'
+                                where = f"name = '{networkname}'"
                                 network = Database().get_record(table='network', where=where)
                                 if network:
                                     if network[0]['dhcp'] and network[0]['dhcp_nodes_in_pool']:
@@ -1155,7 +1155,7 @@ class Node():
                     if result and 'ipaddress' in node_interface.keys():
                         if 'network' in node_interface.keys():
                             networkname = node_interface['network']
-                            where = f'name = "{networkname}"'
+                            where = f"name = '{networkname}'"
                             network = Database().get_record(table='network', where=where)
                             if network:
                                 if network[0]['dhcp'] and network[0]['dhcp_nodes_in_pool']:
@@ -1257,7 +1257,7 @@ class Node():
         """
         status=False
         response = f'Node {name} not present in database'
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if node:
             status, response=self.delete_node(node[0]['id'])
         return status, response
@@ -1269,7 +1269,7 @@ class Node():
         """
         status=False
         response="Internal error"
-        node = Database().get_record(table='node', where=f'id = "{nodeid}"')
+        node = Database().get_record(table='node', where=f"id = '{nodeid}'")
         if node:
             name = node[0]['name']
             Database().delete_row('node', [{"column": "id", "value": nodeid}])

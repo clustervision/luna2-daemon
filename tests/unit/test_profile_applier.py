@@ -461,3 +461,50 @@ def test_an_owner_nobody_can_resolve_is_reported_not_silently_dropped(tmp_path):
     code, out = _run(tmp_path, _payload(entry))
     assert code == 0, out
     assert 'could not be resolved' in out
+
+
+def test_a_file_written_before_the_run_aborts_can_still_be_reverted(tmp_path):
+    """
+    One file in a batch failing left everything written before it on disk and
+    in no manifest; the next run then backed up the profile's own content as
+    the original and restored it over itself for good.
+    """
+    good = tmp_path / 'etc' / 'good.conf'
+    blocker = tmp_path / 'etc' / 'blocker'
+    blocker.parent.mkdir()
+    blocker.write_text('a file, not a directory')
+    bad = blocker / 'bad.conf'
+    payload = _payload(_file(good, 'profile content'))
+    payload['profiles'][0]['files'].append(_file(bad, 'never lands'))
+    code, out = _run(tmp_path, payload)
+    assert code != 0 and good.exists(), out
+    code, out = _run(tmp_path, {'node': 'node001', 'profiles': [], 'frozen': [], 'digest': 'gone'})
+    assert code == 0, out
+    assert not good.exists(), 'the file that landed before the abort must be reclaimable'
+
+
+def test_a_file_never_has_a_wider_mode_than_asked(tmp_path):
+    """
+    The temporary copy was written with the umask and the mode applied after the
+    rename, so a key meant for one user was world-readable for an instant.
+    """
+    import importlib.util
+    local, _ = _applier(tmp_path)
+    spec = importlib.util.spec_from_file_location('applier_under_test', local)
+    applier = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(applier)
+    target = tmp_path / 'etc' / 'secret.key'
+    seen = {}
+    real_replace = os.replace
+
+    def watching_replace(src, dst):
+        seen['mode'] = os.stat(src).st_mode & 0o777
+        return real_replace(src, dst)
+
+    applier.os.replace = watching_replace
+    try:
+        applier.write_file(_file(target, 'k', mode='400'))
+    finally:
+        applier.os.replace = real_replace
+    assert seen['mode'] == 0o400, f'temporary copy was {oct(seen["mode"])} before it took the name'
+    assert (target.stat().st_mode & 0o777) == 0o400

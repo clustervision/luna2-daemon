@@ -86,11 +86,11 @@ class NodeInventory():
         """
         status = False
         response = f"Node {name} not present in database"
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if not node:
             return status, response
         nodeid = node[0]['id']
-        parents = Database().get_record(table=self.table, where=f'nodeid = "{nodeid}"')
+        parents = Database().get_record(table=self.table, where=f"nodeid = '{nodeid}'")
         if not parents:
             return False, f"No inventory found for node {name}"
         snapshots = []
@@ -148,7 +148,7 @@ class NodeInventory():
         except (KeyError, TypeError):
             return False, "Invalid request: inventory data not found in structure"
 
-        node = Database().get_record(table='node', where=f'name = "{name}"')
+        node = Database().get_record(table='node', where=f"name = '{name}'")
         if not node:
             return False, f"Node {name} not present in database"
         nodeid = node[0]['id']
@@ -181,7 +181,7 @@ class NodeInventory():
         parent_data['updated'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
         existing = Database().get_record(table=self.table,
-                                         where=f'nodeid = "{nodeid}" AND source = "{source}"')
+                                         where=f"nodeid = '{nodeid}' AND source = '{source}'")
         if existing:
             where = [{"column": "nodeid", "value": nodeid}, {"column": "source", "value": source}]
             Database().update(self.table, Helper().make_rows(parent_data), where)
@@ -221,7 +221,7 @@ class NodeInventory():
         do not always spell a manufacturer the same way, and two rules for one
         question is how they drift.
         """
-        rows = Database().get_record(table=self.table, where=f'nodeid = "{nodeid}"')
+        rows = Database().get_record(table=self.table, where=f"nodeid = '{nodeid}'")
         if not rows:
             return False
         chosen = None
@@ -262,7 +262,7 @@ class NodeInventory():
         This method will fetch a source's child rows for a node as a list of dicts.
         """
         rows = Database().get_record(table=table,
-                                     where=f'nodeid = "{nodeid}" AND source = "{source}"')
+                                     where=f"nodeid = '{nodeid}' AND source = '{source}'")
         devices = []
         if rows:
             for row in rows:
@@ -635,7 +635,7 @@ class NodeInventory():
                 ['node.name as name'], ['group.id=node.groupid'],
                 [f'`group`.name="{group}"'])
             if not members:
-                exists = Database().get_record(table='group', where=f'name = "{group}"')
+                exists = Database().get_record(table='group', where=f"name = '{group}'")
                 return False, (f'Group {group} has no nodes' if exists
                                else f'Group {group} is not available')
             hostlist = [member['name'] for member in members]

@@ -127,7 +127,7 @@ class FirmwareCatalog():
         """
         rows = Database().get_record(
             table='nodeinventoryfirmware',
-            where=f'nodeid IN (SELECT id FROM node WHERE name = "{nodename}")')
+            where=f"nodeid IN (SELECT id FROM node WHERE name = '{nodename}')")
         versions = {}
         for row in rows or []:
             component = str(row['component'] or '').strip()
@@ -350,7 +350,7 @@ class FirmwareRequest():
         This method returns the (request_id, nodeid) a local row id stands for - the
         address a write travels under, since the peer's ids are its own.
         """
-        row = Database().get_record(table=self.table, where=f'id = "{requestid}"')
+        row = Database().get_record(table=self.table, where=f"id = '{requestid}'")
         if not row:
             return None, None
         return row[0]['request_id'], row[0]['nodeid']
@@ -375,7 +375,7 @@ class FirmwareRequest():
             ['firmwarerequest.id', 'firmwarerequest.nodeid', 'firmwarerequest.component',
              'firmwarerequest.request_id', 'node.name as nodename'],
             ['node.id=firmwarerequest.nodeid'],
-            [f'firmwarerequest.status="{status}"']) or []
+            [f"firmwarerequest.status='{status}'"]) or []
 
 
     def claim(self, requestid=None):
@@ -416,7 +416,7 @@ class FirmwareRequest():
         """
         return Database().get_record(
             table=self.table,
-            where=f'nodeid = "{nodeid}" AND restore = "{RESTORE_PENDING}"') or []
+            where=f"nodeid = '{nodeid}' AND restore = '{RESTORE_PENDING}'") or []
 
 
     def finish_restore(self, requestid=None, status=None, message=None):
@@ -437,7 +437,7 @@ class FirmwareRequest():
         """
         stale = Database().get_record(
             table=self.table,
-            where=f'status="{CLAIMED}" AND updated<datetime("now","-{minutes} minute")') or []
+            where=f"status='{CLAIMED}' AND updated<datetime('now','-{minutes} minute')") or []
         for row in stale:
             self.logger.warning(f'firmware request {row["id"]} was left in progress; '
                                 'it will be tried again')

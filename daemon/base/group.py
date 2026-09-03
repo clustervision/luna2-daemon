@@ -184,7 +184,7 @@ class Group():
         b64items = {'prescript': '', 'partscript': '', 'postscript': '',
                     'disklayout': '', 'osimage_filter': ''}
         cluster = Database().get_record(table='cluster')
-        groups = Database().get_record(table='group', where=f'name = "{name}"')
+        groups = Database().get_record(table='group', where=f"name = '{name}'")
         if groups:
             response = {'config': {'group': {} }}
             group = groups[0]
@@ -332,12 +332,12 @@ class Group():
         This method will return all the list of all the member node names for a group.
         """
         status=False
-        groups = Database().get_record(table='group', where=f'name = "{name}"')
+        groups = Database().get_record(table='group', where=f"name = '{name}'")
         if groups:
             group = groups[0]
             groupid = group['id']
             response = {'config': {'group': {name: {'members': []}} }}
-            node_list = Database().get_record(table='node', where=f'groupid = "{groupid}"')
+            node_list = Database().get_record(table='node', where=f"groupid = '{groupid}'")
             if node_list:
                 nodes = []
                 for node in node_list:
@@ -412,13 +412,13 @@ class Group():
                     except DisklayoutInvalid as exp:
                         return False, f'Invalid request: {exp}'
             oldgroupname = None
-            group = Database().get_record(table='group', where=f'name = "{name}"')
+            group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 group_id = group[0]['id']
                 if 'newgroupname' in data:
                     newgroupname = data['newgroupname']
                     oldgroupname = name
-                    where = f'name = "{newgroupname}"'
+                    where = f"name = '{newgroupname}'"
                     check_group = Database().get_record(table='group', where=where)
                     if check_group:
                         return False, f'Invalid request: {newgroupname} Already present in database'
@@ -587,7 +587,7 @@ class Group():
                             return False, 'Invalid request: interface name is required for this operation'
                         interface_name = ifx['interface']
 
-                        where_interface = f'groupid = "{group_id}" AND interface = "{interface_name}"'
+                        where_interface = f"groupid = '{group_id}' AND interface = '{interface_name}'"
                         check_interface = Database().get_record(table='groupinterface', where=where_interface)
 
                         network, bond_mode, bond_slaves = None, None, None
@@ -703,12 +703,12 @@ class Group():
         if request_data:
             newgroupname = None
             data = request_data['config']['group'][name]
-            grp = Database().get_record(table='group', where=f'name = "{name}"')
+            grp = Database().get_record(table='group', where=f"name = '{name}'")
             if grp:
                 group_id = grp[0]['id']
                 if 'newgroupname' in data:
                     newgroupname = data['newgroupname']
-                    where = f'name = "{newgroupname}"'
+                    where = f"name = '{newgroupname}'"
                     check_group = Database().get_record(table='group', where=where)
                     if check_group:
                         return False, f'Invalid request: {newgroupname} Already present in database'
@@ -775,7 +775,7 @@ class Group():
                     group_interfaces_byname = Helper().convert_list_to_dict(group_interfaces, 'interface')
 
                 # ------ secrets ------
-                secrets = Database().get_record(table='groupsecrets', where=f'groupid = "{group_id}"')
+                secrets = Database().get_record(table='groupsecrets', where=f"groupid = '{group_id}'")
                 for secret in secrets:
                     del secret['id']
                     secret['groupid'] = new_group_id
@@ -880,7 +880,7 @@ class Group():
         """
         status=False
         response=f'Group {name} not present in database'
-        group = Database().get_record(table='group', where=f'name = "{name}"')
+        group = Database().get_record(table='group', where=f"name = '{name}'")
         if group:
             status, response=self.delete_group(group[0]['id'])
         return status, response
@@ -891,10 +891,10 @@ class Group():
         This method will delete a group.
         """
         status=False
-        group = Database().get_record(table='group', where=f'id="{groupid}"')
+        group = Database().get_record(table='group', where=f"id='{groupid}'")
         if group:
             name=group[0]['name']
-            inuse = Database().get_record(table='node', where=f'groupid="{groupid}"')
+            inuse = Database().get_record(table='node', where=f"groupid='{groupid}'")
             if inuse:
                 inuseby=[]
                 while len(inuse) > 0 and len(inuseby) < 11:

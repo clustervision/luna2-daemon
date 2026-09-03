@@ -237,7 +237,13 @@ class Journal():
                             status_=returned[0]
                             message=returned[1]
 
-                            self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
+                            if status_ is False:
+                                # applied on the origin, refused here: the two controllers now
+                                # differ on this object until the hash sweep notices, if it does
+                                self.logger.error(f"replay of {record['function']}({record['object']}) "
+                                                  f"from {record['sendby']} refused here: {message}")
+                            else:
+                                self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
                             request_id=None
                             if len(returned)>2:
                                 request_id=returned[2]

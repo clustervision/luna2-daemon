@@ -308,7 +308,7 @@ class Config(object):
         emptybyname = {}
         handled = []
 
-        empty = Database().get_record(table='network', where=f'name="{domain}" AND (dhcp IS NULL OR dhcp != 1)')
+        empty = Database().get_record(table='network', where=f"name='{domain}' AND (dhcp IS NULL OR dhcp != 1)")
         if empty:
             emptybyname = Helper().convert_list_to_dict(empty, 'name')
 
@@ -544,7 +544,7 @@ class Config(object):
                      'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress','ipaddress.dhcp'],
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
                      'group.id=node.groupid'],
-                    ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
+                    ['tableref="nodeinterface"', f"ipaddress.networkid='{network_id}'"]
                 )
                 nwkdomain=nwk['name']
                 if node_interface:
@@ -607,7 +607,7 @@ class Config(object):
                     devices = Database().get_record_join(
                         select,
                         join,
-                        [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
+                        [f"tableref='{item}'", f"ipaddress.networkid='{network_id}'"]
                     )
                     if devices:
                         for device in devices:
@@ -1192,7 +1192,7 @@ class Config(object):
                 ['controller.hostname as host', 'ipaddress.ipaddress',
                  'ipaddress.ipaddress_ipv6','network.name as networkname'],
                 ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-                ['ipaddress.tableref="controller"', f'ipaddress.networkid="{network_id}"']
+                ['ipaddress.tableref="controller"', f"ipaddress.networkid='{network_id}'"]
             )
             if controllers:
                 mergedlist.append(controllers)
@@ -1206,7 +1206,7 @@ class Config(object):
                   'ipaddress.dhcp', 'network.name as networkname'],
                 ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
                  'network.id=ipaddress.networkid'],
-                ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
+                ['tableref="nodeinterface"', f"ipaddress.networkid='{network_id}'"]
             )
             if nodes:
                 mergedlist.append(nodes)
@@ -1216,7 +1216,7 @@ class Config(object):
                     [f'{item}.name as host', 'ipaddress.ipaddress',
                      'ipaddress.ipaddress_ipv6', 'network.name as networkname'],
                     [f'ipaddress.tablerefid={item}.id', 'network.id=ipaddress.networkid'],
-                    [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
+                    [f"tableref='{item}'", f"ipaddress.networkid='{network_id}'"]
                 )
                 if devices:
                     mergedlist.append(devices)
@@ -1231,7 +1231,7 @@ class Config(object):
                  'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as networkname'],
                 ['ipaddress.tablerefid=switchinterface.id', 'switchinterface.switchid=switch.id',
                  'network.id=ipaddress.networkid'],
-                ['ipaddress.tableref="switchinterface"', f'ipaddress.networkid="{network_id}"']
+                ['ipaddress.tableref="switchinterface"', f"ipaddress.networkid='{network_id}'"]
             )
             if switch_ifaces:
                 for switch_iface in switch_ifaces:
@@ -1422,7 +1422,7 @@ class Config(object):
             my_ipaddress={'ipaddress_ipv6': ipaddress, 'networkid': None}
         else:
             my_ipaddress={'ipaddress': ipaddress, 'networkid': None}
-        where = f'tablerefid = "{device_id}" AND tableref = "{device}"'
+        where = f"tablerefid = '{device_id}' AND tableref = '{device}'"
         check_ip = Database().get_record(table='ipaddress', where=where)
         if check_ip:
             row = Helper().make_rows(my_ipaddress)
@@ -1451,7 +1451,7 @@ class Config(object):
             network_details = Database().get_record_join(
                 ['network.name as network', 'network.id'],
                 [f'ipaddress.tablerefid={device}.id', 'network.id=ipaddress.networkid'],
-                [f'tableref="{device}"', f"{device}.id='{device_id}'"]
+                [f"tableref='{device}'", f"{device}.id='{device_id}'"]
             )
             if network_details:
                 network_id = network_details[0]['id']
@@ -1482,7 +1482,7 @@ class Config(object):
                 my_ipaddress['ipaddress_ipv6']=ipaddress
             else:
                 my_ipaddress['ipaddress']=ipaddress
-            where = f'tablerefid = "{device_id}" AND tableref = "{device}"'
+            where = f"tablerefid = '{device_id}' AND tableref = '{device}'"
             check_ip = Database().get_record(table='ipaddress', where=where)
             if check_ip:
                 row = Helper().make_rows(my_ipaddress)
@@ -1507,7 +1507,7 @@ class Config(object):
         family untouched. Generic, device-parameterised parallel of device_ipaddress_config; device
         is the tableref (e.g. 'switchinterface'). Mirrors node_interface_clear_ipaddress but by
         tableref so it is not node-specific."""
-        where = f'tableref="{device}" AND tablerefid={device_id}'
+        where = f"tableref='{device}' AND tablerefid={device_id}"
         check_ipaddress = Database().get_record(table='ipaddress', where=where)
         if not check_ipaddress:
             return True, "interface had no address configuration to clear"
@@ -1534,7 +1534,7 @@ class Config(object):
         result_if = False
         my_interface = {}
 
-        where_interface = f'nodeid = "{nodeid}"'
+        where_interface = f"nodeid = '{nodeid}'"
         check_interface = Database().get_record(table='nodeinterface', where=where_interface)
         interface_byname = Helper().convert_list_to_dict(check_interface, 'interface')
 
@@ -1587,7 +1587,7 @@ class Config(object):
             message = f"bonded interface can not have a vlan_parent"
             return False, message
 
-        where_interface = f'nodeid = "{nodeid}" AND interface = "{interface_name}"'
+        where_interface = f"nodeid = '{nodeid}' AND interface = '{interface_name}'"
         check_interface = Database().get_record(table='nodeinterface', where=where_interface)
 
         if bond_slaves or bond_mode or vlan_parent or mtu:
@@ -1683,7 +1683,7 @@ class Config(object):
         """
         This method will clear (None) the ipaddress config of a given node interface
         """
-        where_interface = f'nodeid = "{nodeid}" AND interface = "{interface_name}"'
+        where_interface = f"nodeid = '{nodeid}' AND interface = '{interface_name}'"
         check_interface = Database().get_record(table='nodeinterface', where=where_interface)
         result_if = "not able to clear ipaddress config. interface not configured"
         if check_interface:
@@ -1721,15 +1721,15 @@ class Config(object):
         my_dhcp = {}
 
         if network is not None:
-            network_details = Database().get_record(table='network', where=f'name="{network}"')
+            network_details = Database().get_record(table='network', where=f"name='{network}'")
         else:
             network_details = Database().get_record_join(
                 ['network.*'],
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
                 [
                     'tableref="nodeinterface"',
-                    f'nodeinterface.nodeid="{nodeid}"',
-                    f'nodeinterface.interface="{interface_name}"'
+                    f"nodeinterface.nodeid='{nodeid}'",
+                    f"nodeinterface.interface='{interface_name}'"
                 ]
             )
 
@@ -1750,8 +1750,8 @@ class Config(object):
             ['ipaddress.tablerefid=nodeinterface.id'],
             [
                 'tableref="nodeinterface"',
-                f'nodeinterface.nodeid="{nodeid}"',
-                f'nodeinterface.interface="{interface_name}"'
+                f"nodeinterface.nodeid='{nodeid}'",
+                f"nodeinterface.interface='{interface_name}'"
                 ]
             )
 
@@ -1762,7 +1762,7 @@ class Config(object):
 
         else:
             # no config set yet for the interface
-            where = f'nodeid = "{nodeid}" AND interface = "{interface_name}"'
+            where = f"nodeid = '{nodeid}' AND interface = '{interface_name}'"
             my_interface = Database().get_record(table='nodeinterface', where=where)
             if my_interface:
                 my_dhcp['tableref'] = 'nodeinterface'
@@ -1788,15 +1788,15 @@ class Config(object):
         message = ''
 
         if network is not None:
-            network_details = Database().get_record(table='network', where=f'name="{network}"')
+            network_details = Database().get_record(table='network', where=f"name='{network}'")
         else:
             network_details = Database().get_record_join(
                 ['network.*'],
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
                 [
                     'tableref="nodeinterface"',
-                    f'nodeinterface.nodeid="{nodeid}"',
-                    f'nodeinterface.interface="{interface_name}"'
+                    f"nodeinterface.nodeid='{nodeid}'",
+                    f"nodeinterface.interface='{interface_name}'"
                 ]
             )
 
@@ -1870,8 +1870,8 @@ class Config(object):
             ['ipaddress.tablerefid=nodeinterface.id'],
             [
                 'tableref="nodeinterface"',
-                f'nodeinterface.nodeid="{nodeid}"',
-                f'nodeinterface.interface="{interface_name}"'
+                f"nodeinterface.nodeid='{nodeid}'",
+                f"nodeinterface.interface='{interface_name}'"
                 ]
             )
 
@@ -1882,7 +1882,7 @@ class Config(object):
 
         else:
             # no ip set yet for the interface
-            where = f'nodeid = "{nodeid}" AND interface = "{interface_name}"'
+            where = f"nodeid = '{nodeid}' AND interface = '{interface_name}'"
             my_interface = Database().get_record(table='nodeinterface', where=where)
             if my_interface:
                 my_ipaddress['tableref']='nodeinterface'
@@ -1907,7 +1907,7 @@ class Config(object):
         result_if = False
         my_interface = {}
 
-        where_interface = f'groupid = "{groupid}"'
+        where_interface = f"groupid = '{groupid}'"
         check_interface = Database().get_record(table='groupinterface', where=where_interface)
         interface_byname = Helper().convert_list_to_dict(check_interface, 'interface')
 
@@ -1960,7 +1960,7 @@ class Config(object):
             message = f"bonded interface can not have a vlan_parent"
             return False, message
 
-        where_interface = f'groupid = "{groupid}" AND interface = "{interface_name}"'
+        where_interface = f"groupid = '{groupid}' AND interface = '{interface_name}'"
         check_interface = Database().get_record(table='groupinterface', where=where_interface)
 
         if bond_slaves or bond_mode or vlan_parent or mtu:
@@ -2203,7 +2203,7 @@ class Config(object):
                                             ['ipaddress.tablerefid=nodeinterface.id'],
                                             [
                                                 "ipaddress.tableref='nodeinterface'",
-                                                f"nodeinterface.nodeid=\"{node['nodeid']}\"",
+                                                f"nodeinterface.nodeid='{node['nodeid']}'",
                                                 f"nodeinterface.interface='{interface}'"
                                             ]
                                         )
@@ -2487,7 +2487,7 @@ class Config(object):
         This method will update dhcp range, when network will changes.
         """
         self.logger.info(f'request_id: {request_id}')
-        network = Database().get_record(table='network', where=f'name = "{name}"')
+        network = Database().get_record(table='network', where=f"name = '{name}'")
         if network:
             for ipv in ['', '_ipv6']:
                 if network[0]['dhcp_range_begin'+ipv] and network[0]['dhcp_range_end'+ipv]:
@@ -2533,7 +2533,7 @@ class Config(object):
         This method will return dhcp range for network.
         """
         ips = []
-        network_details = Database().get_record(table='network', where=f'name = "{network}"')
+        network_details = Database().get_record(table='network', where=f"name = '{network}'")
         if network_details:
             if ipversion == 'ipv6' and network_details[0]['dhcp_range_begin_ipv6'] and network_details[0]['dhcp_range_end_ipv6']:
                 ips = Helper().get_ip_range_ips(
@@ -2553,7 +2553,7 @@ class Config(object):
         This method will return all occupied IP from a network.
         """
         ips = []
-        network_details = Database().get_record(table='network', where=f'name = "{network}"')
+        network_details = Database().get_record(table='network', where=f"name = '{network}'")
         if network_details:
             if ipversion == 'ipv6' and network_details[0]['dhcp_range_begin_ipv6'] and network_details[0]['dhcp_range_end_ipv6']:
                 ips = Helper().get_ip_range_ips(

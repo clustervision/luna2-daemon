@@ -54,7 +54,7 @@ class Model():
         """
         status=False
         if name:
-            all_records = Database().get_record(table=table, where=f'name = "{name}"')
+            all_records = Database().get_record(table=table, where=f"name = '{name}'")
         else:
             all_records = Database().get_record(table=table)
         if all_records:
@@ -87,7 +87,7 @@ class Model():
         This method will return all the nodes which are member of a requested table.
         """
         status=False
-        all_records = Database().get_record(table=table, where=f'name = "{name}"')
+        all_records = Database().get_record(table=table, where=f"name = '{name}'")
         if all_records:
             nodes = []
             record = all_records[0]
@@ -98,7 +98,7 @@ class Model():
                 ['group.id=node.groupid'],
                 [f"`group`.{table}id='{record_id}'"]
             )
-            where = f'{table}id ="{record_id}"'
+            where = f"{table}id ='{record_id}'"
             get_record_node = Database().get_record(select=['name'], table='node', where=where)
             list_nodes = get_group_node + get_record_node
             if list_nodes:
@@ -124,7 +124,7 @@ class Model():
         This method will delete the requested.
         """
         status=False
-        record = Database().get_record(table=table, where=f'name = "{name}"')
+        record = Database().get_record(table=table, where=f"name = '{name}'")
         if record:
             if ip_check:
                 ip_clause = [
@@ -149,7 +149,7 @@ class Model():
         This method will delete the requested.
         """
         status=False
-        record = Database().get_record(table=table, where=f'id = "{id}"')
+        record = Database().get_record(table=table, where=f"id = '{id}'")
         if record:
             if ip_check:
                 ip_clause = [
@@ -180,7 +180,7 @@ class Model():
         """
         This method will decide to create or update a record.
         """
-        record = Database().get_record(table=table, where=f'name = "{name}"')
+        record = Database().get_record(table=table, where=f"name = '{name}'")
         if record or (new_name in request_data['config'][table][name]):
             status, response = self.update_record(
                 record,
@@ -277,9 +277,9 @@ class Model():
             del data[new_name]
         else:
             data['name'] = name
-        record = Database().get_record(table=table, where=f'name = "{name}"')
+        record = Database().get_record(table=table, where=f"name = '{name}'")
         if record:
-            where = f'name = "{new_record}"'
+            where = f"name = '{new_record}'"
             check_new_record = Database().get_record(table=table, where=where)
             if check_new_record:
                 response = f'{new_record} Already present in database'
@@ -316,7 +316,7 @@ class Model():
         ip_detail = Database().get_record_join(
             ['network.name as network', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
             [f'ipaddress.tablerefid={table}.id', 'network.id=ipaddress.networkid'],
-            [f'tableref="{table}"', f"tablerefid='{record_id}'"]
+            [f"tableref='{table}'", f"tablerefid='{record_id}'"]
         )
         if ip_detail:
             response = ip_detail[0]['ipaddress'], ip_detail[0]['ipaddress_ipv6'], ip_detail[0]['network']
@@ -324,7 +324,7 @@ class Model():
             ip_detail = Database().get_record_join(
                 ['ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
                 [f'ipaddress.tablerefid={table}.id'],
-                [f'tableref="{table}"', f"tablerefid='{record_id}'"]
+                [f"tableref='{table}'", f"tablerefid='{record_id}'"]
             )
             if ip_detail:
                 response = ip_detail[0]['ipaddress'], ip_detail[0]['ipaddress_ipv6'], None

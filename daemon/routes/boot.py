@@ -429,8 +429,9 @@ def boot_install(node=None):
         LUNA_TOKEN              = data['jwt_token']
     ), access_code
 
+# Red Hat kickstart: anaconda fetches inst.ks as a plain URL and cannot present a
+# token, so this route stays without @token_required on purpose.
 @boot_blueprint.route('/kickstart/install/<string:node>', methods=['GET'])
-#@token_required # we cannot use a token here!!
 @validate_name
 def kickstart_install(node=None):
     """

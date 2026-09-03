@@ -176,7 +176,7 @@ class Boot():
 
     def clear_existing_mac(self, macaddress, exclude_nodeid=None):
         # clear mac if it already exists.
-        where=[f'nodeinterface.macaddress="{macaddress}"']
+        where=[f"nodeinterface.macaddress='{macaddress}'"]
         if exclude_nodeid:
             where.append(f"nodeinterface.nodeid!='{exclude_nodeid}'")
         nodeinterface_check = Database().get_record_join(
@@ -406,7 +406,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         if not Helper().check_jinja(template_path):
             return False, self.failed_boot("switch ztp template does not exist")
-        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        switch = Database().get_record(table='switch', where=f"name='{name}'")
         if not switch:
             return False, self.failed_boot(f"switch {name} does not exist")
         switch = switch[0]
@@ -445,7 +445,7 @@ class Boot():
         An admin-supplied ztpconfig (base64) is decoded and served; otherwise a minimal default
         is generated from the switch identity.
         """
-        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        switch = Database().get_record(table='switch', where=f"name='{name}'")
         if not switch:
             return False, self.failed_boot(f"switch {name} does not exist")
         switch = switch[0]
@@ -573,7 +573,7 @@ class Boot():
                     detect_node = Database().get_record_join(
                         ['node.*'],
                         ['switch.id=node.switchid'],
-                        [f'switch.name="{switch}"', f'node.switchport = "{port}"']
+                        [f"switch.name='{switch}'", f"node.switchport='{port}'"]
                     )
                     if detect_node:
                         self.logger.warning(f"Node {detect_node[0]['name']} with id {detect_node[0]['id']} on switch {switch} will use MAC {mac}")
@@ -1059,7 +1059,7 @@ class Boot():
             ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
              'group.kerneloptions as groupkerneloptions','group.netboot as groupnetboot'],
             ['group.id=node.groupid'],
-            [f'node.name="{new_nodename}"']
+            [f"node.name='{new_nodename}'"]
         )
         if node:
             data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid'] or 'default'
@@ -1104,7 +1104,7 @@ class Boot():
                 [
                     'tableref="nodeinterface"',
                     f"nodeinterface.nodeid='{data['nodeid']}'",
-                    f'nodeinterface.macaddress="{mac}"'
+                    f"nodeinterface.macaddress='{mac}'"
                 ]
             )
             if nodeinterface:
@@ -1230,6 +1230,8 @@ class Boot():
         if not check_template:
             faildata = self.failed_boot("node boot template does not exist")
             return False, faildata
+        if mac:
+            mac = mac.lower()
         # Antoine
         if self.controller_name:
             data['ipaddress'] = self.controller_ip
@@ -1251,7 +1253,7 @@ class Boot():
             ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
              'group.kerneloptions as groupkerneloptions','group.netboot as groupnetboot'],
             ['group.id=node.groupid'],
-            [f'node.name="{hostname}"']
+            [f"node.name='{hostname}'"]
         )
         if node:
             data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
@@ -1318,7 +1320,7 @@ class Boot():
                 [
                     'tableref="nodeinterface"',
                     f"nodeinterface.nodeid='{data['nodeid']}'",
-                    f'nodeinterface.macaddress="{mac}"'
+                    f"nodeinterface.macaddress='{mac}'"
                 ]
             )
             if nodeinterface:
@@ -1565,7 +1567,7 @@ class Boot():
             osimage = None
             if data['osimagetag'] and data['osimagetag'] != 'default':
                 osimage = Database().get_record_join(['osimage.*','osimagetag.imagefile'],['osimage.id=osimagetag.osimageid'],
-                                [f'osimagetag.name="{data["osimagetag"]}"',f'osimage.name="{data["osimage"]}"'])
+                                [f"osimagetag.name='{data['osimagetag']}'",f"osimage.name='{data['osimage']}'"])
             else:
                 osimage = Database().get_record(table='osimage', where=f"name = '{data['osimage']}'")
             if osimage:
@@ -1649,7 +1651,7 @@ class Boot():
                         interface_data = {
                                 'interface': interface['interface'],
                                 'macaddress': interface['macaddress'],
-                                'mtu': interface['mtu'],
+                                'mtu': interface['mtu'] or "",
                                 'ipaddress': interface['ipaddress'],
                                 'ipaddress_ipv6': interface['ipaddress_ipv6'],
                                 'prefix': interface['subnet'],
@@ -1724,7 +1726,7 @@ class Boot():
                                     'master': master,
                                     'type': "slave",
                                     'networktype': interface['networktype'] or "ethernet",
-                                    'mtu': interface['mtu']
+                                    'mtu': interface['mtu'] or ""
                                 }
                             interface_data['bond_mode']  = interface['bond_mode']
                             interface_data['bond_slaves']= interface['bond_slaves'].split(',')

@@ -184,7 +184,7 @@ class Network():
         This method will return requested network in detailed format.
         """
         status=False
-        networks = Database().get_record(table='network', where=f'name = "{name}"')
+        networks = Database().get_record(table='network', where=f"name = '{name}'")
         if networks:
             response = {'config': {'network': {} }}
             for network in networks:
@@ -258,7 +258,7 @@ class Network():
 
             data = request_data['config']['network'][name]
             data['name'] = name
-            network = Database().get_record(table='network', where=f'name = "{name}"')
+            network = Database().get_record(table='network', where=f"name = '{name}'")
             if network:
                 used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
                 used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
@@ -266,7 +266,7 @@ class Network():
                 networkid = network[0]['id']
                 if 'newnetname' in request_data['config']['network'][name]:
                     newnetname = request_data['config']['network'][name]['newnetname']
-                    where = f'name = "{newnetname}"'
+                    where = f"name = '{newnetname}'"
                     check_network = Database().get_record(table='network', where=where)
                     if check_network:
                         status=False
@@ -778,7 +778,7 @@ class Network():
         This method will delete a network.
         """
         status=False
-        network = Database().get_record(table='network', where=f'name = "{name}"')
+        network = Database().get_record(table='network', where=f"name = '{name}'")
         if network:
             controller = Database().get_record_join(
                 ['controller.*'],
@@ -812,12 +812,12 @@ class Network():
         This method will identifies the requested ipaddress is available or not.
         """
         status=False
-        network = Database().get_record(table='network', where=f'name = "{name}"')
+        network = Database().get_record(table='network', where=f"name = '{name}'")
         if network:
             ip_with_subnet = network[0]['network'] + '/' + network[0]['subnet']
             ip_detail = Helper().check_ip_range(ipaddress, ip_with_subnet)
             if ip_detail:
-                where = f'ipaddress = "{ipaddress}"'
+                where = f"ipaddress = '{ipaddress}'"
                 check_ip = Database().get_record(table='ipaddress', where=where)
                 if check_ip:
                     response = {'config': {'network': {ipaddress: {'status': 'taken'} } } }
@@ -842,7 +842,7 @@ class Network():
         status=False
         #Antoine
         ips = Config().get_all_occupied_ips_from_network(name)
-        network = Database().get_record(table='network', where=f'name = "{name}"')
+        network = Database().get_record(table='network', where=f"name = '{name}'")
         avail = None
         if network:
             response = f'Network {name} has no free addresses'
@@ -869,19 +869,19 @@ class Network():
         taken = []
         network_id = Database().id_by_name('network', name)
         if network_id:
-            where = f'networkid = "{network_id}"'
+            where = f"networkid = '{network_id}'"
             ip_list = Database().get_record(table='ipaddress', where=where)
             if ip_list:
                 for each in ip_list:
                     if 'interface' in each['tableref']:
                         tablerefid = each['tablerefid']
-                        where = f'id = "{tablerefid}"'
+                        where = f"id = '{tablerefid}'"
                         nodeid = Database().get_record(table='nodeinterface', where=where)
                         nodeid = nodeid[0]['nodeid']
                         device_name = Database().name_by_id('node', nodeid)
                     elif 'controller' in each['tableref']:
                         tablerefid = each['tablerefid']
-                        where = f'id = "{tablerefid}"'
+                        where = f"id = '{tablerefid}'"
                         hostname = Database().get_record(table='controller', where=where)
                         self.logger.info(hostname)
                         if hostname:

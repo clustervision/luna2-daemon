@@ -71,7 +71,7 @@ class RedfishSetup():
             'comment': setup['comment'],
             'accounts': []
         }
-        where = f'redfishsetupid = "{setup["id"]}"'
+        where = f"redfishsetupid = '{setup['id']}'"
         for record in Database().get_record(table='redfishaccount', where=where) or []:
             del record['id']
             del record['redfishsetupid']
@@ -101,7 +101,7 @@ class RedfishSetup():
         This method will return requested redfishsetup in detailed format.
         """
         status = False
-        setup = Database().get_record(table=self.table, where=f'name = "{name}"')
+        setup = Database().get_record(table=self.table, where=f"name = '{name}'")
         if setup:
             response = {'config': {self.table: {name: self._setup_with_accounts(setup[0])}}}
             status = True
@@ -115,7 +115,7 @@ class RedfishSetup():
         This method will return the nodes and groups pointing at a redfishsetup.
         """
         status = False
-        setup = Database().get_record(table=self.table, where=f'name = "{name}"')
+        setup = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not setup:
             return status, f'{self.table_cap} {name} is not available'
         members = self.assigned_to(name)
@@ -131,13 +131,13 @@ class RedfishSetup():
         """
         This method will list every node and group pointing at a redfishsetup.
         """
-        setup = Database().get_record(table=self.table, where=f'name = "{name}"')
+        setup = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not setup:
             return []
         setupid = setup[0]['id']
         assigned = []
         for table in ['node', 'group']:
-            records = Database().get_record(table=table, where=f'redfishsetupid = "{setupid}"')
+            records = Database().get_record(table=table, where=f"redfishsetupid = '{setupid}'")
             for record in records or []:
                 assigned.append(f"{table} {record['name']}")
         return assigned
@@ -180,7 +180,7 @@ class RedfishSetup():
         # popped before the column check: it is a request about the name, not a
         # column of its own, exactly as the other entities take theirs
         newname = data.pop('newredfishsetupname', None)
-        setup = Database().get_record(table=self.table, where=f'name = "{name}"')
+        setup = Database().get_record(table=self.table, where=f"name = '{name}'")
         setup_columns = Database().get_columns(self.table)
         if not Helper().compare_list(data, setup_columns):
             return False, 'Invalid request: Supplied columns do not match the requirements'
@@ -190,7 +190,7 @@ class RedfishSetup():
         if newname:
             if not setup:
                 return False, f'{self.table_cap} {name} is not available'
-            if Database().get_record(table=self.table, where=f'name = "{newname}"'):
+            if Database().get_record(table=self.table, where=f"name = '{newname}'"):
                 return False, f'Invalid request: {newname} already present in database'
             data['name'] = newname
         if setup:
@@ -238,7 +238,7 @@ class RedfishSetup():
             if not Helper().compare_list(entry, account_columns):
                 return False, 'Invalid request: Supplied account columns do not match the requirements'
             account_name = entry['name']
-            where = f'redfishsetupid = "{setupid}" AND name = "{account_name}"'
+            where = f"redfishsetupid = '{setupid}' AND name = '{account_name}'"
             existing = Database().get_record(table='redfishaccount', where=where)
             # a change carries only what is changing: 'give this account the Operator
             # role' says nothing about its password, and demanding one would make the
@@ -267,20 +267,20 @@ class RedfishSetup():
         if not request_data:
             return False, 'Invalid request: Did not receive data'
         data = request_data['config'][self.table][name]
-        setup = Database().get_record(table=self.table, where=f'name = "{name}"')
+        setup = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not setup:
             return False, f'{self.table_cap} {name} is not available'
         if 'newredfishsetupname' not in data:
             return False, 'Invalid request: New redfishsetup name not provided'
         newname = data['newredfishsetupname']
-        if Database().get_record(table=self.table, where=f'name = "{newname}"'):
+        if Database().get_record(table=self.table, where=f"name = '{newname}'"):
             return False, f'Invalid request: {self.table_cap} {newname} already present'
         setupid = setup[0]['id']
         newsetup = dict(setup[0])
         del newsetup['id']
         newsetup['name'] = newname
         new_setupid = Database().insert(self.table, Helper().make_rows(newsetup))
-        where = f'redfishsetupid = "{setupid}"'
+        where = f"redfishsetupid = '{setupid}'"
         for record in Database().get_record(table='redfishaccount', where=where) or []:
             del record['id']
             record['redfishsetupid'] = new_setupid
@@ -292,7 +292,7 @@ class RedfishSetup():
         """
         This method will delete a redfishsetup and its accounts.
         """
-        setup = Database().get_record(table=self.table, where=f'name = "{name}"')
+        setup = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not setup:
             return False, f'{self.table_cap} {name} is not available'
         inuse = self.assigned_to(name)
@@ -311,11 +311,11 @@ class RedfishSetup():
         """
         This method will delete one account of a redfishsetup.
         """
-        setup = Database().get_record(table=self.table, where=f'name = "{name}"')
+        setup = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not setup:
             return False, f'{self.table_cap} {name} is not available'
         setupid = setup[0]['id']
-        where = f'redfishsetupid = "{setupid}" AND name = "{account}"'
+        where = f"redfishsetupid = '{setupid}' AND name = '{account}'"
         if not Database().get_record(table='redfishaccount', where=where):
             return False, f'Account {account} is unavailable for {self.table_cap} {name}'
         Database().delete_row('redfishaccount', [

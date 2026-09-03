@@ -1012,7 +1012,7 @@ class Interface():
             row = [{'column': 'switchid', 'value': switchid},
                    {'column': 'interface', 'value': interface}]
             if ifx.get('macaddress') is not None:
-                row.append({'column': 'macaddress', 'value': ifx['macaddress']})
+                row.append({'column': 'macaddress', 'value': ifx['macaddress'].lower()})
             if existing:
                 interface_id = existing[0]['id']
                 Database().update('switchinterface', row, [{'column': 'id', 'value': interface_id}])

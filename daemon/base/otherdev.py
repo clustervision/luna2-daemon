@@ -108,6 +108,8 @@ class OtherDev():
             if 'network' in data.keys():
                 network = data['network']
                 del data['network']
+            if data.get('macaddress'):
+                data['macaddress'] = data['macaddress'].lower()
             column_check = Helper().compare_list(data, device_columns)
             data = Helper().check_ip_exist(data)
             if data:
@@ -202,6 +204,8 @@ class OtherDev():
                     for key in device[0]:
                         if key not in data:
                             data[key] = device[0][key]
+                    if data.get('macaddress'):
+                        data['macaddress'] = data['macaddress'].lower()
 
                     row = Helper().make_rows(data)
                     device_id = Database().insert(self.table, row)

@@ -183,7 +183,7 @@ class Switch():
             # the switch's own MAC belongs to its management interface (unify model), not the switch
             # row; take it out of the row data and apply it to that interface below.
             if 'macaddress' in data.keys():
-                macaddress = data['macaddress']
+                macaddress = str(data['macaddress'] or '').lower()
                 del data['macaddress']
 
             switch_columns = Database().get_columns(self.table)

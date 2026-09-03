@@ -98,7 +98,7 @@ class OsImage(object):
                                          message=f"error grabbing osimage {osimage}: Image {osimage} does not exist?", status=404)
                     return False
 
-                dbnode = Database().get_record_join(['node.name as nodename', 'group.name as groupname'], ['group.id=node.groupid'], [f'node.name="{node}"'])
+                dbnode = Database().get_record_join(['node.name as nodename', 'group.name as groupname'], ['group.id=node.groupid'], [f"node.name='{node}'"])
                 if not dbnode:
                     Status().add_message(request_id=request_id, username_initiator="luna",
                                          message=f"error grabbing osimage {osimage}: Node {node} does not exist?",
@@ -786,7 +786,7 @@ class OsImage(object):
                         mesg=f"{osimage}:{image[0]['path']} does not exist"
                     elif image[0]['path'] and len(image[0]['path'])>1:
                         if object == 'node':
-                            dbnode = Database().get_record_join(['node.name as nodename', 'group.name as groupname'], ['group.id=node.groupid'], [f'node.name="{dst}"'])
+                            dbnode = Database().get_record_join(['node.name as nodename', 'group.name as groupname'], ['group.id=node.groupid'], [f"node.name='{dst}'"])
                             if not dbnode:
                                 Status().add_message(request_id=request_id, username_initiator="luna",
                                                      message=f"error pushing osimage {osimage}: Node {dst} does not exist?",

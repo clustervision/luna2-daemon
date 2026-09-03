@@ -458,7 +458,7 @@ class FirmwarePush():
         """
         from utils.redfish import RedfishAccess
         node = Database().get_record_join(['group.name as groupname'], ['group.id=node.groupid'],
-                                          [f'node.name="{nodename}"'])
+                                          [f"node.name='{nodename}'"])
         groupname = node[0]['groupname'] if node else None
         candidates, model = RedfishAccess().plugin_candidates(nodename=nodename,
                                                               groupname=groupname)

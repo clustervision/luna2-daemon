@@ -316,7 +316,7 @@ class Model():
         ip_detail = Database().get_record_join(
             ['network.name as network', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
             [f'ipaddress.tablerefid={table}.id', 'network.id=ipaddress.networkid'],
-            [f'tableref="{table}"', f"tablerefid='{record_id}'"]
+            [f"tableref='{table}'", f"tablerefid='{record_id}'"]
         )
         if ip_detail:
             response = ip_detail[0]['ipaddress'], ip_detail[0]['ipaddress_ipv6'], ip_detail[0]['network']
@@ -324,7 +324,7 @@ class Model():
             ip_detail = Database().get_record_join(
                 ['ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
                 [f'ipaddress.tablerefid={table}.id'],
-                [f'tableref="{table}"', f"tablerefid='{record_id}'"]
+                [f"tableref='{table}'", f"tablerefid='{record_id}'"]
             )
             if ip_detail:
                 response = ip_detail[0]['ipaddress'], ip_detail[0]['ipaddress_ipv6'], None

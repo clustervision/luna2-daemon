@@ -544,7 +544,7 @@ class Config(object):
                      'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress','ipaddress.dhcp'],
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
                      'group.id=node.groupid'],
-                    ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
+                    ['tableref="nodeinterface"', f"ipaddress.networkid='{network_id}'"]
                 )
                 nwkdomain=nwk['name']
                 if node_interface:
@@ -607,7 +607,7 @@ class Config(object):
                     devices = Database().get_record_join(
                         select,
                         join,
-                        [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
+                        [f"tableref='{item}'", f"ipaddress.networkid='{network_id}'"]
                     )
                     if devices:
                         for device in devices:
@@ -1192,7 +1192,7 @@ class Config(object):
                 ['controller.hostname as host', 'ipaddress.ipaddress',
                  'ipaddress.ipaddress_ipv6','network.name as networkname'],
                 ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-                ['ipaddress.tableref="controller"', f'ipaddress.networkid="{network_id}"']
+                ['ipaddress.tableref="controller"', f"ipaddress.networkid='{network_id}'"]
             )
             if controllers:
                 mergedlist.append(controllers)
@@ -1206,7 +1206,7 @@ class Config(object):
                   'ipaddress.dhcp', 'network.name as networkname'],
                 ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
                  'network.id=ipaddress.networkid'],
-                ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
+                ['tableref="nodeinterface"', f"ipaddress.networkid='{network_id}'"]
             )
             if nodes:
                 mergedlist.append(nodes)
@@ -1216,7 +1216,7 @@ class Config(object):
                     [f'{item}.name as host', 'ipaddress.ipaddress',
                      'ipaddress.ipaddress_ipv6', 'network.name as networkname'],
                     [f'ipaddress.tablerefid={item}.id', 'network.id=ipaddress.networkid'],
-                    [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
+                    [f"tableref='{item}'", f"ipaddress.networkid='{network_id}'"]
                 )
                 if devices:
                     mergedlist.append(devices)
@@ -1231,7 +1231,7 @@ class Config(object):
                  'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as networkname'],
                 ['ipaddress.tablerefid=switchinterface.id', 'switchinterface.switchid=switch.id',
                  'network.id=ipaddress.networkid'],
-                ['ipaddress.tableref="switchinterface"', f'ipaddress.networkid="{network_id}"']
+                ['ipaddress.tableref="switchinterface"', f"ipaddress.networkid='{network_id}'"]
             )
             if switch_ifaces:
                 for switch_iface in switch_ifaces:
@@ -1451,7 +1451,7 @@ class Config(object):
             network_details = Database().get_record_join(
                 ['network.name as network', 'network.id'],
                 [f'ipaddress.tablerefid={device}.id', 'network.id=ipaddress.networkid'],
-                [f'tableref="{device}"', f"{device}.id='{device_id}'"]
+                [f"tableref='{device}'", f"{device}.id='{device_id}'"]
             )
             if network_details:
                 network_id = network_details[0]['id']
@@ -1728,8 +1728,8 @@ class Config(object):
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
                 [
                     'tableref="nodeinterface"',
-                    f'nodeinterface.nodeid="{nodeid}"',
-                    f'nodeinterface.interface="{interface_name}"'
+                    f"nodeinterface.nodeid='{nodeid}'",
+                    f"nodeinterface.interface='{interface_name}'"
                 ]
             )
 
@@ -1750,8 +1750,8 @@ class Config(object):
             ['ipaddress.tablerefid=nodeinterface.id'],
             [
                 'tableref="nodeinterface"',
-                f'nodeinterface.nodeid="{nodeid}"',
-                f'nodeinterface.interface="{interface_name}"'
+                f"nodeinterface.nodeid='{nodeid}'",
+                f"nodeinterface.interface='{interface_name}'"
                 ]
             )
 
@@ -1795,8 +1795,8 @@ class Config(object):
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
                 [
                     'tableref="nodeinterface"',
-                    f'nodeinterface.nodeid="{nodeid}"',
-                    f'nodeinterface.interface="{interface_name}"'
+                    f"nodeinterface.nodeid='{nodeid}'",
+                    f"nodeinterface.interface='{interface_name}'"
                 ]
             )
 
@@ -1870,8 +1870,8 @@ class Config(object):
             ['ipaddress.tablerefid=nodeinterface.id'],
             [
                 'tableref="nodeinterface"',
-                f'nodeinterface.nodeid="{nodeid}"',
-                f'nodeinterface.interface="{interface_name}"'
+                f"nodeinterface.nodeid='{nodeid}'",
+                f"nodeinterface.interface='{interface_name}'"
                 ]
             )
 
@@ -2203,7 +2203,7 @@ class Config(object):
                                             ['ipaddress.tablerefid=nodeinterface.id'],
                                             [
                                                 "ipaddress.tableref='nodeinterface'",
-                                                f"nodeinterface.nodeid=\"{node['nodeid']}\"",
+                                                f"nodeinterface.nodeid='{node['nodeid']}'",
                                                 f"nodeinterface.interface='{interface}'"
                                             ]
                                         )

@@ -236,7 +236,7 @@ class OtherDev():
                                 'network.id=ipaddress.networkid',
                                 'ipaddress.tablerefid=otherdevices.id'
                             ],
-                            [f'otherdevices.name="{name}"', 'ipaddress.tableref="otherdevices"']
+                            [f"otherdevices.name='{name}'", 'ipaddress.tableref="otherdevices"']
                         )
                         if network:
                             networkname = network[0]['networkname']

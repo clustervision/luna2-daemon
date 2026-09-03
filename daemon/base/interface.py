@@ -957,7 +957,7 @@ class Interface():
             ['switchinterface.interface', 'switchinterface.macaddress', 'switchinterface.mgmt',
              'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
             ['ipaddress.tablerefid=switchinterface.id', 'network.id=ipaddress.networkid'],
-            [f'switchinterface.switchid="{switch[0]["id"]}"', 'ipaddress.tableref="switchinterface"']
+            [f"switchinterface.switchid='{switch[0]['id']}'", 'ipaddress.tableref="switchinterface"']
         )
         collected = [{key: value for key, value in iface.items() if value}
                      for iface in (interfaces or [])]

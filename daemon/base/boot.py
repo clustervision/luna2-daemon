@@ -573,7 +573,7 @@ class Boot():
                     detect_node = Database().get_record_join(
                         ['node.*'],
                         ['switch.id=node.switchid'],
-                        [f'switch.name="{switch}"', f'node.switchport = "{port}"']
+                        [f"switch.name='{switch}'", f"node.switchport='{port}'"]
                     )
                     if detect_node:
                         self.logger.warning(f"Node {detect_node[0]['name']} with id {detect_node[0]['id']} on switch {switch} will use MAC {mac}")
@@ -1059,7 +1059,7 @@ class Boot():
             ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
              'group.kerneloptions as groupkerneloptions','group.netboot as groupnetboot'],
             ['group.id=node.groupid'],
-            [f'node.name="{new_nodename}"']
+            [f"node.name='{new_nodename}'"]
         )
         if node:
             data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid'] or 'default'
@@ -1104,7 +1104,7 @@ class Boot():
                 [
                     'tableref="nodeinterface"',
                     f"nodeinterface.nodeid='{data['nodeid']}'",
-                    f'nodeinterface.macaddress="{mac}"'
+                    f"nodeinterface.macaddress='{mac}'"
                 ]
             )
             if nodeinterface:
@@ -1251,7 +1251,7 @@ class Boot():
             ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
              'group.kerneloptions as groupkerneloptions','group.netboot as groupnetboot'],
             ['group.id=node.groupid'],
-            [f'node.name="{hostname}"']
+            [f"node.name='{hostname}'"]
         )
         if node:
             data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
@@ -1318,7 +1318,7 @@ class Boot():
                 [
                     'tableref="nodeinterface"',
                     f"nodeinterface.nodeid='{data['nodeid']}'",
-                    f'nodeinterface.macaddress="{mac}"'
+                    f"nodeinterface.macaddress='{mac}'"
                 ]
             )
             if nodeinterface:
@@ -1565,7 +1565,7 @@ class Boot():
             osimage = None
             if data['osimagetag'] and data['osimagetag'] != 'default':
                 osimage = Database().get_record_join(['osimage.*','osimagetag.imagefile'],['osimage.id=osimagetag.osimageid'],
-                                [f'osimagetag.name="{data["osimagetag"]}"',f'osimage.name="{data["osimage"]}"'])
+                                [f"osimagetag.name='{data['osimagetag']}'",f"osimage.name='{data['osimage']}'"])
             else:
                 osimage = Database().get_record(table='osimage', where=f"name = '{data['osimage']}'")
             if osimage:

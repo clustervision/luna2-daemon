@@ -89,7 +89,7 @@ class Switch():
             mgmt = Database().get_record_join(
                 ['switchinterface.id', 'switchinterface.interface', 'switchinterface.macaddress'],
                 ['switchinterface.switchid=switch.id'],
-                [f'switch.name="{name}"', 'switchinterface.mgmt=1']
+                [f"switch.name='{name}'", 'switchinterface.mgmt=1']
             )
             if not mgmt:
                 continue
@@ -314,7 +314,7 @@ class Switch():
                                 'network.id=ipaddress.networkid',
                                 'ipaddress.tablerefid=switch.id'
                             ],
-                            [f'switch.name="{name}"', 'ipaddress.tableref="switch"']
+                            [f"switch.name='{name}'", 'ipaddress.tableref="switch"']
                         )
                         if network:
                             data['network'] = network[0]['networkname']

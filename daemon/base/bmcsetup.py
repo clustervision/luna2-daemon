@@ -157,9 +157,9 @@ class BMCSetup():
         This method will delete a bmcsetup.
         """
         inuse_node = Database().get_record_join(['node.*'], ['bmcsetup.id=node.bmcsetupid'],
-                                                f'bmcsetup.name="{name}"')
+                                                f"bmcsetup.name='{name}'")
         inuse_group = Database().get_record_join(['group.*'], ['bmcsetup.id=group.bmcsetupid'],
-                                                f'bmcsetup.name="{name}"')
+                                                f"bmcsetup.name='{name}'")
         inuse = []
         if inuse_node:
             inuse += inuse_node                                   

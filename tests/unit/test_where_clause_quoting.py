@@ -1,5 +1,5 @@
 """
-Values in where clauses are single-quoted: SQLite reads a double-quoted token
+Values in where clauses - the where= string and the list form get_record_join takes - are single-quoted: SQLite reads a double-quoted token
 as a column first, so an object named 'name' or 'status' matched every row
 of its table, silently, on lookups, updates and deletes alike.
 """
@@ -48,6 +48,7 @@ def test_no_where_clause_double_quotes_its_value():
             path = os.path.join(root, name)
             with open(path, encoding='utf-8') as handle:
                 for number, line in enumerate(handle, 1):
-                    if re.search(r'(where|query|WHERE).*=\s*\\?"\{', line):
+                    if re.search(r'(where|query|WHERE).*=\s*\\?"\{', line) \
+                            or re.search(r'''f['"][a-z_.]+\s*=\s*\\?"\{''', line):
                         offenders.append(f'{os.path.relpath(path, DAEMON)}:{number}')
     assert offenders == [], 'double-quoted values in where clauses: ' + ', '.join(offenders)

@@ -375,7 +375,7 @@ class FirmwareRequest():
             ['firmwarerequest.id', 'firmwarerequest.nodeid', 'firmwarerequest.component',
              'firmwarerequest.request_id', 'node.name as nodename'],
             ['node.id=firmwarerequest.nodeid'],
-            [f'firmwarerequest.status="{status}"']) or []
+            [f"firmwarerequest.status='{status}'"]) or []
 
 
     def claim(self, requestid=None):

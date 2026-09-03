@@ -122,7 +122,7 @@ class ProfileSync():
         """
         state = Database().get_record_join(['monitor.state as state'],
                                            ['monitor.tablerefid=node.id'],
-                                           [f'node.name="{name}"', "monitor.tableref='node'"])
+                                           [f"node.name='{name}'", "monitor.tableref='node'"])
         if not state or not state[0]['state']:
             return None
         current = str(state[0]['state'])
@@ -163,7 +163,7 @@ class ProfileSync():
                                            'node.profiles_digest as delivered',
                                            'group.name as groupname'],
                                           ['group.id=node.groupid'],
-                                          [f'node.id="{nodeid}"'])
+                                          [f"node.id='{nodeid}'"])
         if not node:
             return False, f'node {nodeid} is not available'
         # the name is read now, at delivery time, rather than carried from whenever the

@@ -494,9 +494,9 @@ class OSImage():
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
 
         inuse_node = Database().get_record_join(['node.*'], ['osimage.id=node.osimageid'],
-                                                f'osimage.name="{name}"')
+                                                f"osimage.name='{name}'")
         inuse_group = Database().get_record_join(['group.*'], ['osimage.id=group.osimageid'],
-                                                f'osimage.name="{name}"')
+                                                f"osimage.name='{name}'")
         inuse = []
         if inuse_node:
             inuse += inuse_node                                   
@@ -536,7 +536,7 @@ class OSImage():
         tag_details = Database().get_record_join(
             ['osimagetag.id as tagid','osimagetag.*','osimage.id as osimageid'],
             ['osimagetag.osimageid=osimage.id'],
-            [f'osimage.name="{name}"']
+            [f"osimage.name='{name}'"]
         )
         if tag_details:
             for tag_detail in tag_details:
@@ -576,7 +576,7 @@ class OSImage():
             ['osimagetag.id as tagid','osimagetag.*','osimage.id as osimageid','osimage.kernelfile as osimagekernelfile',
              'osimage.initrdfile as osimageinitrdfile','osimage.imagefile as osimageimagefile'],
             ['osimagetag.osimageid=osimage.id'],
-            [f'osimage.name="{name}"',f'osimagetag.name="{tagname}"']
+            [f"osimage.name='{name}'",f"osimagetag.name='{tagname}'"]
         )
         if not tag_details:
             status = False
@@ -630,14 +630,14 @@ class OSImage():
                 image_details = Database().get_record_join(
                     ['osimage.name as osimagename', 'osimage.id as osimageid'],
                     ['osimage.id=node.osimageid'],
-                    [f'node.name="{node}"']
+                    [f"node.name='{node}'"]
                 )
                 if not image_details:
                     #meaning, node does not have osimage override. we check the group
                     image_details = Database().get_record_join(
                         ['osimage.name as osimagename', 'osimage.id as osimageid'],
                         ['group.id=node.groupid', 'osimage.id=group.osimageid'],
-                        [f'node.name="{node}"']
+                        [f"node.name='{node}'"]
                     )
                 if image_details:
                     osimage=image_details[0]['osimagename']
@@ -736,14 +736,14 @@ class OSImage():
                     image_details = Database().get_record_join(
                         ['osimage.name as osimagename', 'osimage.id as osimageid'],
                         ['osimage.id=node.osimageid'],
-                        [f'node.name="{entity_name}"']
+                        [f"node.name='{entity_name}'"]
                     )
                     if not image_details:
                         # meaning, node does not have osimage override. we check the group
                         image_details = Database().get_record_join(
                             ['osimage.name as osimagename', 'osimage.id as osimageid'],
                             ['group.id=node.groupid', 'osimage.id=group.osimageid'],
-                            [f'node.name="{entity_name}"']
+                            [f"node.name='{entity_name}'"]
                         )
                 if image_details:
                     osimage=image_details[0]['osimagename']

@@ -1,8 +1,10 @@
 # REDFISH PLUGIN - interaction with a BMC's Redfish service
 #
-#        2 defined methods are mandatory which return <True|False>,message:
-#        - setting     modify properties of an existing resource (PATCH)
-#        - upload      submit a resource, or invoke an action (POST)
+#        3 defined methods are mandatory which return <True|False>,message:
+#        - setting         modify properties of an existing resource (PATCH)
+#        - upload          submit a resource, or invoke an action (POST)
+#        - create_account  add one account to the AccountService: POST to the
+#                          collection, else PATCH the first empty slot
 #
 #        1 optional method, used where core wants to report what a BMC holds:
 #        - probe       read a resource and hand it back

@@ -39,6 +39,7 @@ from utils.monitor import Monitor as monitor
 from utils.status import Status
 from utils.queue import Queue
 from utils.redfish import RedfishAccess
+from utils.redfish_accounts import RedfishAccounts
 
 # How long after a node says its BMC is configured before we try to read it. Long
 # enough for a BMC to finish applying a static address and bring its HTTP service
@@ -261,9 +262,17 @@ class Monitor():
         #
         # The fifteen-minute duplicate collapse is unaffected: a future created
         # time is still inside its window, so a node reporting twice queues once.
+        provision = RedfishAccounts().wanted(nodename=nodename)
+        if provision:
+            # the accounts first: the collection below authenticates as one of
+            # them, and on a fresh BMC none exists until this has run. Same
+            # subsystem and the same delay, drained in one sweep on the master
+            Queue().add_task_to_queue(task='provision_redfish_accounts', param=nodename,
+                                      subsystem='redfish', when=COLLECT_DELAY)
         Queue().add_task_to_queue(task='collect_redfish_inventory', param=nodename,
                                   subsystem='redfish', when=COLLECT_DELAY)
-        self.logger.info(f'{nodename} reported its BMC configured; an out-of-band '
+        self.logger.info(f'{nodename} reported its BMC configured; '
+                         f"{'account provisioning and ' if provision else ''}an out-of-band "
                          f'inventory collection is queued for {COLLECT_DELAY} from now')
         return True
 

@@ -1,6 +1,6 @@
 # CONTROL PLUGIN - ipmi/bmc control
 #
-#        9 defined methods are mandatory which return <True|False>,message:
+#        12 defined methods are mandatory which return <True|False>,message:
 #        - power_on
 #        - power_off
 #        - power_reset
@@ -10,6 +10,12 @@
 #        - no_identify
 #        - sel_list
 #        - sel_clear
+#        - boot_bios      arm a one-shot boot into BIOS setup and reset into it
+#        - boot_status    read the current boot override back
+#        - boot_clear     disarm the boot override without a reset
+#
+#        The boot methods are Redfish only: the IPMI boot flags are not
+#        reliable, so default.py refuses them with the reason rather than trying.
 
 # Plugin selection based on the following search path and priority:
 #

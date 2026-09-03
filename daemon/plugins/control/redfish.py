@@ -21,9 +21,10 @@
 Plugin Class :: Redfish Power Control
 
 Standards-based power and chassis control for any BMC that speaks Redfish, over
-the shared client. Every method falls back to the default ipmitool plugin when
-Redfish is unavailable or the board does not support the action, so a node whose
-BMC does not answer behaves exactly as it did before.
+the shared client. The power, chassis and sel methods fall back to the default
+ipmitool plugin when Redfish is unavailable or the board does not support the
+action, so a node whose BMC does not answer behaves exactly as it did before. The
+boot methods do not: the IPMI boot flags are not reliable, so they refuse instead.
 
 A vendor file beside this one subclasses it and overrides only what that vendor
 does differently. Everything standards-based belongs here, not there.
@@ -61,6 +62,14 @@ class Plugin():
     # sets both. A plain attribute silently left the fallback on suite 3, which
     # is the failure this whole setting exists to avoid.
     _cipher = None
+
+    # What Luna's boot targets mean in Redfish. A new target is a row here plus
+    # its check on a real board, not code.
+    BOOT_TARGETS = {
+        'bios': 'BiosSetup',
+    }
+    OVERRIDE_FIELDS = ('BootSourceOverrideTarget', 'BootSourceOverrideEnabled',
+                       'BootSourceOverrideMode')
 
     def __init__(self):
         self.default = DefaultPlugin()
@@ -118,6 +127,15 @@ class Plugin():
             return status, response
         return self.default.sel_list(device=device, username=username, password=password,
                                      newlines=newlines)
+
+    def boot_bios(self, device=None, username=None, password=None):
+        return self.redfish_next_boot('bios', device, username, password)
+
+    def boot_status(self, device=None, username=None, password=None):
+        return self.redfish_boot_status(device, username, password)
+
+    def boot_clear(self, device=None, username=None, password=None):
+        return self.redfish_boot_clear(device, username, password)
 
     # --- the Redfish half ----------------------------------------------------
 
@@ -182,8 +200,9 @@ class Plugin():
         return getattr(self.default, fallback)(device=device, username=username,
                                                password=password)
 
-    def redfish_reset(self, action=None, device=None, username=None, password=None):
-        redfish = self.client(device=device, username=username, password=password)
+    def redfish_reset(self, action=None, device=None, username=None, password=None,
+                      redfish=None):
+        redfish = redfish or self.client(device=device, username=username, password=password)
         status, system_path, system_data = redfish.system()
         if not status:
             return False, system_path
@@ -205,6 +224,103 @@ class Plugin():
         if not power_state:
             return False, 'PowerState missing from system resource'
         return True, power_state
+
+    def redfish_next_boot(self, target=None, device=None, username=None, password=None):
+        """
+        This method arms a one-shot boot override and resets the node into it.
+
+        There is no ipmitool fallback here, unlike the power actions: the IPMI
+        boot flags were found unreliable on real hardware, and a reset without the
+        override is an ordinary reboot that reads as success. So every step that
+        cannot be confirmed refuses instead, and says why, per node.
+
+        The override is read back before the reset. A board can answer 200 to the
+        PATCH and change nothing, and the read-back is the only thing that tells
+        that apart from a board that did what it was asked.
+        """
+        wanted = self.BOOT_TARGETS.get(target)
+        if not wanted:
+            return False, f'unknown boot target {target}'
+        redfish = self.client(device=device, username=username, password=password)
+        status, system_path, system_data = redfish.system()
+        if not status:
+            return False, system_path
+        boot = system_data.get('Boot')
+        if not isinstance(boot, dict):
+            return False, 'this system exposes no boot override'
+        allowed = boot.get('BootSourceOverrideTarget@Redfish.AllowableValues')
+        if isinstance(allowed, list) and allowed and wanted not in allowed:
+            return False, f'boot targets this system accepts: {allowed}'
+        payload = {'Boot': {'BootSourceOverrideEnabled': 'Once',
+                            'BootSourceOverrideTarget': wanted}}
+        status, response = redfish.patch(path=system_path, payload=payload,
+                                         etag=system_data.get('@odata.etag'))
+        if not status:
+            return False, f'override refused: {response}'
+        status, current = redfish.get(path=system_path)
+        if not status:
+            return False, f'override written but unreadable afterwards: {current}'
+        boot = current.get('Boot') or {}
+        if (boot.get('BootSourceOverrideTarget') != wanted
+                or boot.get('BootSourceOverrideEnabled') not in ('Once', 'Continuous')):
+            return False, ('override not applied by the board: target '
+                           f"{boot.get('BootSourceOverrideTarget')}, enabled "
+                           f"{boot.get('BootSourceOverrideEnabled')}")
+        # a node that is off cannot be reset; powering it on boots it into the
+        # override just the same
+        power_state = str(current.get('PowerState', '')).strip().lower()
+        action = 'on' if power_state == 'off' else 'reset'
+        # the same client: the board has already been walked once, and every
+        # round trip on a slow BMC is paid by the operator waiting on the CLI
+        status, response = self.redfish_reset(action, device, username, password,
+                                              redfish=redfish)
+        if not status:
+            return False, f'override armed but the {action} was refused: {response}'
+        return True, f'{target} on next boot, {action} sent'
+
+    def redfish_boot_clear(self, device=None, username=None, password=None):
+        """
+        This method disarms the boot override, and sends no reset.
+
+        A one-shot override is meant to be consumed by the boot it applies to,
+        but a board does not always count a boot that ends in the setup screen:
+        an AMI MegaRAC keeps BiosSetup/Once armed while the node sits in setup,
+        so every reset lands there again. This is the way out without a console.
+        """
+        redfish = self.client(device=device, username=username, password=password)
+        status, system_path, system_data = redfish.system()
+        if not status:
+            return False, system_path
+        boot = system_data.get('Boot')
+        if not isinstance(boot, dict):
+            return False, 'this system exposes no boot override'
+        payload = {'Boot': {'BootSourceOverrideEnabled': 'Disabled',
+                            'BootSourceOverrideTarget': 'None'}}
+        status, response = redfish.patch(path=system_path, payload=payload,
+                                         etag=system_data.get('@odata.etag'))
+        if not status:
+            return False, f'clear refused: {response}'
+        status, current = redfish.get(path=system_path)
+        if not status:
+            return False, f'cleared but unreadable afterwards: {current}'
+        boot = current.get('Boot') or {}
+        if boot.get('BootSourceOverrideEnabled') != 'Disabled':
+            return False, ('clear not applied by the board: target '
+                           f"{boot.get('BootSourceOverrideTarget')}, enabled "
+                           f"{boot.get('BootSourceOverrideEnabled')}")
+        return True, 'override cleared, next boot follows the normal order'
+
+    def redfish_boot_status(self, device=None, username=None, password=None):
+        redfish = self.client(device=device, username=username, password=password)
+        status, _, system_data = redfish.system()
+        if not status:
+            return False, system_data
+        boot = system_data.get('Boot')
+        if not isinstance(boot, dict):
+            return False, 'this system exposes no boot override'
+        parts = [f"{field.replace('BootSourceOverride', '').lower()}={boot.get(field, '-')}"
+                 for field in self.OVERRIDE_FIELDS]
+        return True, ', '.join(parts)
 
     def set_identify(self, enabled=False, device=None, username=None, password=None):
         redfish = self.client(device=device, username=username, password=password)

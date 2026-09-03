@@ -1230,6 +1230,8 @@ class Boot():
         if not check_template:
             faildata = self.failed_boot("node boot template does not exist")
             return False, faildata
+        if mac:
+            mac = mac.lower()
         # Antoine
         if self.controller_name:
             data['ipaddress'] = self.controller_ip

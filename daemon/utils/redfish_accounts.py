@@ -71,12 +71,12 @@ class RedfishAccounts():
         This method answers whether Luna may manage this node's Redfish accounts:
         setupredfish on the node, else on its group, and a redfishsetup assigned.
         """
-        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        node = Database().get_record(table='node', where=f"name = '{nodename}'")
         if not node:
             return False
         flag = node[0].get('setupredfish')
         if flag is None:
-            group = Database().get_record(table='group', where=f"id = \"{node[0]['groupid']}\"")
+            group = Database().get_record(table='group', where=f"id = '{node[0]['groupid']}'")
             flag = group[0].get('setupredfish') if group else None
         if not Helper().make_bool(flag):
             return False
@@ -93,14 +93,14 @@ class RedfishAccounts():
              'node.bmcsetupid', 'node.unmanaged_bmc_users', 'node.setupredfish',
              'ipaddress.ipaddress as device'],
             ['nodeinterface.nodeid=node.id', 'ipaddress.tablerefid=nodeinterface.id'],
-            ['tableref="nodeinterface"', "nodeinterface.interface='BMC'",
+            ["tableref='nodeinterface'", "nodeinterface.interface='BMC'",
              f"node.name='{nodename}'"])
         if not node:
             return False, f'{nodename} does not exist or has no BMC interface configured'
         node = node[0]
         if not node['device']:
             return False, f'{nodename} has no BMC address configured'
-        group = Database().get_record(table='group', where=f"id = \"{node['groupid']}\"")
+        group = Database().get_record(table='group', where=f"id = '{node['groupid']}'")
         group = group[0] if group else {}
         flag = node.get('setupredfish')
         if flag is None:
@@ -108,15 +108,15 @@ class RedfishAccounts():
         if not Helper().make_bool(flag):
             return False, f'{nodename} has setupredfish off, so its Redfish accounts are not managed'
         bmcsetupid = node.get('bmcsetupid') or group.get('bmcsetupid')
-        bmcsetup = Database().get_record(table='bmcsetup', where=f'id = "{bmcsetupid}"')
+        bmcsetup = Database().get_record(table='bmcsetup', where=f"id = '{bmcsetupid}'")
         if not bmcsetup:
             return False, f'{nodename} has no bmcsetup, so there is no credential to bootstrap with'
         setupid = RedfishAccess().setup_id(nodename=nodename)
         if not setupid:
             return False, f'{nodename} has no redfishsetup assigned'
-        setup = Database().get_record(table='redfishsetup', where=f'id = "{setupid}"')
+        setup = Database().get_record(table='redfishsetup', where=f"id = '{setupid}'")
         accounts = Database().get_record(table='redfishaccount',
-                                         where=f'redfishsetupid = "{setupid}"')
+                                         where=f"redfishsetupid = '{setupid}'")
         if not setup or not accounts:
             return False, f'{nodename}: redfishsetup {setupid} has no accounts to provision'
         policy = node.get('unmanaged_bmc_users') or group.get('unmanaged_bmc_users') or 'skip'
@@ -354,9 +354,9 @@ class RedfishAccounts():
             group = asked['group']
             members = Database().get_record_join(
                 ['node.name as name'], ['group.id=node.groupid'],
-                [f'`group`.name="{group}"'])
+                [f"`group`.name='{group}'"])
             if not members:
-                exists = Database().get_record(table='group', where=f'name = "{group}"')
+                exists = Database().get_record(table='group', where=f"name = '{group}'")
                 return False, (f'Group {group} has no nodes' if exists
                                else f'Group {group} is not available')
             hostlist = [member['name'] for member in members]

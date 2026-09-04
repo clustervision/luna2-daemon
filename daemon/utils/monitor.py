@@ -32,6 +32,13 @@ __status__      = "Development"
 class Monitor(object):
 
     def __init__(self):
+        # >> lpart << runs the same install as three phases of its own. They are
+        # not the operator's pre/part/post scripts - pre prepares lpart's runtime,
+        # part carries the partitioning, download and extract together, post
+        # finalises the bootloader - but they sit in the same stretches of the
+        # flow, so a reader of a node's state sees the same progression either
+        # way. Absent from here they are neither ok nor failed, and a node
+        # spends its whole install unrecognised.
         self.node_state = {
             204: [
                 "install.discovered",
@@ -43,13 +50,6 @@ class Monitor(object):
                 "install.prescript",
                 "install.setupbmc",
                 "install.partscript",
-                # lpart runs the same install as three phases of its own. They are not
-                # the operator's pre/part/post scripts - pre prepares lpart's runtime,
-                # part carries the partitioning, download and extract together, post
-                # finalises the bootloader - but they sit in the same stretches of the
-                # flow, so a reader of a node's state sees the same progression either
-                # way. Absent from here they are neither ok nor failed, and a node
-                # spends its whole install unrecognised.
                 "install.lpart.pre",
                 "install.lpart.part",
                 "install.lpart.post",

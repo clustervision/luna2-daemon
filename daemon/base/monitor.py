@@ -153,7 +153,8 @@ class Monitor():
             tableref = 'tableref'
         elif item == 'sync':
             tablename = 'osimage'
-        db_items = Database().get_record_join([f'{tablename}.{tableref}name','monitor.state','monitor.status'],
+        db_items = Database().get_record_join([f'{tablename}.{tableref}name','monitor.state','monitor.status',
+                                               'monitor.updated'],
                                               [f'monitor.tablerefid={tablename}.id'],
                                               [f"monitor.tableref='{item}'"])
         if db_items:
@@ -163,9 +164,13 @@ class Monitor():
                 if item == "node":
                     _,servicestatus=monitor().installer_state(db_item['state'],db_item['status'])
                 state = db_item['state'] or "ok"
-                response['monitor']['status'][item][db_item[tableref+'name']] = {
-                    "state": db_item[tableref+'name']+" "+state,
-                    "status": f"{servicestatus}"}
+                entry = {"state": db_item[tableref+'name']+" "+state,
+                         "status": f"{servicestatus}"}
+                if item == "node":
+                    # when the node last reported, which is what separates the nodes
+                    # in the boot happening now from the ones that booted last month
+                    entry['updated'] = db_item['updated']
+                response['monitor']['status'][item][db_item[tableref+'name']] = entry
         else:
             response = None
             status = False
@@ -190,7 +195,11 @@ class Monitor():
                     self.logger.info(f"node {node}: {state}, {node_status or 'ok'}")
                     row = [{"column": "tableref", "value": "node"},
                            {"column": "tablerefid", "value": node_db[0]['id']},
-                           {"column": "state", "value": state}]
+                           {"column": "state", "value": state},
+                           # when, so one boot can be told from the last one. A node
+                           # that finished reports install.booted and is otherwise
+                           # indistinguishable from a node that booted a month ago.
+                           {"column": "updated", "value": "NOW"}]
                     if node_status:
                         row.append({"column": "status", "value": node_status})
                     result = Database().insert('monitor',row,replace=True)

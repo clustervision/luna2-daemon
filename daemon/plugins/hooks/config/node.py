@@ -43,6 +43,11 @@ try:
 except Exception as exp:
     use_new_config_method = False
 
+try:
+    from trinityx_config_slinky import Generate as Slinky
+except Exception as exp:
+    Slinky = None
+
 class Plugin():
     """
     Class for running custom scripts during node create/update actions
@@ -166,6 +171,8 @@ class Plugin():
             returns = []
             returns.append(Slurm().all_configs(fullset))
             returns.append(Generate().Genders(fullset))
+            if Slinky:
+                returns.append(Slinky().all_configs(fullset))
             if (min(returns)):
                 reconf = subprocess.run(["/usr/bin/scontrol", "reconfigure"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if reconf.returncode != 0:

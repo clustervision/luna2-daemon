@@ -43,11 +43,10 @@ try:
 except Exception as exp:
     use_new_config_method = False
 
-if use_new_config_method:
-    try:
-        from trinityx_config_slinky import Generate as Slinky
-    except ImportError:
-        Slinky = None
+try:
+    from trinityx_config_slinky import Generate as Slinky
+except Exception as exp:
+    Slinky = None
 
 class Plugin():
     """

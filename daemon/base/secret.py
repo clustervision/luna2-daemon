@@ -48,13 +48,15 @@ class Secret():
 
     def readable(self, secret=None):
         """
-        A stored secret as a reader should see it: decrypted, and with the owner and mode
-        the installer will apply. Unset attributes are stored as NULL and the node view
-        has always filled them in; every other read has to say the same thing, or an
+        Give a secret row what a reader should see: decrypted content, and the owner and
+        mode the installer will apply. Unset attributes are stored as NULL and the node
+        view has always filled them in; every other read has to say the same thing, or an
         operator checking one secret sees something different from what the node gets.
         resolved_owner is numeric where possible: the installer's chroot cannot resolve
         directory (ldap) users, the controller can.
         """
+        # mutates the row in place (most callers just append the same dict) and returns it
+        # too, so it can be used inline: response[...].append(self.readable(row))
         secret['content'] = Helper().decrypt_string(secret['content'])
         secret['owner'] = secret['owner'] or 'root:root'
         secret['mode'] = secret['mode'] or '600'

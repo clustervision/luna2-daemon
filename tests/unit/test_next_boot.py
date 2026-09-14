@@ -77,6 +77,31 @@ def plugin(monkeypatch):
     return make
 
 
+# --- the bound each BMC call gets --------------------------------------------
+
+def test_the_override_calls_wait_longer_than_the_power_calls(monkeypatch):
+    """
+    A clear or a status after an arm lands while the host is in POST, when the
+    board is slow. The power path's bound is for a cluster-wide fan-out and stays.
+    """
+    from plugins.control.redfish import Plugin
+    real_client = Plugin.client
+    asked = []
+    monkeypatch.setattr(Plugin, 'client',
+                        lambda self, **kwargs: asked.append(kwargs.get('timeout'))
+                        or FakeClient(boot=advertising('BiosSetup')))
+    plugin = Plugin()
+    plugin.redfish_next_boot('bios', '10.0.0.1', 'u', 'p')
+    plugin.redfish_boot_status('10.0.0.1', 'u', 'p')
+    plugin.redfish_boot_clear('10.0.0.1', 'u', 'p')
+    plugin.redfish_power_status('10.0.0.1', 'u', 'p')
+    assert asked[:3] == [Plugin.BOOT_OVERRIDE_TIMEOUT] * 3
+    assert asked[3] is None, 'the power path takes the default'
+    assert Plugin.BOOT_OVERRIDE_TIMEOUT >= 30
+    fan_out = real_client(Plugin(), device='10.0.0.1', username='u', password='p').timeout
+    assert fan_out[1] == 10, 'and the fan-out bound is untouched'
+
+
 # --- the happy path ---------------------------------------------------------
 
 def test_the_override_is_armed_once_and_then_the_node_is_reset(plugin):

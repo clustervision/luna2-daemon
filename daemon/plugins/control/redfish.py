@@ -139,7 +139,12 @@ class Plugin():
 
     # --- the Redfish half ----------------------------------------------------
 
-    def client(self, device=None, username=None, password=None):
+    # a BMC answers slowly while its host is in POST, which is exactly when the
+    # boot override gets cleared or checked after an arm; one node at a time,
+    # so it can wait longer than the fan-out bound below
+    BOOT_OVERRIDE_TIMEOUT = 30
+
+    def client(self, device=None, username=None, password=None, timeout=10):
         """
         The shared Redfish client for this node's BMC.
 
@@ -147,11 +152,14 @@ class Plugin():
         redfishsetup is deliberately not used here: every method falls back to
         ipmitool, and a Redfish-only account would authenticate the first attempt
         and then break the fallback it depends on.
+
+        The timeout bounds each BMC call; the default is what a fan-out across
+        the cluster can afford per dark BMC.
         """
         # 10s, matching the ipmitool path in the default plugin - the same BMCs,
         # the same request worker, so the same bound. It was 20s, which doubled
         # the stall a dead BMC could cause for no reason anybody recorded.
-        return Redfish(device=device, username=username, password=password, timeout=10)
+        return Redfish(device=device, username=username, password=password, timeout=timeout)
 
     def allowable_reset_types(self, system_data=None, redfish=None):
         """
@@ -241,7 +249,8 @@ class Plugin():
         wanted = self.BOOT_TARGETS.get(target)
         if not wanted:
             return False, f'unknown boot target {target}'
-        redfish = self.client(device=device, username=username, password=password)
+        redfish = self.client(device=device, username=username, password=password,
+                              timeout=self.BOOT_OVERRIDE_TIMEOUT)
         status, system_path, system_data = redfish.system()
         if not status:
             return False, system_path
@@ -287,7 +296,8 @@ class Plugin():
         an AMI MegaRAC keeps BiosSetup/Once armed while the node sits in setup,
         so every reset lands there again. This is the way out without a console.
         """
-        redfish = self.client(device=device, username=username, password=password)
+        redfish = self.client(device=device, username=username, password=password,
+                              timeout=self.BOOT_OVERRIDE_TIMEOUT)
         status, system_path, system_data = redfish.system()
         if not status:
             return False, system_path
@@ -311,7 +321,8 @@ class Plugin():
         return True, 'override cleared, next boot follows the normal order'
 
     def redfish_boot_status(self, device=None, username=None, password=None):
-        redfish = self.client(device=device, username=username, password=password)
+        redfish = self.client(device=device, username=username, password=password,
+                              timeout=self.BOOT_OVERRIDE_TIMEOUT)
         status, _, system_data = redfish.system()
         if not status:
             return False, system_data

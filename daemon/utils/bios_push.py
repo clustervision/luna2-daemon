@@ -324,7 +324,8 @@ class BiosPush():
             return False, access
         redfish = Redfish(device=access['device'], username=access['username'],
                           password=access['password'], scheme=access['scheme'],
-                          port=access['port'], verify=access['verify'])
+                          port=access['port'], verify=access['verify'],
+                          fallback=access.get('fallback'))
 
         status, path, bios = self.bios_resource(redfish=redfish)
         if not status:
@@ -508,7 +509,8 @@ class BiosPush():
             return
         redfish = Redfish(device=access['device'], username=access['username'],
                           password=access['password'], scheme=access['scheme'],
-                          port=access['port'], verify=access['verify'])
+                          port=access['port'], verify=access['verify'],
+                          fallback=access.get('fallback'))
         status, _, system = redfish.system()
         if not status:
             return

@@ -55,12 +55,16 @@ class Redfish():
     """
 
     def __init__(self, device=None, username=None, password=None, scheme='https',
-                 port=None, verify=False, timeout=15, connect_timeout=5):
+                 port=None, verify=False, timeout=15, connect_timeout=5, fallback=None):
         """
         Constructor - binds this client to one BMC and its credentials.
+
+        Fallback is one more account, tried once when the board refuses a call for
+        want of privilege - see call(). None means there is nothing to fall back to.
         """
         self.logger = Log.get_logger()
         self.device = device
+        self.fallback = fallback
         self.timeout = (connect_timeout, timeout)
         self.base = f'{scheme}://{self.netloc(device, port)}'
         self.session = requests.Session()
@@ -193,9 +197,40 @@ class Redfish():
                 data = response.text
         if not response.ok:
             self.logger.debug(f'redfish {method} {url} answered {response.status_code}')
+            if response.status_code == 403 and self.fallback and self.insufficient_privilege(data):
+                # The board is the only authority on what an operation needs, and
+                # it can enforce more than it declares: one board's own privilege
+                # registry puts a firmware update behind ConfigureComponents and
+                # then refuses an Operator. So a refusal is answered once, with the
+                # next account carrying the privilege, and the answer is kept for
+                # the rest of this client's life. Once: a third account would be a
+                # third guess at a ranking two answers have already contradicted,
+                # at a call each.
+                switched = self.fallback
+                self.fallback = None
+                refused = (self.session.auth or ('',))[0]
+                self.logger.info(f"redfish {method} {path} on {self.device}: {refused} refused "
+                                 f"for privilege, retrying as {switched['username']}")
+                self.session.auth = (str(switched['username']), str(switched['password']))
+                return self.call(method=method, path=path, payload=payload, headers=headers)
             return False, response.status_code, self.reason(data, response.status_code), \
                 dict(response.headers)
         return True, response.status_code, data, dict(response.headers)
+
+
+    def insufficient_privilege(self, data=None):
+        """
+        This method says whether a refusal is the account lacking privilege, as
+        opposed to any other 403 - a licence gate answers 403 too, and no other
+        account will get past that one.
+        """
+        if not isinstance(data, dict):
+            return False
+        extended = data.get('error', {}).get('@Message.ExtendedInfo', [])
+        if not extended:
+            extended = data.get('@Message.ExtendedInfo', [])
+        return any(str(entry.get('MessageId', '')).endswith('InsufficientPrivilege')
+                   for entry in extended if isinstance(entry, dict))
 
 
     def upload(self, path=None, body=None, content_type=None, timeout=None):
@@ -513,10 +548,10 @@ class RedfishAccess():
         return None
 
 
-    def pick_account(self, accounts=None, needs=LOGIN):
+    def rank_accounts(self, accounts=None, needs=LOGIN):
         """
-        This method will pick the weakest account that carries the privilege an
-        operation actually needs.
+        This method will rank the accounts that carry the privilege an operation
+        actually needs, weakest first.
 
         One rule for reads and writes alike. It used to be two - reads took the
         weakest account and writes took the strongest - and the second was wrong
@@ -534,7 +569,13 @@ class RedfishAccess():
         A role we do not rank is *unknown*, not known-unable. Redfish lets a vendor
         define roles with arbitrary privilege sets, so one of those is tried rather
         than refused - stranding a node on a name we have not seen would be worse
-        than attempting the call and reading the answer.
+        than attempting the call and reading the answer. It ranks after every role
+        we do know.
+
+        The first of the ranking is the account used; the second is the single
+        fallback the client turns to when the board refuses the first for privilege
+        (Redfish.call). The board enforces what it enforces, whatever a table says,
+        and this is how a wrong rank costs one call rather than a stranded node.
         """
         candidates = []
         unknown = []
@@ -550,12 +591,19 @@ class RedfishAccess():
                 unknown.append((0, account))
             elif needs in privileges:
                 candidates.append((len(privileges), account))
-        if candidates:
-            # fewest privileges first: the weakest account that can do the job
-            return min(candidates, key=lambda entry: entry[0])[1]
-        if unknown:
-            return unknown[0][1]
-        return None
+        # fewest privileges first: the weakest account that can do the job. The
+        # sort is stable, so equals keep their configured order
+        candidates.sort(key=lambda entry: entry[0])
+        return [account for _, account in candidates + unknown]
+
+
+    def pick_account(self, accounts=None, needs=LOGIN):
+        """
+        This method will pick the weakest account that carries the privilege an
+        operation actually needs - the first of rank_accounts(), or None.
+        """
+        ranked = self.rank_accounts(accounts=accounts, needs=needs)
+        return ranked[0] if ranked else None
 
 
     def for_node(self, nodename=None, needs=LOGIN):
@@ -591,11 +639,20 @@ class RedfishAccess():
                                          where=f"redfishsetupid = '{setupid}'")
         if not accounts:
             return False, f"redfishsetup {setup[0]['name']} has no accounts"
-        account = self.pick_account(accounts=accounts, needs=needs)
-        if not account:
+        ranked = self.rank_accounts(accounts=accounts, needs=needs)
+        if not ranked:
             return False, (f"redfishsetup {setup[0]['name']} has no account carrying "
                            f'{needs}; add one with a role that does, or this node '
                            'cannot be asked to do that over Redfish by configuration')
+        account = ranked[0]
+        fallback = None
+        for other in ranked[1:]:
+            # the next account of a different role: a second account of the same
+            # role would be refused for the same reason and spend the one retry
+            if str(other['role'] or '').lower() != str(account['role'] or '').lower():
+                fallback = {'username': other['username'], 'password': other['password'],
+                            'account': other['name']}
+                break
         return True, {
             'scheme': setup[0]['scheme'] or 'https',
             'port': setup[0]['port'],
@@ -604,7 +661,8 @@ class RedfishAccess():
             'verify': bool(Helper().make_bool(setup[0]['verify'])),
             'username': account['username'],
             'password': account['password'],
-            'account': account['name']
+            'account': account['name'],
+            'fallback': fallback
         }
 
 

@@ -293,7 +293,9 @@ class NodeInventory():
         The caller says what privilege the operation needs and gets the weakest
         account carrying it - a whole-cluster inventory sweep has no business
         running as a BMC administrator, and a BIOS push has no business running as
-        one either when an Operator can reset a system.
+        one either when an Operator can reset a system. The next account carrying
+        it comes along as the one fallback the client tries when the board refuses
+        the first for privilege.
 
         A node with no redfishsetup is refused rather than reached with the bmcsetup
         credentials (TRIX-2027). Those credentials do work over Redfish, because the
@@ -316,7 +318,8 @@ class NodeInventory():
             return False, access
         return True, {'device': node[0]['device'], 'username': access['username'],
                       'password': access['password'], 'scheme': access['scheme'],
-                      'port': access['port'], 'verify': access['verify']}
+                      'port': access['port'], 'verify': access['verify'],
+                      'fallback': access['fallback']}
 
 
     def redfish_snapshot(self, redfish=None):
@@ -550,7 +553,8 @@ class NodeInventory():
             return False, access
         redfish = Redfish(device=access['device'], username=access['username'],
                           password=access['password'], scheme=access['scheme'],
-                          port=access['port'], verify=access['verify'])
+                          port=access['port'], verify=access['verify'],
+                          fallback=access.get('fallback'))
         status, snapshot = self.redfish_snapshot(redfish=redfish)
         if not status:
             return False, f'{name}: {snapshot}'

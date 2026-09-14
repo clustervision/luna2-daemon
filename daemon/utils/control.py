@@ -180,7 +180,8 @@ class Control():
             password=access['password'],
             scheme=access['scheme'],
             port=access['port'],
-            verify=access['verify']
+            verify=access['verify'],
+            fallback=access.get('fallback')
         )
         if action == 'setting':
             return redfish_plugin().setting(

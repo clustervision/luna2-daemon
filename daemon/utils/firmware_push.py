@@ -84,6 +84,7 @@ from common.constant import CONSTANT
 from utils.database import Database
 from utils.helper import Helper
 from utils.log import Log
+from utils.redfish import CONFIGURE_COMPONENTS
 from utils.queue import Queue
 from utils.ha import HA
 from utils.firmware import FirmwareCatalog, FirmwareRequest, NO_IMAGEFILE, NO_IMAGE
@@ -828,12 +829,17 @@ class FirmwarePush():
         if redfish is None:
             from base.nodeinventory import NodeInventory
             from utils.redfish import Redfish
-            status, access = NodeInventory().bmc_for(name=nodename)
+            # UpdateService.SimpleUpdate is ConfigureComponents in the privilege
+            # registry, the DMTF's and the board's own, which an Operator carries.
+            # The one board that has taken a flash refuses an Operator anyway;
+            # that is what the fallback account is for
+            status, access = NodeInventory().bmc_for(name=nodename, needs=CONFIGURE_COMPONENTS)
             if not status:
                 return False, f'{nodename}: {access}'
             redfish = Redfish(device=access['device'], username=access['username'],
                               password=access['password'], scheme=access['scheme'],
-                              port=access['port'], verify=access['verify'])
+                              port=access['port'], verify=access['verify'],
+                              fallback=access.get('fallback'))
 
         done = []
         for item in wanted:
@@ -1038,12 +1044,13 @@ class FirmwarePush():
         """
         This method does the work for restore_after_flash(), given its collaborators.
         """
-        status, access = inventory.bmc_for(name=nodename)
+        status, access = inventory.bmc_for(name=nodename, needs=CONFIGURE_COMPONENTS)
         if not status:
             return False, f'BMC not verified: {access}'
         redfish = redfish_class(device=access['device'], username=access['username'],
                                 password=access['password'], scheme=access['scheme'],
-                                port=access['port'], verify=access['verify'])
+                                port=access['port'], verify=access['verify'],
+                                fallback=access.get('fallback'))
         waited, reason = 0, None
         while True:
             status, reason, _ = redfish.system()

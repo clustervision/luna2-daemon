@@ -46,6 +46,22 @@ class Secret():
         self.logger = Log.get_logger()
 
 
+    def readable(self, secret=None):
+        """
+        A stored secret as a reader should see it: decrypted, and with the owner and mode
+        the installer will apply. Unset attributes are stored as NULL and the node view
+        has always filled them in; every other read has to say the same thing, or an
+        operator checking one secret sees something different from what the node gets.
+        resolved_owner is numeric where possible: the installer's chroot cannot resolve
+        directory (ldap) users, the controller can.
+        """
+        secret['content'] = Helper().decrypt_string(secret['content'])
+        secret['owner'] = secret['owner'] or 'root:root'
+        secret['mode'] = secret['mode'] or '600'
+        secret['resolved_owner'] = Helper().resolve_owner(secret['owner'])
+        return secret
+
+
     def get_all_secrets(self):
         """
         This method will return all secrets in detailed format.
@@ -68,7 +84,7 @@ class Secret():
                     response['config']['secrets']['node'][nodename] = []
                 del node['nodeid']
                 del node['id']
-                node['content'] = Helper().decrypt_string(node['content'])
+                self.readable(node)
                 response['config']['secrets']['node'][nodename].append(node)
         if groupsecrets:
             response['config']['secrets']['group'] = {}
@@ -78,14 +94,14 @@ class Secret():
                     response['config']['secrets']['group'][groupname] = []
                 del group['groupid']
                 del group['id']
-                group['content'] = Helper().decrypt_string(group['content'])
+                self.readable(group)
                 response['config']['secrets']['group'][groupname].append(group)
         if clustersecrets:
             response['config']['secrets']['cluster'] = []
             for secret in clustersecrets:
                 del secret['clusterid']
                 del secret['id']
-                secret['content'] = Helper().decrypt_string(secret['content'])
+                self.readable(secret)
                 response['config']['secrets']['cluster'].append(secret)
         return status, response
 
@@ -119,10 +135,7 @@ class Secret():
                 for secret in clustersecrets:
                     del secret['clusterid']
                     del secret['id']
-                    secret['content'] = Helper().decrypt_string(secret['content'])
-                    secret['owner'] = secret['owner'] or 'root:root'
-                    secret['mode'] = secret['mode'] or '600'
-                    secret['resolved_owner'] = Helper().resolve_owner(secret['owner'])
+                    self.readable(secret)
                     response['config']['secrets']['cluster'].append(secret)
             if nodesecrets:
                 response['config']['secrets']['node'] = {}
@@ -132,14 +145,7 @@ class Secret():
                         response['config']['secrets']['node'][nodename] = []
                     del node['nodeid']
                     del node['id']
-                    node['content'] = Helper().decrypt_string(node['content'])
-                    # the installer's parser cannot carry empty values, so unset
-                    # attributes travel as the defaults the installer applies anyway.
-                    # resolved_owner is numeric where possible: the installer's chroot
-                    # cannot resolve directory (ldap) users, the controller can.
-                    node['owner'] = node['owner'] or 'root:root'
-                    node['mode'] = node['mode'] or '600'
-                    node['resolved_owner'] = Helper().resolve_owner(node['owner'])
+                    self.readable(node)
                     response['config']['secrets']['node'][nodename].append(node)
             if groupsecrets:
                 response['config']['secrets']['group'] = {}
@@ -149,10 +155,7 @@ class Secret():
                         response['config']['secrets']['group'][groupname] = []
                     del group['groupid']
                     del group['id']
-                    group['content'] = Helper().decrypt_string(group['content'])
-                    group['owner'] = group['owner'] or 'root:root'
-                    group['mode'] = group['mode'] or '600'
-                    group['resolved_owner'] = Helper().resolve_owner(group['owner'])
+                    self.readable(group)
                     response['config']['secrets']['group'][groupname].append(group)
         else:
             self.logger.error(f'Node {name} is not available.')
@@ -247,7 +250,7 @@ class Secret():
                 status=True
                 del secret_data[0]['nodeid']
                 del secret_data[0]['id']
-                secret_data[0]['content'] = Helper().decrypt_string(secret_data[0]['content'])
+                self.readable(secret_data[0])
                 response['config']['secrets']['node'][name] = secret_data
             else:
                 response = f'Secret {secret} is unavailable for node {name}'
@@ -430,7 +433,7 @@ class Secret():
                 for grp in groupsecrets:
                     del grp['groupid']
                     del grp['id']
-                    grp['content'] = Helper().decrypt_string(grp['content'])
+                    self.readable(grp)
                     response['config']['secrets']['group'][name].append(grp)
                     status=True
             else:
@@ -525,7 +528,7 @@ class Secret():
                 status=True
                 del secret_data[0]['groupid']
                 del secret_data[0]['id']
-                secret_data[0]['content'] = Helper().decrypt_string(secret_data[0]['content'])
+                self.readable(secret_data[0])
                 response['config']['secrets']['group'][name] = secret_data
             else:
                 response = f'Secret {secret} is unavailable for group {name}'
@@ -710,7 +713,7 @@ class Secret():
             for secret in clustersecrets:
                 del secret['clusterid']
                 del secret['id']
-                secret['content'] = Helper().decrypt_string(secret['content'])
+                self.readable(secret)
                 response['config']['secrets']['cluster'].append(secret)
             status=True
         else:
@@ -803,7 +806,7 @@ class Secret():
             status=True
             del secret_data[0]['clusterid']
             del secret_data[0]['id']
-            secret_data[0]['content'] = Helper().decrypt_string(secret_data[0]['content'])
+            self.readable(secret_data[0])
             response['config']['secrets']['cluster'] = secret_data
         else:
             response = f'Secret {secret} is unavailable for the cluster'

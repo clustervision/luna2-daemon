@@ -273,6 +273,15 @@ def test_a_read_takes_the_weakest_account_of_all():
     assert picked['role'] == 'ReadOnly'
 
 
+def test_the_ranking_is_weakest_first_and_unknown_roles_last():
+    ranked = RedfishAccess().rank_accounts(
+        accounts=accounts('Administrator', 'OemPowerOnly', 'Operator', 'ReadOnly'),
+        needs=CONFIGURE_COMPONENTS)
+    assert [account['role'] for account in ranked] == ['Operator', 'Administrator', 'OemPowerOnly'], (
+        'ReadOnly provably cannot; the vendor role is unknown, so it is tried, but last'
+    )
+
+
 def test_managing_accounts_needs_an_administrator_and_nothing_less():
     """
     The other half of why a boolean could not express this: creating an account
@@ -318,6 +327,70 @@ def test_a_known_role_that_cannot_do_it_is_not_offered():
     """The other side of the same coin: ReadOnly provably cannot reset a system."""
     assert RedfishAccess().pick_account(accounts=accounts('ReadOnly'),
                                         needs=CONFIGURE_COMPONENTS) is None
+
+
+# --- one more account when the board refuses for privilege ------------------
+
+REFUSED = FakeResponse(status_code=403, payload={'error': {'@Message.ExtendedInfo': [
+    {'MessageId': 'Security.1.0.InsufficientPrivilege',
+     'Message': 'There are insufficient privileges for the account'}]}})
+LICENCE_GATED = FakeResponse(status_code=403, payload={'error': {'@Message.ExtendedInfo': [
+    {'MessageId': 'Oem.1.0.OemLicenseNotPassed', 'Message': 'no licence'}]}})
+FALLBACK = {'username': 'stronger', 'password': 's', 'account': 'admin'}
+
+
+class SwitchingSession(FakeSession):
+    """Refuses until the auth changes, then answers 202 - a board that wants
+    a different account for this one action."""
+
+    def request(self, method, url, data=None, headers=None, timeout=None):
+        self.calls.append({'method': method, 'url': url, 'auth': self.auth})
+        if self.auth != ('stronger', 's'):
+            return REFUSED
+        return FakeResponse(status_code=202, payload={}, headers={'Location': '/redfish/v1/TaskService/Tasks/1'})
+
+
+def test_a_privilege_refusal_is_retried_once_with_the_fallback_account():
+    """
+    The board is the only authority on what an operation needs. One board's own
+    privilege registry declares a firmware update ConfigureComponents and then
+    refuses an Operator, so the refusal is answered with the next account, once,
+    and the working account is kept for the rest of the client's life.
+    """
+    redfish = client(fallback=FALLBACK)
+    redfish.session = SwitchingSession()
+    redfish.session.auth = ('u', 'p')
+    status, _, location = redfish.action(path='/redfish/v1/UpdateService/Actions/SimpleUpdate',
+                                         payload={'ImageURI': 'x'})
+    assert status is True and location == '/redfish/v1/TaskService/Tasks/1'
+    assert [call['auth'] for call in redfish.session.calls] == [('u', 'p'), ('stronger', 's')]
+    redfish.action(path='/redfish/v1/UpdateService/Actions/SimpleUpdate', payload={'ImageURI': 'x'})
+    assert redfish.session.calls[-1]['auth'] == ('stronger', 's'), 'the switch sticks'
+    assert len(redfish.session.calls) == 3, 'and the second action costs one call, not two'
+
+
+def test_a_second_refusal_is_final():
+    """Two accounts refused is the answer; a third would be a third guess at a
+    ranking two answers have already contradicted, at a call each."""
+    redfish = client(routes={'/redfish/v1/UpdateService/Actions/SimpleUpdate': REFUSED},
+                     fallback=FALLBACK)
+    status, data, _ = redfish.action(path='/redfish/v1/UpdateService/Actions/SimpleUpdate',
+                                     payload={})
+    assert status is False and 'insufficient privileges' in data
+    assert len(redfish.session.calls) == 2
+
+
+@pytest.mark.parametrize('answer', [LICENCE_GATED,
+                                    FakeResponse(status_code=401, payload={'error': {'message': 'no'}})])
+def test_any_other_refusal_is_not_retried(answer):
+    """A licence gate answers 403 too, and no account gets past it; a 401 is a
+    wrong password, which is a misconfiguration to report, not to route around."""
+    redfish = client(routes={'/redfish/v1/UpdateService/Actions/SimpleUpdate': answer},
+                     fallback=FALLBACK)
+    status, _, _ = redfish.action(path='/redfish/v1/UpdateService/Actions/SimpleUpdate', payload={})
+    assert status is False
+    assert len(redfish.session.calls) == 1
+    assert redfish.fallback is FALLBACK, 'the fallback is still unspent'
 
 
 # --- why a BMC could not be reached, in a few words -------------------------

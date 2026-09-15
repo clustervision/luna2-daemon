@@ -457,7 +457,8 @@ class Bios():
             return False, access
         redfish = Redfish(device=access['device'], username=access['username'],
                           password=access['password'], scheme=access['scheme'],
-                          port=access['port'], verify=access['verify'])
+                          port=access['port'], verify=access['verify'],
+                          fallback=access.get('fallback'))
         status, path, system = redfish.system()
         if not status:
             return False, f'{node}: {path}'

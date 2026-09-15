@@ -611,7 +611,8 @@ class Reachable:
     """A BMC that answers Redfish, after a number of refusals."""
     def __init__(self, refusals=0):
         self.refusals = refusals
-    def __call__(self, device=None, username=None, password=None, scheme=None, port=None, verify=None):
+    def __call__(self, device=None, username=None, password=None, scheme=None, port=None, verify=None,
+                 fallback=None):
         self.device = device
         return self
     def system(self):

@@ -201,9 +201,13 @@ def test_an_administrator_alongside_it_is_what_allows_the_write(node):
                                          {"column": "username", "value": 'rfadmin'},
                                          {"column": "password", "value": 'pw2'},
                                          {"column": "role", "value": 'Administrator'}])
-    assert RedfishAccess().for_node(nodename=node, needs=CONFIGURE_COMPONENTS)[1]['username'] == 'rfadmin'
-    assert RedfishAccess().for_node(nodename=node, needs=LOGIN)[1]['username'] == 'sweep', (
-        'and the read still uses the weakest account that can do the job'
+    write = RedfishAccess().for_node(nodename=node, needs=CONFIGURE_COMPONENTS)[1]
+    assert write['username'] == 'rfadmin'
+    assert write['fallback'] is None, 'ReadOnly provably cannot write, so it is not even the fallback'
+    read = RedfishAccess().for_node(nodename=node, needs=LOGIN)[1]
+    assert read['username'] == 'sweep', 'and the read still uses the weakest account that can do the job'
+    assert read['fallback']['username'] == 'rfadmin', (
+        'with the Administrator as the one fallback, should the board refuse the read'
     )
 
 
@@ -246,16 +250,64 @@ def test_each_operation_asks_for_what_it_actually_needs(node):
     picked = {}
     for label, needs in (('read', LOGIN), ('power', CONFIGURE_COMPONENTS),
                          ('accounts', CONFIGURE_USERS)):
-        picked[label] = RedfishAccess().for_node(nodename=node, needs=needs)[1]['username']
+        access = RedfishAccess().for_node(nodename=node, needs=needs)[1]
+        picked[label] = (access['username'], (access['fallback'] or {}).get('username'))
 
-    assert picked['read'] == 'sweep', 'ReadOnly is enough to read'
-    assert picked['power'] == 'operator', (
+    assert picked['read'] == ('sweep', 'operator'), 'ReadOnly is enough to read'
+    assert picked['power'] == ('operator', 'administrator'), (
         'ComputerSystem.Reset needs ConfigureComponents, which an Operator carries - '
-        'reaching for the Administrator would use more than the job requires'
+        'reaching for the Administrator would use more than the job requires; it is '
+        'the fallback should the board disagree, and ReadOnly is never tried'
     )
-    assert picked['accounts'] == 'administrator', (
-        'creating an account needs ConfigureUsers, which only an Administrator has'
+    assert picked['accounts'] == ('administrator', 'oempoweronly'), (
+        'creating an account needs ConfigureUsers, which only an Administrator has; '
+        'the vendor role is unknown rather than unable, so it is the fallback'
     )
+
+
+def test_the_fallback_is_the_next_role_not_the_next_account(node):
+    """
+    Two Operators beside one Administrator: a second Operator would be refused for
+    the same reason as the first and spend the one retry on it, so the fallback
+    skips to the next role.
+    """
+    add_redfishsetup(role='Operator')
+    for num, (name, role) in enumerate((('op2', 'Operator'), ('admin', 'Administrator')), start=2):
+        Database().insert('redfishaccount', [
+            {"column": "id", "value": num},
+            {"column": "redfishsetupid", "value": 1},
+            {"column": "name", "value": name},
+            {"column": "username", "value": name},
+            {"column": "password", "value": 'pw'},
+            {"column": "role", "value": role}])
+    access = RedfishAccess().for_node(nodename=node, needs=CONFIGURE_COMPONENTS)[1]
+    assert access['username'] in ('sweep', 'op2'), 'an Operator goes first'
+    assert access['fallback']['username'] == 'admin', 'and the other Operator is skipped'
+
+
+def test_a_firmware_push_asks_for_what_a_flash_needs():
+    """
+    UpdateService.SimpleUpdate is ConfigureComponents, the same as a BIOS push.
+    The push has to say so, or it silently takes whatever bmc_for defaults to -
+    the read privilege - and a ReadOnly account in the setup would be handed a
+    flash. The one board that has taken a flash refuses an Operator anyway, and
+    that is the fallback account's job, not the filter's.
+    """
+    import ast
+    import inspect
+
+    from utils import firmware_push
+
+    for method in (firmware_push.FirmwarePush.update_node, firmware_push.FirmwarePush.restore_node):
+        source = inspect.getsource(method)
+        tree = ast.parse(source.lstrip())
+        needs = [keyword.value.id
+                 for call in ast.walk(tree) if isinstance(call, ast.Call)
+                 for keyword in call.keywords
+                 if keyword.arg == 'needs' and isinstance(keyword.value, ast.Name)]
+        assert needs == ['CONFIGURE_COMPONENTS'], (
+            f'{method.__name__} must name the privilege it needs rather than take the default'
+        )
 
 
 def test_a_bios_push_does_not_ask_for_more_than_it_needs():

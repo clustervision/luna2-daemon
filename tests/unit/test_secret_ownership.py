@@ -50,7 +50,8 @@ def db(tmp_path):
     constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'unit.db')
     database.local_thread.connection = None
     Helper.owner_cache = {}     # the 60s memory cache must not bleed between tests
-    for table in ['node', 'group', 'nodesecrets', 'groupsecrets', 'ownercache']:
+    for table in ['node', 'group', 'cluster', 'nodesecrets', 'groupsecrets',
+                  'clustersecrets', 'ownercache']:
         Database().create(table, DBStructure().get_database_table_structure(table))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
@@ -60,8 +61,9 @@ def db(tmp_path):
 
 @pytest.fixture
 def seed(db):
-    """A node in a group; returns their ids."""
+    """A node in a group, in a cluster; returns their ids."""
     from utils.helper import Helper
+    db.insert('cluster', Helper().make_rows({'name': 'democluster'}))
     groupid = db.insert('group', Helper().make_rows({'name': 'compute'}))
     nodeid = db.insert('node', Helper().make_rows({'name': 'node001', 'groupid': groupid}))
     return {'groupid': groupid, 'nodeid': nodeid}
@@ -420,3 +422,40 @@ def test_creating_a_secret_still_needs_its_content(db, seed, scope):
     assert 'not complete' in message
     assert not db.get_record(table=f'{scope}secrets', where='name = "brandnew"'), \
         'a contentless secret was created anyway'
+
+
+def _every_read_of(db):
+    """
+    Every way a secret can be read back, each with the row it answers for a secret
+    stored without owner or mode. Enumerated here so a read path added later has to
+    be listed - the defect this pins was exactly a read path the defaults never learnt
+    about: the node view filled them in, a single-secret read answered NULL.
+    """
+    from base.secret import Secret
+    _post_node_secret('node001', {'name': 'n1', 'content': 'c2VjcmV0', 'path': '/etc/n1'})
+    Secret().update_group_secret('compute', 'g1', {'config': {'secrets': {'group': {
+        'compute': [{'name': 'g1', 'content': 'c2VjcmV0', 'path': '/etc/g1'}]}}}})
+    Secret().update_cluster_secrets({'config': {'secrets': {'cluster': [
+        {'name': 'c1', 'content': 'c2VjcmV0', 'path': '/etc/c1'}]}}})
+    reads = {
+        'node view': lambda: Secret().get_node_secrets('node001')[1]['config']['secrets']['node']['node001'][0],
+        'one node secret': lambda: Secret().get_node_secret('node001', 'n1')[1]['config']['secrets']['node']['node001'][0],
+        'group list': lambda: Secret().get_group_secrets('compute')[1]['config']['secrets']['group']['compute'][0],
+        'one group secret': lambda: Secret().get_group_secret('compute', 'g1')[1]['config']['secrets']['group']['compute'][0],
+        'cluster list': lambda: Secret().get_cluster_secrets()[1]['config']['secrets']['cluster'][0],
+        'one cluster secret': lambda: Secret().get_cluster_secret('c1')[1]['config']['secrets']['cluster'][0],
+        'everything, node part': lambda: Secret().get_all_secrets()[1]['config']['secrets']['node']['node001'][0],
+        'everything, group part': lambda: Secret().get_all_secrets()[1]['config']['secrets']['group']['compute'][0],
+        'everything, cluster part': lambda: Secret().get_all_secrets()[1]['config']['secrets']['cluster'][0],
+    }
+    return reads
+
+
+def test_every_read_answers_with_the_effective_owner_and_mode(db, seed):
+    """An operator checking one secret must see what the node will get. The node view
+    always applied the defaults; the single-secret and per-scope reads answered NULL."""
+    for how, read in _every_read_of(db).items():
+        row = read()
+        assert (row['owner'], row['mode'], row['resolved_owner']) == ('root:root', '600', '0:0'), \
+            f'{how} does not carry the defaults the node view applies: {row}'
+        assert row['content'] == 'c2VjcmV0', f'{how} did not decrypt the content'

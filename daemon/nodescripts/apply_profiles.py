@@ -286,7 +286,8 @@ def act_on_service(service, action):
         # a service can legitimately take minutes to come back - a database, a
         # filesystem client, anything with state to settle. This bound is here to stop a
         # hung unit holding the node forever, not to express an expectation about speed
-        result = subprocess.run(command, capture_output=True, timeout=SERVICE_TIMEOUT,
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                timeout=SERVICE_TIMEOUT,
                                 check=False)
         if result.returncode != 0:
             print(f"WARNING {' '.join(command)} exited {result.returncode}: "

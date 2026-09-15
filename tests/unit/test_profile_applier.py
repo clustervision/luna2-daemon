@@ -46,14 +46,21 @@ def _applier(tmp_path):
     return local, state
 
 
-def _run(tmp_path, payload):
+# The applier runs under the NODE's python, never the controller's, and the oldest one
+# we ship to is 3.6 (EL8) while the newest is 3.12 (EL10). Point this at another
+# interpreter to run the whole battery against it: LUNA_APPLIER_PYTHON=/usr/bin/python3.6
+NODE_PYTHON = os.environ.get('LUNA_APPLIER_PYTHON', sys.executable)
+OLDEST_NODE_PYTHON = (3, 6)
+
+
+def _run(tmp_path, payload, env=None):
     """Run the applier over a payload; returns (returncode, stdout)."""
     local, _ = _applier(tmp_path)
     bundle = tmp_path / 'bundle'
     bundle.mkdir(exist_ok=True)
     (bundle / 'payload.json').write_text(json.dumps(payload))
-    result = subprocess.run([sys.executable, str(local), str(bundle)],
-                            capture_output=True, text=True, timeout=60)
+    result = subprocess.run([NODE_PYTHON, str(local), str(bundle)],
+                            capture_output=True, text=True, timeout=60, env=env)
     return result.returncode, result.stdout
 
 
@@ -508,3 +515,43 @@ def test_a_file_never_has_a_wider_mode_than_asked(tmp_path):
         applier.os.replace = real_replace
     assert seen['mode'] == 0o400, f'temporary copy was {oct(seen["mode"])} before it took the name'
     assert (target.stat().st_mode & 0o777) == 0o400
+
+
+# subprocess.run as Python 3.6 knows it: these are every keyword it accepts, and anything
+# else raises exactly the way a 3.6 node does. 'capture_output' and 'text' arrived in 3.7
+# and are the ones that have been reached for.
+_RUN_AS_OF_3_6 = """
+import subprocess
+_real_run = subprocess.run
+_POPEN_KEYWORDS = {'bufsize', 'executable', 'stdin', 'stdout', 'stderr', 'preexec_fn',
+                   'close_fds', 'shell', 'cwd', 'env', 'universal_newlines', 'startupinfo',
+                   'creationflags', 'restore_signals', 'start_new_session', 'pass_fds',
+                   'encoding', 'errors'}
+def run(*popenargs, input=None, timeout=None, check=False, **kwargs):
+    unknown = sorted(set(kwargs) - _POPEN_KEYWORDS)
+    if unknown:
+        raise TypeError("__init__() got an unexpected keyword argument '%s'" % unknown[0])
+    return _real_run(*popenargs, input=input, timeout=timeout, check=check, **kwargs)
+subprocess.run = run
+"""
+
+
+def test_the_applier_runs_on_the_oldest_node_python(tmp_path):
+    """The applier is executed by the node's own python3, and on EL8 that is 3.6. A
+    keyword that 3.7 added raised a TypeError on every EL8 node, the whole apply
+    aborted after the files were written, and the node was retried until it gave up.
+    Two gates: the syntax has to parse as 3.6, and the standard-library calls the
+    service action makes have to be ones 3.6 accepts."""
+    import ast
+    with open(APPLIER, encoding='utf-8') as handle:
+        source = handle.read()
+    ast.parse(source, filename=APPLIER, feature_version=OLDEST_NODE_PYTHON)
+    shim = tmp_path / 'as_of_3_6'
+    shim.mkdir()
+    (shim / 'sitecustomize.py').write_text(_RUN_AS_OF_3_6)
+    env = dict(os.environ, PYTHONPATH=str(shim))
+    target = tmp_path / 'etc' / 'thing.conf'
+    code, out = _run(tmp_path, _payload(_file(target), service='sshd', action='reload'),
+                     env=env)
+    assert code == 0 and 'ERROR' not in out, out
+    assert 'systemctl reload sshd' in out, 'the service action did not run under 3.6'

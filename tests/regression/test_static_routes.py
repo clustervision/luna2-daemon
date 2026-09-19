@@ -226,6 +226,29 @@ def test_netplan_ethernet_has_no_bond_parameters():
     assert 'bonds:' not in out and 'parameters:' not in out
 
 
+def test_netplan_bond_carries_its_first_slaves_mac():
+    """Without a macaddress networkd derives the bond's from the machine-id, and every
+    node booted from one image shares that - so all bonds ended up with one MAC."""
+    out = _netplan_bond(['eth1', 'eth2'])
+    assert 'macaddress: $(cat /sys/class/net/eth1/address)' in out
+    assert out.count('macaddress:') == 1
+
+
+def test_netplan_bond_on_the_provisioning_interface_reads_the_bootif_mac():
+    """The provisioning slave is only a placeholder name in the config; its MAC is read
+    from the interface the boot actually came in on."""
+    out = _netplan_bond(['BOOTIF', 'eth2'])
+    assert 'macaddress: $(cat /sys/class/net/${interface_bootif}/address)' in out
+    assert 'BOOTIF/address' not in out
+
+
+def test_netplan_ethernet_sets_no_macaddress():
+    out = _env().get_template('ubuntu.templ').render(
+        LUNA_INTERFACES=_ub_iface(), interface='eth0', PROVISION_INTERFACE='eth0',
+        NODE_NAME='node002', DOMAIN_SEARCH=['cluster'])
+    assert 'macaddress' not in out
+
+
 def test_database_layout_shape():
     sys.path.insert(0, os.path.join(DAEMON, 'common'))
     import database_layout as dl

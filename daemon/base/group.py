@@ -46,7 +46,7 @@ from common.constant import CONSTANT
 # therefore mean the group deviates from what it would otherwise be given.
 # One list: the listing and the single read must answer the same question.
 OVERRIDABLE = ['provision_interface', 'provision_method', 'provision_fallback',
-               'kerneloptions', 'ipxe_kernel', 'unmanaged_bmc_users']
+               'kerneloptions', 'ipxe_kernel', 'unmanaged_bmc_users', 'mounts']
 
 # The named things a group points at: the key the payload carries, the table that
 # name belongs to, how that table is spelled when we have to say it is missing, and
@@ -291,6 +291,8 @@ class Group():
                     if key in group and group[key]:
                         group[key] = group[key] or default_data
                         group['_'+key+'_source'] = 'group'
+                        if key in OVERRIDABLE:
+                            group['_override'] = True
                     elif cluster and cluster[0].get(key):
                         group[key] = cluster[0][key]
                         group['_'+key+'_source'] = 'cluster'

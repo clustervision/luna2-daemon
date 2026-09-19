@@ -337,3 +337,47 @@ def test_node_mounts_route_is_provision_scoped_like_disklayout():
 def test_group_and_cluster_mounts_routes_stay_admin_only():
     assert 'token_required' in _decorators('routes/config_group.py', 'config_group_mounts')
     assert 'token_required' in _decorators('routes/config_cluster.py', 'config_cluster_mounts')
+
+
+# --- the listing and the single read agree on what is held --------------------
+
+def _node_override_pair(name):
+    from base.node import Node
+    _, listing = Node().get_all_nodes()
+    _, single = Node().get_node(name=name)
+    return (listing['config']['node'][name].get('_override'),
+            single['config']['node'][name].get('_override'))
+
+
+def _group_override_pair(name):
+    from base.group import Group
+    _, listing = Group().get_all_group()
+    _, single = Group().get_group(name=name)
+    return (listing['config']['group'][name].get('_override'),
+            single['config']['group'][name].get('_override'))
+
+
+def test_a_node_holding_any_document_of_its_own_deviates_in_both_reads(db):
+    """Enumerated from the daemon's own list, so the next document is covered
+    without anyone remembering: a node whose only local value is a disklayout,
+    an osimage filter or a mounts document was absent from 'luna node list -d'
+    while 'luna node show' flagged it."""
+    from base.node import NODE_DOCUMENTS
+    from utils.helper import Helper
+    groupid = db.get_record(table='group')[0]['id']
+    assert _node_override_pair('node001') == (False, False)
+    for index, field in enumerate(NODE_DOCUMENTS):
+        name = f'holds{index:03d}'
+        db.insert('node', Helper().make_rows({'name': name, 'groupid': groupid, field: GOOD}))
+        listed, shown = _node_override_pair(name)
+        assert listed is True, f'a node holding its own {field} is not listed as deviating'
+        assert shown == listed, f'listing and single read disagree on {field}: {listed} vs {shown}'
+
+
+def test_a_group_holding_its_own_mounts_deviates_in_both_reads(db):
+    """mounts has a cluster level above the group, unlike disklayout, so a group
+    restating it is a deviation and both reads say so."""
+    assert _group_override_pair('compute') == (False, False)
+    assert _set_group(OTHER)[0] is True
+    assert _group_override_pair('compute') == (True, True)
+    assert _node_override_pair('node001') == (False, False)

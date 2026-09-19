@@ -51,6 +51,12 @@ NAME_REFERENCES = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch':
                    'cloud': False, 'redfishsetup': False, 'biosconfig': False}
 
 
+# The documents a node holds in its own right rather than inherit. The listing
+# raises _override for these exactly as the single read does: one list, so the
+# two reads answer the same question.
+NODE_DOCUMENTS = ['disklayout', 'osimage_filter', 'mounts']
+
+
 class Node():
     """
     This class is responsible for all operations on node.
@@ -178,6 +184,9 @@ class Node():
                                 node[key] = str(Helper().make_bool(node[key]))
                             node[key] = node[key] or value
                             node['_override'] = True
+                for key in NODE_DOCUMENTS:
+                    if node.get(key):
+                        node['_override'] = True
                 # -------------
                 # strict override: node overrides group overrides the network base
                 effective = route_couplings.get(('node', nodeid), [])
@@ -559,8 +568,7 @@ class Node():
                 if 'cluster_'+key in node:
                     del node['cluster_'+key]
             # same as above but now specifically base64
-            b64items = {'prescript': '', 'partscript': '', 'postscript': '',
-                        'disklayout': '', 'osimage_filter': '', 'mounts': ''}
+            b64items = {key: '' for key in ['prescript', 'partscript', 'postscript'] + NODE_DOCUMENTS}
             try:
                 for key, value in b64items.items():
                     if 'group_'+key in node and node['group_'+key] and not node[key]:

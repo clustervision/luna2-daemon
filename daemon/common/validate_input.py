@@ -32,6 +32,7 @@ __status__      = 'Development'
 
 
 import re
+import threading
 from sys import maxunicode
 from itertools import chain
 from functools import wraps
@@ -48,21 +49,35 @@ control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 
 REG_EXP = {
     'name': { 'regexp': r'^[a-zA-Z0-9\-\.\_\ ]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
-    'nameandclear': { 'regexp': r'^[a-zA-Z0-9\-\.\_\ ]+|$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
+    'artefactfile': { 'regexp': r'^[a-zA-Z0-9\-\.\_\+]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, \'-\', \'_\', \'.\' and \'+\'' },
+    'filename': { 'regexp': r'^[a-zA-Z0-9\-\.\_\+\ ]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\', \'.\' and \'+\'' },
+    # anchored as a whole: the earlier '^[...]+|$' was an alternation whose first
+    # branch had no end anchor, so any value starting with a valid character passed
+    # whatever followed it - a quote included - on every field using this rule
+    'nameandclear': { 'regexp': r'^([a-zA-Z0-9\-\.\_\ ]+)?$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
+    'tagandclear': { 'regexp': r'^([a-zA-Z0-9\-\.\_\ \:\+]+)?$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\', \'.\', \':\' and \'+\'' },
+    # a plugin file name: the strict character set, but 'default' is a real plugin
+    'plugin': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
-    'loosecsv': { 'regexp': r'^[a-z0-9\-\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
+    'loosecsv': { 'regexp': r'^[a-z0-9\-\.\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\', \'.\' and \',\'' },
     'interfacecsv': { 'regexp': r'^[a-zA-Z0-9\.\-\,\ \:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, whitespace, \'.\', \':\', \'-\' and \',\'' },
     'interface': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
     'intfandclear': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}|$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
     'ipaddress': { 'regexp': r'^[0-9a-f:\.]*$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
-    'macaddress': { 'regexp': r'^(([0-9A-Fa-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
+    'macaddress': { 'regexp': r'^(([0-9A-Fa-f]{2}((-|:)[0-9A-Fa-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
     'domainname': { 'regexp': r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.?$', 'error': "lowercase a-z, numbers 0-9, '-', labels 1-63 chars, labels not starting/ending with '-'" },
+    # a network's name in most payloads, its address (optionally /prefix) in the network table's own
+    'network': { 'regexp': r'^(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.?|[0-9a-f:\.]+(?:/[0-9]{1,3})?)$', 'error': "a network name (lowercase a-z, numbers 0-9, '-', '.') or an address with an optional /prefix" },
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
     'integer': { 'regexp': r'^[0-9]+$', 'error': 'integers only' },
     'intandnone': { 'regexp': r'^[0-9]*$', 'error': 'integers or empty only' },
     'fileowner': { 'regexp': r'^(([A-Za-z_][A-Za-z0-9_.-]*|[0-9]+)(:([A-Za-z_][A-Za-z0-9_.-]*|[0-9]+))?|)$', 'error': 'user or user:group, names or numeric ids, or empty' },
     'filemode': { 'regexp': r'^([0-7]{3,4}|)$', 'error': '3 or 4 octal digits, or empty' },
+    'serviceaction': { 'regexp': r'^(restart|stop|reload|start|none|)$', 'error': 'restart, stop, reload, start or none' },
+    'profilescope': { 'regexp': r'^(static|dynamic|)$', 'error': 'static or dynamic' },
+    'redfishscheme': { 'regexp': r'^(https|http|)$', 'error': 'https or http' },
+    'redfishrole': { 'regexp': r'^[a-zA-Z0-9\-\_\.]*$', 'error': 'combination of characters a-z A-Z, numbers 0-9, \'-\', \'_\' and \'.\'' },
     'anything': { 'regexp': r'', 'error': 'anything' }
 }
 RESERVED = {
@@ -101,20 +116,48 @@ MATCH = {
     'newcloudname': 'name',
     'tableref': 'strictname',
     'target': 'name',
-    'network': 'domainname',
+    'network': 'network',
     'owner': 'fileowner',
     'mode': 'filemode',
-    'osimagetag': 'nameandclear',
+    'profiles': 'loosecsv',
+    'newprofilename': 'strictname',
+    'profile': 'strictname',
+    # URL segments: each reaches a query, so each carries the rule of what it names
+    'secret': 'name',
+    'nodename': 'strictname',
+    'node': 'strictname',
+    'groupname': 'name',
+    'script': 'plugin',
+    'tagname': 'tagandclear',
+    'subset': 'strictname',
+    'filename': 'filename',
+    'subsystem': 'strictname',
+    'request_id': 'strictname',
+    'device_type': 'strictname',
+    'scope': 'profilescope',
+    'object_type': 'strictname',
+    'file': 'artefactfile',
+    'osimagetag': 'tagandclear',
     'roles': 'loosecsv',
     'scripts': 'loosecsv',
-    'tag': 'nameandclear',
+    'tag': 'tagandclear',
     'interface': 'minimal',
     'newinterfacename': 'interface',
     'gateway_metric': 'integer',
     'vlanid': 'intandnone',
     'vlan_parent': 'intfandclear',
     'bond_mode': 'nameandclear',
-    'bond_slaves': 'interfacecsv'
+    'bond_slaves': 'interfacecsv',
+    'newredfishsetupname': 'name',
+    # nameandclear, not name: on a node or a group it is an assignment, and an
+    # assignment is cleared by sending it empty. The grab and push routes that
+    # also carry it refuse an empty one themselves
+    'biosconfig': 'nameandclear',
+    'firmwarecatalog': 'name',
+    'newbiosname': 'name',
+    'account': 'name',
+    'scheme': 'redfishscheme',
+    'role': 'redfishrole'
 }
 MAXLENGTH = {
     'request_id': 256,
@@ -130,8 +173,10 @@ MAXLENGTH = {
 
 # Strict names is a bit of a hack where i use the name of the function to determine whether we have
 # a node name, switch name or any sort like names on our hand, or just a group name, image name, etc - Antoine
-STRICT_NAMES = ['config_node_get','config_node_post','config_node_clone','config_node_delete',
-                'config_node_osgrab','config_node_ospush','config_node_get_interfaces',
+STRICT_NAMES = ['config_profile_post','config_profile_clone',
+                'config_node_get','config_node_post','config_node_clone','config_node_delete',
+                'config_node_osgrab','config_node_ospush','config_node_biosgrab',
+                'config_node_get_interfaces',
                 'config_node_post_interfaces','config_node_interface_get','config_node_delete_interface',
                 'config_switch_get','config_switch_post','config_switch_clone','config_switch_delete',
                 'config_switch_interfaces_get','config_switch_interface_get',
@@ -142,8 +187,19 @@ STRICT_NAMES = ['config_node_get','config_node_post','config_node_clone','config
 
 STRICT_MATCHES = {'config_network_get': 'domainname', 'config_network_post': 'domainname'}
 
-ERROR = None
-SKIP_LIST = []
+# Per-request validation state. The daemon serves several requests per
+# process (gthread), so this must be thread-local: a module global here let one
+# request's strict rule or error land in another request's decision.
+_state = threading.local()
+
+
+def _st():
+    if not hasattr(_state, 'error'):
+        _state.error = None
+        _state.strict_name = False
+        _state.strict_match = None
+        _state.skip_list = []
+    return _state
 LOGGER = Log.get_logger()
 
 
@@ -152,19 +208,16 @@ def input_filter(checks=None, skip=None, json=True):
     def decorator(function):
         @wraps(function)
         def filter_input(*args, **kwargs):
-            global SKIP_LIST
-            global ERROR
-            global STRICT_NAME
-            global STRICT_MATCH
             data=None
-            ERROR = None
-            STRICT_NAME = True
-            STRICT_MATCH = None
+            _st().error = None
+            _st().strict_name = True
+            _st().strict_match = None
+            _st().skip_list = []
             if function.__name__ not in STRICT_NAMES:
-                STRICT_NAME = False
+                _st().strict_name = False
             elif function.__name__ in STRICT_MATCHES.keys():
-                STRICT_MATCH = STRICT_MATCHES[function.__name__]
-            LOGGER.debug(f"STRICT CHECKING: STRICT_NAME: {STRICT_NAME}, STRICT_MATCH: {STRICT_MATCH}")
+                _st().strict_match = STRICT_MATCHES[function.__name__]
+            LOGGER.debug(f"STRICT CHECKING: strict_name: {_st().strict_name}, strict_match: {_st().strict_match}")
             if json:
                 if not Helper().check_json(request.data):
                     response = {'message': "data is not valid json"}
@@ -175,10 +228,10 @@ def input_filter(checks=None, skip=None, json=True):
             if skip:
                 if isinstance(skip, str):
                     # data = request.args.getlist('info_hash') ## For Tracker - Sumit
-                    SKIP_LIST.append(str(skip))
+                    _st().skip_list.append(str(skip))
                 else:
                     # data = request.args.to_dict() ## For Tracker - Sumit
-                    SKIP_LIST = skip
+                    _st().skip_list = list(skip)
             LOGGER.debug(f"---- START ---- {data}")
             # Checking for Name in kwargs and appending the name in checks - Sumit
             if 'name' in kwargs:
@@ -189,11 +242,11 @@ def input_filter(checks=None, skip=None, json=True):
             # Checking for Name in kwargs and appending the name in checks - Sumit
             if check_structure(data, check_list):
                 data = parse_item(data)
-                SKIP_LIST = []
+                _st().skip_list = []
                 LOGGER.debug(f"----- END ----- {data}")
-                if ERROR:
-                    response = {'message': f"{ERROR}"}
-                    ERROR = None
+                if _st().error:
+                    response = {'message': f"{_st().error}"}
+                    _st().error = None
                     return response, 400
                 request.data = data
                 return function(*args, **kwargs)
@@ -209,23 +262,20 @@ def validate_name(function):
     """
     @wraps(function)
     def decorator(*args, **kwargs):
-        global STRICT_NAME
-        global STRICT_MATCH
-        STRICT_NAME = True
-        STRICT_MATCH = None
+        _st().strict_name = True
+        _st().strict_match = None
         if function.__name__ not in STRICT_NAMES:
-            STRICT_NAME = False
+            _st().strict_name = False
         elif function.__name__ in STRICT_MATCHES.keys():
-            STRICT_MATCH = STRICT_MATCHES[function.__name__]
-        LOGGER.debug(f"STRICT CHECKING: STRICT_NAME: {STRICT_NAME}, STRICT_MATCH: {STRICT_MATCH}")
+            _st().strict_match = STRICT_MATCHES[function.__name__]
+        LOGGER.debug(f"STRICT CHECKING: strict_name: {_st().strict_name}, strict_match: {_st().strict_match}")
         for name_key, name_value in kwargs.items():
-            global ERROR
             filter_data(name_value, name_key)
-            if ERROR:
-                message = f"Incorrect Naming convention with {name_key} {name_value}: {ERROR}"
+            if _st().error:
+                message = f"Incorrect Naming convention with {name_key} {name_value}: {_st().error}"
                 response = {'message': message}
-                LOGGER.debug(f"{ERROR}")
-                ERROR = None
+                LOGGER.debug(f"{_st().error}")
+                _st().error = None
                 return response, 400
         return function(*args, **kwargs)
     return decorator
@@ -271,42 +321,41 @@ def filter_data(data=None, name=None):
     """
     This method will filter the provided data.
     """
-    global ERROR
-    if STRICT_NAME and name == 'name':
-        name=STRICT_MATCH or 'strictname'
+    if _st().strict_name and name == 'name':
+        name=_st().strict_match or 'strictname'
         LOGGER.debug(f"Applying strict {name} rules")
-    if name in SKIP_LIST:
+    if name in _st().skip_list:
         LOGGER.debug(f"Skipping filter on {name}")
         return data
     data = control_char_re.sub('', data)
-    # Match the regex against what the caller actually sent, not against a cleaned
-    # copy of it. validate_name discards this return value and calls the route with
-    # the original kwargs, so a value approved here in cleaned form is not the value
-    # that reaches the query: "osimage'--" cleans to "osimage--", passes the name
-    # regex, and then arrives at the where clause with its quote intact - closing the
-    # first condition and commenting the rest away. Rejecting is right rather than
-    # cleaning: a quote in a name is a client mistake, and quietly answering about a
-    # different object is worse than a 400.
+    # Match on what the caller actually sent, not on a cleaned copy of it. The two
+    # differ, and only one of them reaches the code: validate_name discards this
+    # return value and calls the route with the original kwargs, so a value is
+    # approved in a form nothing downstream ever sees. "osimage'--" passes as
+    # "osimage--" and arrives at the query with its quote intact, where it closes
+    # the first condition and comments out the rest.
+    # Rejecting is right rather than cleaning: a quote in a name is a client
+    # mistake, and quietly answering about a different object is worse than a 400.
     unfiltered = data
     data = data.replace("'", "")
     data = data.replace('"', "")
     if name in MAXLENGTH.keys():
         if len(data) > MAXLENGTH[name]:
             LOGGER.info(f"length of {name} exceeds {MAXLENGTH[name]}")
-            ERROR = f"length of {name} exceeds {MAXLENGTH[name]}"
+            _st().error = f"length of {name} exceeds {MAXLENGTH[name]}"
             return
     if name in MATCH.keys():
         if MATCH[name] in RESERVED.keys():
-            for reserved in RESERVED[MATCH['name']]:
+            for reserved in RESERVED[MATCH[name]]:
                 if str(data) == reserved:
                     LOGGER.info(f"RESERVED name = {name} with data = {data} is a reserved keyword")
-                    ERROR = f"field {name} with content {data} is a reserved keyword: {reserved}"
+                    _st().error = f"field {name} with content {data} is a reserved keyword: {reserved}"
                     return
         regex = re.compile(r"" + REG_EXP[MATCH[name]]['regexp'])
         if not regex.match(unfiltered):
             LOGGER.info(f"MATCH name = {name} with data = {unfiltered} mismatch with:")
             LOGGER.info(f"    REG_EXP['{MATCH[name]}']['regexp'] = {REG_EXP[MATCH[name]]['regexp']}")
-            ERROR = f"field {name} with content {data} does not match criteria {REG_EXP[MATCH[name]]['error']}"
+            _st().error = f"field {name} with content {data} does not match criteria {REG_EXP[MATCH[name]]['error']}"
             return
         if MATCH[name] in CONVERT.keys():
             LOGGER.debug(f"CONVERT IN {MATCH[name]} = {data}")

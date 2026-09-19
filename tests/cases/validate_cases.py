@@ -32,6 +32,19 @@ CASES = [
     {"id": "filter-clean-unchanged", "func": filter_data, "args": ["plain-text_1.2"],
      "expected": "plain-text_1.2"},
 
+    # --- filter_data with a 'nameandclear' field: empty clears, a valid name passes ---
+    {"id": "nameandclear-empty-clears", "func": filter_data, "args": ["", "tag"],
+     "expected": ""},
+    {"id": "nameandclear-valid-passes", "func": filter_data, "args": ["hpc-nosmt", "biosconfig"],
+     "expected": "hpc-nosmt"},
+    # a value that starts valid and carries a quote used to pass: the rule was an
+    # alternation with no end anchor on its first branch. filter_data answers None
+    # for a refusal (and sets the module ERROR)
+    {"id": "nameandclear-quote-refused", "func": filter_data, "args": ['hpc"nosmt', "biosconfig"],
+     "expected": None},
+    {"id": "nameandclear-trailing-junk-refused", "func": filter_data, "args": ["a'; drop", "tag"],
+     "expected": None},
+
     # --- filter_data with name='name': applies the 'name' rules (dots collapse) ---
     {"id": "filter-name-collapse-dots", "func": filter_data, "args": ["a..b", "name"],
      "expected": "a.b"},

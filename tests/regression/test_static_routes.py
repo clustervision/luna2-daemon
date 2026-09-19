@@ -144,7 +144,9 @@ def _ub_iface(routes=None, routes_ipv6=None, dhcp=False, gateway='10.145.255.254
         'ipaddress_ipv6': '', 'prefix_ipv6': '', 'nameserver_ip': ['10.145.0.1'],
         'nameserver_ip_ipv6': [], 'gateway': '' if dhcp else gateway, 'gateway_ipv6': '',
         'gateway_metric': '101', 'dhcp': dhcp, 'options': '', 'master': '',
-        'bond_mode': '', 'bond_slaves': [], 'routes': routes or [], 'routes_ipv6': routes_ipv6 or []}}
+        'routes': routes or [], 'routes_ipv6': routes_ipv6 or []}}
+    # no bond keys: the daemon only puts them on a bond, and the netplan template
+    # branches on their presence
 
 
 def test_netplan_static_route():
@@ -183,6 +185,45 @@ def test_netplan_routes_render_on_dhcp_interface():
         LUNA_INTERFACES=_ub_iface(routes=[{'destination': '172.16.0.0/12', 'gateway': '172.16.0.33', 'metric': 200}], dhcp=True),
         interface='eth0', PROVISION_INTERFACE='eth0', NODE_NAME='node002', DOMAIN_SEARCH=['cluster'])
     assert 'dhcp4: True' in out and '- to: 172.16.0.0/12' in out
+
+
+def _ub_bond(slaves, mode='active-backup'):
+    iface = _ub_iface()['eth0']
+    iface.update({'type': 'bond', 'bond_mode': mode, 'bond_slaves': slaves})
+    return {'bond0': iface}
+
+
+def _netplan_bond(slaves, mode='active-backup', provision='BOOTIF'):
+    return _env().get_template('ubuntu.templ').render(
+        LUNA_INTERFACES=_ub_bond(slaves, mode), interface='bond0', PROVISION_INTERFACE=provision,
+        NODE_NAME='node002', DOMAIN_SEARCH=['cluster'])
+
+
+BOND_MODES = ['balance-rr', 'active-backup', 'balance-xor', 'broadcast', '802.3ad', 'balance-tlb', 'balance-alb']
+
+
+@pytest.mark.parametrize('mode', BOND_MODES + [str(n) for n in range(7)])
+def test_netplan_bond_renders_its_mode_by_name(mode):
+    """A bond without parameters runs netplan's default balance-rr whatever was configured;
+    the daemon also accepts the numeric modes, which netplan does not."""
+    out = _netplan_bond(['eth1', 'eth2'], mode)
+    expected = BOND_MODES[int(mode)] if mode.isdigit() else mode
+    assert f'mode: {expected}' in out
+    assert 'mii-monitor-interval: 100' in out
+
+
+def test_netplan_bond_parameters_sit_under_the_bond():
+    out = _netplan_bond(['eth1', 'eth2'], '802.3ad')
+    bond = out[out.index('bonds:'):]
+    assert bond.index('parameters:') < bond.index('addresses:')
+    assert 'parameters:' not in out[:out.index('bonds:')]
+
+
+def test_netplan_ethernet_has_no_bond_parameters():
+    out = _env().get_template('ubuntu.templ').render(
+        LUNA_INTERFACES=_ub_iface(), interface='eth0', PROVISION_INTERFACE='eth0',
+        NODE_NAME='node002', DOMAIN_SEARCH=['cluster'])
+    assert 'bonds:' not in out and 'parameters:' not in out
 
 
 def test_database_layout_shape():

@@ -53,8 +53,17 @@ def test_a_controller_serves_the_shares_that_name_it_and_mounts_the_rest():
     serving = [e['path'] for e in ENTRIES if mounts.serves(e, CONTROLLER)]
     mounting = [e['path'] for e in ENTRIES if mounts.mounts(e, CONTROLLER)]
     assert serving == ['/trinity/home', '/trinity/shared', '/trinity/archive']
-    # not scratch (node003 serves it), not ohpc (no server = the controller's own share)
-    assert mounting == ['/trinity/scratch', '/home/corp', '/lustre/work', '/beegfs', '/local/tmp']
+    # archive is served from /srv/archive and mounted through the controller like everywhere
+    # else (the cross-mount); not ohpc (no server = the controller's own share)
+    assert mounting == ['/trinity/archive', '/trinity/scratch', '/home/corp', '/lustre/work', '/beegfs', '/local/tmp']
+
+
+def test_a_served_share_is_mounted_only_as_a_cross_mount():
+    same = {'path': '/trinity/shared', 'server': 'controller', 'export': {'clients': [{'to': 'cluster'}]}}
+    assert not mounts.mounts(same, CONTROLLER)
+    assert not mounts.mounts(dict(same, source='/trinity/shared'), CONTROLLER)
+    assert mounts.mounts(dict(same, source='/trinity/mounts/trinity/shared'), CONTROLLER)
+    assert mounts.mounts(same, {'node001'})
 
 
 def test_a_node_mounts_everything_it_does_not_serve():
@@ -218,6 +227,7 @@ def _dry_render(monkeypatch):
     written = {}
     render = MountsRender()
     monkeypatch.setattr(render, 'my_names', lambda: CONTROLLER)
+    monkeypatch.setattr(render, 'my_addresses', lambda: {'controller': 'ctrl', 'self': 'ctrl1'})
     monkeypatch.setattr(render, 'write_exports', lambda text: written.setdefault('exports', text) and (True, 'ok'))
     monkeypatch.setattr(render, 'write_fstab', lambda block, root='/': written.setdefault('fstab', block) and (True, 'ok'))
     monkeypatch.setattr(render, 'make_dirs', lambda dirs, root='/': written.setdefault('dirs', dirs))
@@ -237,9 +247,11 @@ def test_render_controller_exports_from_every_document_and_mounts_from_the_clust
     paths = _exported(written)
     assert paths == ['/trinity/home', '/trinity/shared', '/srv/archive', '/trinity/group']
     assert 'ctrl1' not in written['exports'] and 'fileserver01' not in written['exports']
-    fstab_paths = [line.split()[1] for line in written['fstab'].splitlines() if not line.startswith('#')]
-    assert fstab_paths == ['/trinity/scratch', '/home/corp', '/lustre/work', '/beegfs']
-    assert written['mount'] == ['/trinity/scratch', '/home/corp', '/lustre/work', '/beegfs', '/local/tmp']
+    fstab_lines = [line.split() for line in written['fstab'].splitlines() if not line.startswith('#')]
+    assert [line[1] for line in fstab_lines] == ['/trinity/archive', '/trinity/scratch', '/home/corp', '/lustre/work', '/beegfs']
+    # the cross-mount: served from /srv/archive, mounted through the beacon name like every node
+    assert fstab_lines[0][:3] == ['ctrl:/srv/archive', '/trinity/archive', 'nfs']
+    assert written['mount'] == ['/trinity/archive', '/trinity/scratch', '/home/corp', '/lustre/work', '/beegfs', '/local/tmp']
     assert ('/local/tmp', '-', '-', '1777') in written['dirs']
 
 

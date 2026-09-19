@@ -201,6 +201,11 @@ class MountsRender():
                 result[network['name']] = specs
         return result
 
+    def my_addresses(self):
+        """What the reserved words resolve to in this controller's own fstab: the
+        beacon name, the name every machine mounts the cluster shares through."""
+        return {'controller': Controller().get_beacon(), 'self': socket.gethostname()}
+
     def my_names(self):
         """The names this controller answers to as a server: the reserved words,
         its own hostname short and full, and the beacon name."""
@@ -347,7 +352,7 @@ class MountsRender():
             estatus, emessage = False, f"{emessage}, not exported: {', '.join(refused)}"
         cluster_entries = next((entries for name, entries in documents if name == 'cluster'), [])
         mine = [entry for entry in cluster_entries if mounts(entry, names)]
-        rows, dirs = fstab_rows(mine, {})
+        rows, dirs = fstab_rows(mine, self.my_addresses())
         self.make_dirs(dirs)
         fstatus, fmessage = self.write_fstab(self.render_fstab(rows))
         mstatus, mmessage = self.mount(mine)

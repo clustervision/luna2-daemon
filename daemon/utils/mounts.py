@@ -249,11 +249,17 @@ def serves(entry, names):
 
 
 def mounts(entry, names):
-    """Whether this machine carries the entry in its fstab. A machine never mounts
-    what it serves itself; a manual entry is a mountpoint and nothing else."""
+    """Whether this machine carries the entry in its fstab. A manual entry is a
+    mountpoint and nothing else. A machine mounts what it serves only as a
+    cross-mount: the exported directory differs from the mountpoint, so the
+    mountpoint is reached through the server like everywhere else. Same
+    directory, nothing to mount, it is already there."""
     if mount_type(entry) == 'manual':
         return True
-    return not server_matches(entry.get('server'), names)
+    if not server_matches(entry.get('server'), names):
+        return True
+    source = entry.get('source')
+    return bool(source) and source != entry['path']
 
 
 def resolve_server(server, addresses):

@@ -106,6 +106,28 @@ def config_node_disklayout(name=None):
     return dumps(payload), 200
 
 
+@node_blueprint.route('/config/node/<string:name>/mounts', methods=['GET'])
+@provision_token_required
+@validate_name
+def config_node_mounts(name=None):
+    """
+    The node's resolved mounts document (cluster->group->node, strict override), on
+    its own. Provision-scoped and node-matched like the disklayout route, so a node
+    can read what it is about to mount without being handed the whole record.
+    Same config.node.<name>.mounts shape the full node detail returns.
+    """
+    status, response = Node().get_node(name)
+    if status is not True:
+        return {'message': response}, 404
+    nodes = (response or {}).get('config', {}).get('node', {})
+    entry = nodes.get(name) or (next(iter(nodes.values()), {}) if nodes else {})
+    payload = {'config': {'node': {name: {
+        'mounts': entry.get('mounts'),
+        '_mounts_source': entry.get('_mounts_source'),
+    }}}}
+    return dumps(payload), 200
+
+
 @node_blueprint.route('/config/node/<string:name>', methods=['POST'])
 @provision_token_required
 @validate_name

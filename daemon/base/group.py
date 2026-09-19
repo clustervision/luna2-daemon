@@ -31,6 +31,7 @@ __status__      = 'Development'
 
 from base64 import b64decode, b64encode
 from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
+from utils.mounts import validate_b64 as validate_mounts, known_servers, MountsInvalid
 from concurrent.futures import ThreadPoolExecutor
 from utils.database import Database
 from utils.log import Log
@@ -182,7 +183,7 @@ class Group():
         }
         # same as above but now specifically base64
         b64items = {'prescript': '', 'partscript': '', 'postscript': '',
-                    'disklayout': '', 'osimage_filter': ''}
+                    'disklayout': '', 'osimage_filter': '', 'mounts': ''}
         cluster = Database().get_record(table='cluster')
         groups = Database().get_record(table='group', where=f"name = '{name}'")
         if groups:
@@ -290,6 +291,9 @@ class Group():
                     if key in group and group[key]:
                         group[key] = group[key] or default_data
                         group['_'+key+'_source'] = 'group'
+                    elif cluster and cluster[0].get(key):
+                        group[key] = cluster[0][key]
+                        group['_'+key+'_source'] = 'cluster'
                     else:
                         group[key] = default_data
                         group['_'+key+'_source'] = 'default'
@@ -411,6 +415,11 @@ class Group():
                         validate_disklayout(disklayout_json)
                     except DisklayoutInvalid as exp:
                         return False, f'Invalid request: {exp}'
+            if data.get('mounts'):
+                try:
+                    validate_mounts(data['mounts'], known_servers(Database().get_record(table='node')))
+                except MountsInvalid as exp:
+                    return False, f'Invalid request: {exp}'
             oldgroupname = None
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:

@@ -82,6 +82,24 @@ def config_cluster_post():
     return response, access_code
 
 
+@cluster_blueprint.route("/config/cluster/mounts", methods=['GET'])
+@token_required
+def config_cluster_mounts():
+    """
+    The cluster's mounts document on its own, the top of the cluster->group->node
+    chain. Same config.cluster.mounts shape the full cluster detail returns.
+    """
+    status, response = Cluster().information()
+    if status is not True:
+        return {'message': response}, 404
+    entry = (response or {}).get('config', {}).get('cluster', {})
+    payload = {'config': {'cluster': {
+        'mounts': entry.get('mounts'),
+        '_mounts_source': 'cluster' if entry.get('mounts') else 'default',
+    }}}
+    return dumps(payload), 200
+
+
 @cluster_blueprint.route("/config/cluster/export", methods=['GET'])
 @token_required
 def config_cluster_export():

@@ -38,6 +38,7 @@ from utils.service import Service
 from utils.helper import Helper
 from utils.tables import Tables
 from utils.controller import Controller
+from utils.mounts import validate_b64 as validate_mounts, known_servers, MountsInvalid
 from common.constant import CONSTANT
 
 
@@ -260,6 +261,11 @@ class Cluster():
                 if data['install_mode'] not in ['auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'legacy']:
                     status = False
                     return status, 'install_mode must be one of auto, sync, full, local, memboot, sanitize or legacy'
+            if data.get('mounts'):
+                try:
+                    validate_mounts(data['mounts'], known_servers(Database().get_record(table='node')))
+                except MountsInvalid as exp:
+                    return False, f'Invalid request: {exp}'
 
             cluster_columns = Database().get_columns('cluster')
             cluster_check = Helper().compare_list(data, cluster_columns)

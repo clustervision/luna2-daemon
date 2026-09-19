@@ -110,6 +110,26 @@ def config_group_disklayout(name=None):
     return dumps(payload), 200
 
 
+@group_blueprint.route('/config/group/<string:name>/mounts', methods=['GET'])
+@token_required
+@validate_name
+def config_group_mounts(name=None):
+    """
+    The group's resolved mounts document (cluster->group), on its own, mirroring the
+    node route. Same config.group.<name>.mounts shape the full group detail returns.
+    """
+    status, response = Group().get_group(name)
+    if status is not True:
+        return {'message': response}, 404
+    groups = (response or {}).get('config', {}).get('group', {})
+    entry = groups.get(name) or (next(iter(groups.values()), {}) if groups else {})
+    payload = {'config': {'group': {name: {
+        'mounts': entry.get('mounts'),
+        '_mounts_source': entry.get('_mounts_source'),
+    }}}}
+    return dumps(payload), 200
+
+
 @group_blueprint.route("/config/group/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name

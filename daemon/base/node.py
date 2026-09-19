@@ -32,6 +32,7 @@ __status__      = 'Development'
 
 from base64 import b64decode, b64encode
 from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
+from utils.mounts import validate_b64 as validate_mounts, known_servers, MountsInvalid
 from utils.database import Database
 from utils.log import Log
 from utils.config import Config
@@ -330,6 +331,7 @@ class Node():
                 'group.install_mode AS group_install_mode',
                 'group.disklayout AS group_disklayout',
                 'group.osimage_filter AS group_osimage_filter',
+                'group.mounts AS group_mounts',
                 'group.netboot AS group_netboot',
                 'group.bootmenu AS group_bootmenu',
                 'group.roles AS group_roles',
@@ -497,6 +499,7 @@ class Node():
                 node['cluster_provision_method'] = cluster[0]['provision_method']
                 node['cluster_provision_fallback'] = cluster[0]['provision_fallback']
                 node['cluster_install_mode'] = cluster[0]['install_mode']
+                node['cluster_mounts'] = cluster[0]['mounts']
 
             # What's configured for the node, or the group, or a default fallback
             items = {
@@ -557,12 +560,15 @@ class Node():
                     del node['cluster_'+key]
             # same as above but now specifically base64
             b64items = {'prescript': '', 'partscript': '', 'postscript': '',
-                        'disklayout': '', 'osimage_filter': ''}
+                        'disklayout': '', 'osimage_filter': '', 'mounts': ''}
             try:
                 for key, value in b64items.items():
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         node[key] = node['group_'+key]
                         node['_'+key+'_source'] = 'group'
+                    elif 'cluster_'+key in node and node['cluster_'+key] and not node[key]:
+                        node[key] = node['cluster_'+key]
+                        node['_'+key+'_source'] = 'cluster'
                     elif node[key]:
                         node['_'+key+'_source'] = 'node'
                         node['_override'] = True
@@ -574,6 +580,8 @@ class Node():
                         node['_'+key+'_source'] = 'default'
                     if 'group_'+key in node:
                         del node['group_'+key]
+                    if 'cluster_'+key in node:
+                        del node['cluster_'+key]
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
@@ -708,6 +716,13 @@ class Node():
                         validate_disklayout(disklayout_json)
                     except DisklayoutInvalid as exp:
                         return False, f'Invalid request: {exp}'
+            # same for a mounts document: the grammar is checked here, once, for every
+            # client; an export may only name a controller or a node the stack knows
+            if data.get('mounts'):
+                try:
+                    validate_mounts(data['mounts'], known_servers(Database().get_record(table='node')))
+                except MountsInvalid as exp:
+                    return False, f'Invalid request: {exp}'
             node = Database().get_record(table='node', where=f"name = '{name}'")
             oldnodename, nodename_new = None, None
             if node:

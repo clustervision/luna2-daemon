@@ -197,9 +197,10 @@ def _rejects_b64(value, needle):
     assert needle in str(err.value)
 
 
-def test_known_servers_reads_node_rows():
+def test_known_servers_reads_node_and_controller_rows():
     assert mounts.known_servers([{'name': 'a'}, {'name': ''}, {'id': 3}]) == {'a'}
     assert mounts.known_servers(None) == set()
+    assert mounts.known_servers([{'name': 'a'}], [{'hostname': 'ctrl1'}, {'id': 2}]) == {'a', 'ctrl1'}
 
 
 # --- store time and resolution, against a real (SQLite) schema ------------------
@@ -227,6 +228,7 @@ def db(tmp_path):
     groupid = Database().insert('group', Helper().make_rows({'name': 'compute'}))
     Database().insert('node', Helper().make_rows({'name': 'node001', 'groupid': groupid}))
     Database().insert('node', Helper().make_rows({'name': 'fileserver01', 'groupid': groupid}))
+    Database().insert('controller', Helper().make_rows({'hostname': 'ctrl1', 'beacon': 1}))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
     database.local_thread.connection = None
@@ -251,15 +253,20 @@ def _set_cluster(value):
 
 
 def _set_group(value):
+    # a write carrying mounts queues the controller render through Service()
+    from unittest.mock import patch
     from base.group import Group
-    return Group().update_group(name='compute', request_data={'config': {'group': {
-        'compute': {'mounts': value}}}})
+    with patch('base.group.Service'):
+        return Group().update_group(name='compute', request_data={'config': {'group': {
+            'compute': {'mounts': value}}}})
 
 
 def _set_node(value):
+    from unittest.mock import patch
     from base.node import Node
-    return Node().update_node(name='node001', request_data={'config': {'node': {
-        'node001': {'mounts': value}}}})
+    with patch('base.node.Service'):
+        return Node().update_node(name='node001', request_data={'config': {'node': {
+            'node001': {'mounts': value}}}})
 
 
 def _node_view():
@@ -381,3 +388,10 @@ def test_a_group_holding_its_own_mounts_deviates_in_both_reads(db):
     assert _set_group(OTHER)[0] is True
     assert _group_override_pair('compute') == (True, True)
     assert _node_override_pair('node001') == (False, False)
+
+
+@pytest.mark.parametrize('setter', [_set_cluster, _set_group, _set_node])
+def test_every_level_accepts_an_export_from_a_controller_by_hostname(db, setter):
+    # a controller's own hostname is a server the stack configures, like a node's name
+    status, message = setter(_b64(_entry(3, server='ctrl1.cluster')))
+    assert status is True, message

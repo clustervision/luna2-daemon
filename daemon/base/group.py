@@ -31,7 +31,9 @@ __status__      = 'Development'
 
 from base64 import b64decode, b64encode
 from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
-from utils.mounts import validate_b64 as validate_mounts, known_servers, MountsInvalid
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid
+from utils.mountsrender import MountsRender
+from utils.service import Service
 from concurrent.futures import ThreadPoolExecutor
 from utils.database import Database
 from utils.log import Log
@@ -417,11 +419,15 @@ class Group():
                         validate_disklayout(disklayout_json)
                     except DisklayoutInvalid as exp:
                         return False, f'Invalid request: {exp}'
+            mounts_changed = 'mounts' in data
             if data.get('mounts'):
                 try:
-                    validate_mounts(data['mounts'], known_servers(Database().get_record(table='node')))
+                    validate_mounts(data['mounts'], MountsRender().server_names())
                 except MountsInvalid as exp:
                     return False, f'Invalid request: {exp}'
+                clash = MountsRender().clash(('group', name), data['mounts'])
+                if clash:
+                    return False, f'Invalid request: {clash}'
             oldgroupname = None
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
@@ -666,6 +672,8 @@ class Group():
                 # ---- we call the group plugin - maybe someone wants to run something after create/update?
                 Queue().add_task_to_queue(task='run_bulk', param='group:master', 
                                           subsystem='housekeeper', request_id='__group_update__')
+                if mounts_changed:
+                    Service().queue('mounts', 'render')
                 # profiles are assigned on the group, so a change here changes what every
                 # node in it should hold
                 Profile().queue_group(name)

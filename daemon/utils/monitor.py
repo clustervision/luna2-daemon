@@ -58,6 +58,7 @@ class Monitor(object):
                 "install.setnet",
                 "install.secrets",
                 "install.postscript",
+                "install.mounts",
                 "install.roles",
                 "install.profiles",
                 "install.image",

@@ -62,9 +62,12 @@ class MountsInvalid(ValueError):
     """A mounts document failed daemon-side validation. Message is operator-facing."""
 
 
-def known_servers(node_rows):
-    """The names an export block may name as its server, from node table rows."""
-    return {row['name'] for row in (node_rows or []) if row.get('name')}
+def known_servers(node_rows, controller_rows=None):
+    """The names an export block may name as its server: the nodes by name and
+    the controllers by hostname, beside the reserved words."""
+    names = {row['name'] for row in (node_rows or []) if row.get('name')}
+    names |= {row['hostname'] for row in (controller_rows or []) if row.get('hostname')}
+    return names
 
 
 def _unknown_key(obj, allowed, label):
@@ -204,3 +207,68 @@ def validate_b64(value, node_names=None):
     except (ValueError, UnicodeDecodeError):
         raise MountsInvalid("config_validation: mounts must be base64-encoded JSON")
     validate(raw, node_names)
+
+
+# --- what a document means for one machine ----------------------------------------
+# The renderers below are pure as well: they take the names a machine answers to,
+# the addresses its reserved servers resolve to and the networks a client may name,
+# and answer which entries it mounts and which it exports. Reading those from the
+# database and writing the files is the render module's business.
+
+def entries_from_b64(value):
+    """The entries of a stored document. Nothing stored is no entries; a stored
+    document passed validation when it was stored."""
+    if not value:
+        return []
+    raw = b64decode(value).decode('utf-8')
+    if not raw.strip():
+        return []
+    return json.loads(raw).get('mounts') or []
+
+
+def mount_type(entry):
+    """The filesystem type of an entry, with the alias folded away."""
+    mtype = entry.get('type') or 'nfs'
+    return 'gpfs' if mtype == 'mmfs' else mtype
+
+
+def server_matches(server, names):
+    """Whether an entry's server is one of the names this machine answers to. An
+    absent server is the cluster share at this path, which the controller serves."""
+    if not server:
+        return 'controller' in names
+    if server in RESERVED_SERVERS:
+        return server in names
+    return server in names or _server_label(server) in names
+
+
+def serves(entry, names):
+    """Whether this machine renders an export line for the entry."""
+    return mount_type(entry) == 'nfs' and entry.get('export') is not None \
+        and server_matches(entry.get('server'), names)
+
+
+def mounts(entry, names):
+    """Whether this machine carries the entry in its fstab. A machine never mounts
+    what it serves itself; a manual entry is a mountpoint and nothing else."""
+    if mount_type(entry) == 'manual':
+        return True
+    return not server_matches(entry.get('server'), names)
+
+
+def resolve_server(server, addresses):
+    """The device host for a mount: a reserved word becomes the address the caller
+    supplies for it, an absent server is the controller, anything else passes."""
+    if not server:
+        return addresses.get('controller') or 'controller'
+    if server in RESERVED_SERVERS:
+        return addresses.get(server) or server
+    return server
+
+
+def client_specs(to, networks):
+    """The client specifications one `to` stands for: every family a Luna network
+    has, or the literal as written."""
+    if to in networks:
+        return list(networks[to])
+    return [to]

@@ -38,7 +38,8 @@ from utils.service import Service
 from utils.helper import Helper
 from utils.tables import Tables
 from utils.controller import Controller
-from utils.mounts import validate_b64 as validate_mounts, known_servers, MountsInvalid
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid
+from utils.mountsrender import MountsRender
 from common.constant import CONSTANT
 
 
@@ -261,11 +262,15 @@ class Cluster():
                 if data['install_mode'] not in ['auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'legacy']:
                     status = False
                     return status, 'install_mode must be one of auto, sync, full, local, memboot, sanitize or legacy'
+            mounts_changed = 'mounts' in data
             if data.get('mounts'):
                 try:
-                    validate_mounts(data['mounts'], known_servers(Database().get_record(table='node')))
+                    validate_mounts(data['mounts'], MountsRender().server_names())
                 except MountsInvalid as exp:
                     return False, f'Invalid request: {exp}'
+                clash = MountsRender().clash(('cluster', None), data['mounts'])
+                if clash:
+                    return False, f'Invalid request: {clash}'
 
             cluster_columns = Database().get_columns('cluster')
             cluster_check = Helper().compare_list(data, cluster_columns)
@@ -345,6 +350,8 @@ class Cluster():
                         Database().update('cluster', row, where)
                         Service().queue('dns','reload')
                         Service().queue('dns','restart')
+                        if mounts_changed:
+                            Service().queue('mounts', 'render')
                         response = 'Cluster updated'
                     elif len(controller_ips) > 0:
                         response = 'Controllers updated'

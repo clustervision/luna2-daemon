@@ -32,7 +32,8 @@ __status__      = 'Development'
 
 from base64 import b64decode, b64encode
 from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
-from utils.mounts import validate_b64 as validate_mounts, known_servers, MountsInvalid
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid
+from utils.mountsrender import MountsRender
 from utils.database import Database
 from utils.log import Log
 from utils.config import Config
@@ -726,11 +727,15 @@ class Node():
                         return False, f'Invalid request: {exp}'
             # same for a mounts document: the grammar is checked here, once, for every
             # client; an export may only name a controller or a node the stack knows
+            mounts_changed = 'mounts' in data
             if data.get('mounts'):
                 try:
-                    validate_mounts(data['mounts'], known_servers(Database().get_record(table='node')))
+                    validate_mounts(data['mounts'], MountsRender().server_names())
                 except MountsInvalid as exp:
                     return False, f'Invalid request: {exp}'
+                clash = MountsRender().clash(('node', name), data['mounts'])
+                if clash:
+                    return False, f'Invalid request: {clash}'
             node = Database().get_record(table='node', where=f"name = '{name}'")
             oldnodename, nodename_new = None, None
             if node:
@@ -928,6 +933,8 @@ class Node():
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
                 Queue().add_task_to_queue(task='run_bulk', param='node:master',
                                           subsystem='housekeeper', request_id='__node_update__')
+                if mounts_changed:
+                    Service().queue('mounts', 'render')
                 Profile().queue_node(nodename_new or name)
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],

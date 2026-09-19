@@ -278,6 +278,14 @@ def on_starting(server):
     except Exception as exp:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         sys.stderr.write(f"ERROR: Startup hook plugin returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")
+    # the controller's exports and fstab follow the mounts documents from the first start
+    try:
+        status, message = Service().luna_service('mounts', 'render')
+        if not status:
+            sys.stderr.write(f"ERROR: mounts render on start returned: {message}\n")
+    except Exception as exp:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        sys.stderr.write(f"ERROR: mounts render on start returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on start')
     return True

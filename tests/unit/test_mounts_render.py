@@ -122,9 +122,12 @@ def test_an_export_naming_no_client_renders_nothing():
 def test_the_templates_lay_the_rows_out():
     render = MountsRender()
     exports = render.render_exports([e for e in ENTRIES if mounts.serves(e, CONTROLLER)], NETWORKS)
-    lines = [line for line in exports.splitlines() if line and not line.startswith('#')]
-    assert lines[0].startswith('/trinity/home 10.141.0.0/16(')
-    assert len(lines) == 3
+    # the trinity layout: a blank line, the directory, one client per continuation line
+    blocks = [block.splitlines() for block in exports.split('\n\n')[1:]]
+    assert [block[0] for block in blocks] == ['/trinity/home \\', '/trinity/shared \\', '/srv/archive \\']
+    assert blocks[0][1].startswith(' 10.141.0.0/16(') and blocks[0][2].startswith(' fd00:141::/64(')
+    for block in blocks:
+        assert all(line.endswith(' \\') for line in block[:-1]) and not block[-1].endswith('\\')
     rows, _ = fstab_rows([_by_path(ENTRIES, '/home/corp')], ADDRESSES)
     block = render.render_fstab(rows)
     assert block.splitlines() == [mountsrender.FSTAB_BEGIN,
@@ -181,7 +184,7 @@ def test_render_node_hands_over_fstab_dirs_and_exports_only_where_they_apply(db)
     assert '/trinity/scratch root users 1777' in dirs and '/local/tmp - - 1777' in dirs
     server = render.render_node('fileserver01', b64encode(json.dumps(CORPUS).encode()).decode(), ADDRESSES)
     exports = b64decode(server['mounts_exports']).decode()
-    assert exports.splitlines()[-1].startswith('/trinity/scratch 10.141.0.0/16(async,no_subtree_check,rw)')
+    assert exports.splitlines()[-2:] == ['/trinity/scratch \\', ' 10.141.0.0/16(async,no_subtree_check,rw)']
     assert '/trinity/scratch' not in b64decode(server['mounts_fstab']).decode()
     assert MountsRender().render_node('node001', '', ADDRESSES) == {
         'mounts_fstab': '', 'mounts_exports': '', 'mounts_dirs': ''}
@@ -189,10 +192,15 @@ def test_render_node_hands_over_fstab_dirs_and_exports_only_where_they_apply(db)
 
 # --- the controller, against a real schema ---------------------------------------------
 
-def test_render_controller_exports_from_every_document_and_mounts_from_the_cluster(db, monkeypatch):
+def _stored_corpus_and_group(monkeypatch, tmp_path, proc_mounts=''):
+    """The corpus on the cluster, a two-share group document, and a mount table
+    of the caller's choosing in place of the test host's own."""
     from base.cluster import Cluster
     from base.group import Group
     from unittest.mock import patch
+    table = tmp_path / 'mounts'
+    table.write_text(proc_mounts)
+    monkeypatch.setattr(mountsrender, 'PROC_MOUNTS', str(table))
     with patch('base.cluster.Service'):
         assert Cluster().update_cluster({'config': {'cluster': {
             'mounts': b64encode(json.dumps(CORPUS).encode()).decode()}}})[0] is True
@@ -204,6 +212,9 @@ def test_render_controller_exports_from_every_document_and_mounts_from_the_clust
         assert Group().update_group(name='compute', request_data={'config': {'group': {'compute': {
             'mounts': b64encode(json.dumps(group_doc).encode()).decode()}}}})[0] is True
 
+
+def _dry_render(monkeypatch):
+    """A controller render that records what it would write instead of writing it."""
     written = {}
     render = MountsRender()
     monkeypatch.setattr(render, 'my_names', lambda: CONTROLLER)
@@ -211,15 +222,47 @@ def test_render_controller_exports_from_every_document_and_mounts_from_the_clust
     monkeypatch.setattr(render, 'write_fstab', lambda block, root='/': written.setdefault('fstab', block) and (True, 'ok'))
     monkeypatch.setattr(render, 'make_dirs', lambda dirs, root='/': written.setdefault('dirs', dirs))
     monkeypatch.setattr(render, 'mount', lambda entries: written.setdefault('mount', [e['path'] for e in entries]) and (True, 'ok'))
+    return render, written
+
+
+def _exported(written):
+    return [line.split()[0] for line in written['exports'].splitlines() if line.startswith('/')]
+
+
+def test_render_controller_exports_from_every_document_and_mounts_from_the_cluster(db, monkeypatch, tmp_path):
+    _stored_corpus_and_group(monkeypatch, tmp_path)
+    render, written = _dry_render(monkeypatch)
     status, message = render.render_controller()
     assert status is True, message
-    paths = [line.split()[0] for line in written['exports'].splitlines() if line and not line.startswith('#')]
+    paths = _exported(written)
     assert paths == ['/trinity/home', '/trinity/shared', '/srv/archive', '/trinity/group']
     assert 'ctrl1' not in written['exports'] and 'fileserver01' not in written['exports']
     fstab_paths = [line.split()[1] for line in written['fstab'].splitlines() if not line.startswith('#')]
     assert fstab_paths == ['/trinity/scratch', '/home/corp', '/lustre/work', '/beegfs']
     assert written['mount'] == ['/trinity/scratch', '/home/corp', '/lustre/work', '/beegfs', '/local/tmp']
     assert ('/local/tmp', '-', '-', '1777') in written['dirs']
+
+
+def test_a_directory_on_a_network_mount_is_never_exported_and_the_render_says_so(db, monkeypatch, tmp_path):
+    # on an HA controller /trinity/home is itself an nfs mount of the floating address;
+    # exporting it deadlocks mountd against the server it is a client of
+    _stored_corpus_and_group(monkeypatch, tmp_path, proc_mounts=(
+        'ctrl:/trinity/mounts/trinity/home /trinity/home nfs4 rw,vers=4.2 0 0\n'
+        '/dev/sda1 / xfs rw 0 0\n'))
+    render, written = _dry_render(monkeypatch)
+    status, message = render.render_controller()
+    assert status is False
+    assert 'not exported: /trinity/home' in message
+    assert _exported(written) == ['/trinity/shared', '/srv/archive', '/trinity/group']
+
+
+def test_on_network_filesystem_matches_the_mountpoint_and_what_lies_under_it():
+    remote = {'/trinity/home', '/lustre'}
+    assert mountsrender.on_network_filesystem('/trinity/home', remote)
+    assert mountsrender.on_network_filesystem('/trinity/home/users/', remote)
+    assert mountsrender.on_network_filesystem('/lustre/work', remote)
+    assert not mountsrender.on_network_filesystem('/trinity/homework', remote)
+    assert not mountsrender.on_network_filesystem('/trinity/mounts/trinity/home', remote)
 
 
 def test_a_clashing_export_is_refused_at_store_time(db):

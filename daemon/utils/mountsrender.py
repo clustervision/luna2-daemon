@@ -56,15 +56,35 @@ FSTAB_FILE = '/etc/fstab'
 FSTAB_BEGIN = '# BEGIN luna mounts'
 FSTAB_END = '# END luna mounts'
 COMMAND_TIMEOUT = 60
+PROC_MOUNTS = '/proc/mounts'
 
 # the fstab type per document type. manual has no line: it is a mountpoint only
 FSTYPES = {'nfs': 'nfs', 'lustre': 'lustre', 'beegfs': 'beegfs', 'gpfs': 'gpfs', 'panfs': 'panfs'}
 # the types whose device carries a path, and where that path defaults to the mountpoint
 PATH_DEFAULTS_TO_MOUNTPOINT = {'nfs', 'lustre'}
+# a directory on one of these is never exported: re-exporting a network filesystem is
+# unsupported, and an nfs one deadlocks mountd against the server it is a client of
+NETWORK_FSTYPES = {'nfs', 'nfs4'} | set(FSTYPES.values())
 
 
 def exported_path(entry):
     return entry.get('source') or entry['path']
+
+
+def network_mountpoints():
+    """The mountpoints on this machine that sit on a network filesystem."""
+    try:
+        with open(PROC_MOUNTS, 'r', encoding='utf-8') as handle:
+            rows = [line.split() for line in handle]
+    except OSError:
+        return set()
+    return {row[1] for row in rows if len(row) > 2 and row[2] in NETWORK_FSTYPES}
+
+
+def on_network_filesystem(path, mountpoints):
+    """Whether path is, or lies under, one of the mountpoints."""
+    path = path.rstrip('/') or '/'
+    return any(path == mp or path.startswith(mp.rstrip('/') + '/') for mp in mountpoints)
 
 
 def device(entry, server):
@@ -249,6 +269,13 @@ class MountsRender():
             os.replace(fstab + '.luna-tmp', fstab)
         except OSError as exp:
             return False, f'could not write {fstab}: {exp}'
+        if root == '/':
+            # systemd generates its mount units from fstab and keeps the old set until told
+            try:
+                subprocess.run(['systemctl', 'daemon-reload'], capture_output=True, text=True,
+                               timeout=COMMAND_TIMEOUT, check=False)
+            except (OSError, subprocess.TimeoutExpired) as exp:
+                self.logger.warning(f"mounts: {fstab} written, systemd not reloaded: {exp}")
         return True, f'{fstab} written'
 
     def make_dirs(self, dirs, root='/'):
@@ -308,7 +335,16 @@ class MountsRender():
                 if serves(entry, names) and key not in seen:
                     seen.add(key)
                     serving.append(entry)
+        remote = network_mountpoints()
+        refused = [exported_path(entry) for entry in serving
+                   if on_network_filesystem(exported_path(entry), remote)]
+        for directory in refused:
+            self.logger.error(f"mounts: {directory} is a network mount on this controller and "
+                              "is not exported; name the directory behind it as source")
+        serving = [entry for entry in serving if exported_path(entry) not in refused]
         estatus, emessage = self.write_exports(self.render_exports(serving, self.networks()))
+        if refused:
+            estatus, emessage = False, f"{emessage}, not exported: {', '.join(refused)}"
         cluster_entries = next((entries for name, entries in documents if name == 'cluster'), [])
         mine = [entry for entry in cluster_entries if mounts(entry, names)]
         rows, dirs = fstab_rows(mine, {})

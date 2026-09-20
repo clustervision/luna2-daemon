@@ -308,7 +308,31 @@ DATABASE_LAYOUT_user = [
 {"column": "roleid",               "datatype": "INTEGER", "length": "10"},
 {"column": "createdby",            "datatype": "INTEGER", "length": "10"},
 {"column": "lastlogin",            "datatype": "VARCHAR", "length": "50"},
-{"column": "created",              "datatype": "NUMERIC"}]
+{"column": "created",              "datatype": "NUMERIC"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"},
+{"column": "external_id",          "datatype": "VARCHAR", "length": "250"},
+{"column": "enabled",              "datatype": "INTEGER", "length": "10"},
+{"column": "admin",                "datatype": "INTEGER", "length": "10"},
+{"column": "delegate",             "datatype": "INTEGER", "length": "10"}]
+
+DATABASE_LAYOUT_usergroup = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "50", "key": "UNIQUE"},
+{"column": "comment",              "datatype": "TEXT"}]
+
+DATABASE_LAYOUT_usergroupmember = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "userid",               "datatype": "INTEGER", "length": "10"},
+{"column": "usergroupid",          "datatype": "INTEGER", "length": "10"},
+{"column": "role",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"}]
+
+DATABASE_LAYOUT_usergroupmap = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"},
+{"column": "external_group",       "datatype": "VARCHAR", "length": "250"},
+{"column": "usergroupid",          "datatype": "INTEGER", "length": "10"},
+{"column": "role",                 "datatype": "VARCHAR", "length": "20"}]
 
 DATABASE_LAYOUT_switch = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

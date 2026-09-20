@@ -113,6 +113,8 @@ MATCH = {
     'newsecretname': 'name',
     'newname': 'name',
     'newrackname': 'name',
+    'newusername': 'name',
+    'newusergroupname': 'name',
     'newcloudname': 'name',
     'tableref': 'strictname',
     'target': 'name',

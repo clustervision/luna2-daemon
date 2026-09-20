@@ -30,12 +30,12 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import logging
-from  hashlib import md5
 from datetime import datetime, timedelta
 from re import search
 from jwt import encode, decode, exceptions
 from utils.log import Log
 from utils.database import Database
+from base.user import User
 from common.constant import CONSTANT
 
 # Files with these extensions are handed out by the file server only with a token;
@@ -74,29 +74,15 @@ class Authentication():
                     api_key = CONSTANT['API']['SECRET_KEY']
                     if username and password:
                         if CONSTANT['API']['USERNAME'] != username:
-                            message = f'Username {username} does not belong to INI.'
-                            self.logger.info(message)
-                            where = f"username = '{username}' AND roleid = '1';"
-                            user = Database().get_record(table='user', where=where)
-                            if user:
-                                user_id = user[0]["id"]
-                                user_password = user[0]["password"]
-                                if user_password == md5(password.encode()).hexdigest():
-                                    jwt_token = encode(
-                                        {'id': user_id, 'exp': expiry_time},
-                                        api_key,
-                                        'HS256'
-                                    )
-                                    message = f'Authentication token generated, Token {jwt_token}'
-                                    self.logger.debug(message)
-                                    status = True
-                                else:
-                                    shown = password if self.logger.isEnabledFor(logging.DEBUG) else '******'
-                                    message = f'Incorrect password {shown} for user {username}'
-                                    self.logger.warning(message)
+                            self.logger.info(f'Username {username} does not belong to INI.')
+                            user_id, message = User().authenticate(username, password)
+                            if user_id is not None:
+                                jwt_token = encode({'id': user_id, 'exp': expiry_time}, api_key, 'HS256')
+                                message = f'Authentication token generated, Token {jwt_token}'
+                                self.logger.debug(message)
+                                status = True
                             else:
-                                message = f'User {username} does not exist'
-                                self.logger.error(message)
+                                self.logger.warning(message)
                         else:
                             if CONSTANT['API']['PASSWORD'] != password:
                                 shown = password if self.logger.isEnabledFor(logging.DEBUG) else '******'

@@ -33,7 +33,7 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 from functools import wraps
-from flask import request, json
+from flask import request, json, g
 import jwt
 from utils.log import Log
 from common.constant import CONSTANT
@@ -74,6 +74,7 @@ def token_required(function):
             LOGGER.error('Provision-scoped token rejected on a protected endpoint')
             response = {'message': 'Token is not permitted for this endpoint'}
             return json.dumps(response), 403
+        g.userid = claims.get('id')
         return function(**kwargs)
     return decorator
 

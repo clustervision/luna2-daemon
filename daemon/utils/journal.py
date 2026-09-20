@@ -74,6 +74,8 @@ from base.dns import DNS
 from base.secret import Secret
 from base.profile import Profile
 from base.osuser import OsUser
+from base.user import User
+from base.usergroup import UserGroup
 from base.monitor import Monitor
 from base.cloud import Cloud
 from base.plugin_import import Import

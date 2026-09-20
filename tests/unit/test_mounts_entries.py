@@ -189,8 +189,9 @@ def _route_app():
     @app.route('/config/cluster/mounts', methods=['POST'])
     @input_filter(checks=['config:cluster'], skip=None)
     def add():
+        from utils.helper import Helper
         status, message = Cluster().update_mount(request.data)
-        return {'message': message}, 201 if status else 400
+        return {'message': message}, 201 if status is True else Helper().get_access_code(status, message)
     return app.test_client()
 
 
@@ -200,6 +201,7 @@ def test_the_add_route_takes_the_envelope_with_a_base64_entry_and_refuses_a_bare
     with patch('base.cluster.Service'):
         answer = client.post('/config/cluster/mounts', json=_mount(ARCHIVE, 'cluster'))
     assert answer.status_code == 201, answer.get_data(as_text=True)
+    assert 'updated' in answer.get_json()['message'], 'the message travels with the 201'
     assert _paths(_stored('cluster'))[-1] == '/trinity/archive2'
     stored = [m for m in _doc(_stored('cluster'))['mounts'] if m['path'] == '/trinity/archive2'][0]
     assert stored == ARCHIVE, 'the entry arrives intact through the filter, quotes and all'

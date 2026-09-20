@@ -141,7 +141,9 @@ def config_node_mounts_add(name=None):
     status, response = Journal().add_request(function="Node.update_mount", object=name, payload=request.data)
     if status is True:
         status, response = Node().update_mount(name, request.data)
-    access_code = Helper().get_access_code(status, response)
+    # a 201 with the message: what the daemon did with the entry (a copied document,
+    # an unchanged one) is worth telling, and an update's 204 would carry no body
+    access_code = 201 if status is True else Helper().get_access_code(status, response)
     return {'message': response}, access_code
 
 
@@ -156,7 +158,9 @@ def config_node_mounts_remove(name=None):
     status, response = Journal().add_request(function="Node.remove_mount", object=name, payload=request.data)
     if status is True:
         status, response = Node().remove_mount(name, request.data)
-    access_code = Helper().get_access_code(status, response)
+    # a 201 with the message: what the daemon did with the entry (a copied document,
+    # an unchanged one) is worth telling, and an update's 204 would carry no body
+    access_code = 201 if status is True else Helper().get_access_code(status, response)
     return {'message': response}, access_code
 
 
@@ -171,7 +175,9 @@ def config_node_profile_assign(name=None):
     status, response = Journal().add_request(function="Node.assign_profile", object=name, payload=request.data)
     if status is True:
         status, response = Node().assign_profile(name, request.data)
-    access_code = Helper().get_access_code(status, response)
+    # a 201 with the message: what the daemon did with the entry (a copied document,
+    # an unchanged one) is worth telling, and an update's 204 would carry no body
+    access_code = 201 if status is True else Helper().get_access_code(status, response)
     return {'message': response}, access_code
 
 
@@ -186,7 +192,9 @@ def config_node_profile_unassign(name=None):
     status, response = Journal().add_request(function="Node.unassign_profile", object=name, payload=request.data)
     if status is True:
         status, response = Node().unassign_profile(name, request.data)
-    access_code = Helper().get_access_code(status, response)
+    # a 201 with the message: what the daemon did with the entry (a copied document,
+    # an unchanged one) is worth telling, and an update's 204 would carry no body
+    access_code = 201 if status is True else Helper().get_access_code(status, response)
     return {'message': response}, access_code
 
 

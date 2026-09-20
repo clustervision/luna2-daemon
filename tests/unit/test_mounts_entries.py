@@ -208,3 +208,34 @@ def test_the_add_route_takes_the_envelope_with_a_base64_entry_and_refuses_a_bare
     assert stored == ARCHIVE, 'the entry arrives intact through the filter, quotes and all'
     # a bare entry is not the envelope and never reaches the operation
     assert client.post('/config/cluster/mounts', json=ARCHIVE).status_code == 400
+
+
+def test_assign_and_unassign_queue_the_applier_like_any_profiles_change(db, monkeypatch):
+    """The applier is what makes an assignment real on the node: a node change queues
+    the node, a group change queues every member. The one-at-a-time verbs must go
+    through the same updates, so the queueing comes with them."""
+    from base.node import Node
+    from base.group import Group
+    from base.profile import Profile
+    from utils.database import Database
+    from utils.dbstructure import DBStructure
+    for table in ['profile', 'profilefile', 'ownercache']:
+        Database().create(table, DBStructure().get_database_table_structure(table))
+    assert Profile().update_profile('alpha', _make_profile('alpha'))[0] is True
+    queued = []
+    monkeypatch.setattr(Profile, 'queue_node', lambda self, name=None, nodeid=None: queued.append(('node', name)))
+    monkeypatch.setattr(Profile, 'queue_group', lambda self, name=None: queued.append(('group', name)))
+    with patch('base.node.Service'), patch('base.group.Service'):
+        assert Node().update_node('node001', {'config': {'node': {'node001': {'group': 'compute'}}}})[0] is True
+        queued.clear()
+        assert Node().assign_profile('node001', _profile('alpha', 'node', 'node001'))[0] is True
+        assert ('node', 'node001') in queued
+        queued.clear()
+        assert Node().unassign_profile('node001', _profile('alpha', 'node', 'node001'))[0] is True
+        assert ('node', 'node001') in queued
+        queued.clear()
+        assert Group().assign_profile('compute', _profile('alpha', 'group', 'compute'))[0] is True
+        assert ('group', 'compute') in queued
+        queued.clear()
+        assert Group().unassign_profile('compute', _profile('alpha', 'group', 'compute'))[0] is True
+        assert ('group', 'compute') in queued

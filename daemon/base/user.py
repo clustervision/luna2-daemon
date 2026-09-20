@@ -226,16 +226,19 @@ class User():
         """
         if userid in (0, '0'):
             return True, {'user': CONSTANT['API']['USERNAME'], 'id': 0, 'source': 'ini',
-                          'admin': True, 'usergroups': {}}
+                          'admin': True, 'usergroups': {}, 'hardware': []}
         users = Database().get_record(table='user', where=f"id = '{userid}'")
         if not users:
             return False, f'User {userid} no longer exists'
         user = users[0]
         if not Helper().make_bool(user['enabled']):
             return False, f"User {user['username']} is disabled"
+        usergroups = self.memberships().get(user['id'], {})
+        hardware = [row['name'] for row in Database().get_record(table='usergroup', where="hardware = '1'") or []
+                    if row['name'] in usergroups]
         return True, {'user': user['username'], 'id': user['id'], 'source': user['source'],
                       'admin': Helper().make_bool(user['admin']),
-                      'usergroups': self.memberships().get(user['id'], {})}
+                      'usergroups': usergroups, 'hardware': hardware}
 
 
     def digest(self, password=None):

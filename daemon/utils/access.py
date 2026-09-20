@@ -78,6 +78,43 @@ ROOTUS = {
 
 BITS = {'r': 4, 'w': 2, 'x': 1}
 
+# Departments that create their own objects, and what they may create: with a role of
+# admin or manager in a usergroup, these; with the usergroup's hardware flag as well,
+# nodes into its own groups and the hardware catalogue.
+DEPARTMENT_CREATES = {'group', 'osimage', 'profile'}
+HARDWARE_CREATES = {'node', 'bmcsetup', 'redfishsetup', 'biosconfig', 'firmwarecatalog'}
+
+# On a node or group a department holds w on, these fields are the cluster's hardware
+# and network, changed by rootus and admin only, or by admins and managers of a listed
+# usergroup that carries the hardware flag. Everything else on the row is config.
+# A derived test asserts every column of node and group is on one of the two lists.
+HARDWARE_FIELDS = {
+    'node': {'name', 'switchid', 'switchport', 'cloudid', 'bmcsetupid', 'redfishsetupid',
+             'biosconfigid', 'setupbmc', 'setupredfish', 'unmanaged_bmc_users', 'tpm_uuid',
+             'tpm_pubkey', 'tpm_sha256', 'vendor', 'assettag', 'provision_interface', 'service',
+             'status'},
+    'group': {'name', 'bmcsetupid', 'redfishsetupid', 'biosconfigid', 'setupbmc', 'setupredfish',
+              'unmanaged_bmc_users', 'provision_interface', 'domain'},
+}
+CONFIG_FIELDS = {
+    'node': {'groupid', 'osimageid', 'osimagetagid', 'kerneloptions', 'ipxe_kernel', 'roles', 'scripts',
+             'profiles', 'profiles_digest', 'prescript', 'partscript', 'postscript', 'install_mode',
+             'disklayout', 'osimage_filter', 'netboot', 'bootmenu', 'provision_method',
+             'provision_fallback', 'mounts', 'comment'},
+    'group': {'osimageid', 'osimagetagid', 'kerneloptions', 'ipxe_kernel', 'roles', 'scripts', 'profiles',
+              'prescript', 'partscript', 'postscript', 'install_mode', 'disklayout', 'osimage_filter',
+              'netboot', 'bootmenu', 'provision_method', 'provision_fallback', 'mounts', 'comment'},
+}
+# the same fields as the API names them, for the request body
+HARDWARE_KEYS = {
+    'node': {'newnodename', 'switch', 'switchport', 'cloud', 'bmcsetup', 'redfishsetup',
+             'biosconfig', 'setupbmc', 'setupredfish', 'unmanaged_bmc_users', 'tpm_uuid',
+             'tpm_pubkey', 'tpm_sha256', 'vendor', 'assettag', 'provision_interface', 'service',
+             'macaddress', 'interfaces'},
+    'group': {'newgroupname', 'bmcsetup', 'redfishsetup', 'biosconfig', 'setupbmc', 'setupredfish',
+              'unmanaged_bmc_users', 'provision_interface', 'domain', 'interfaces'},
+}
+
 
 class AccessRefused(Exception):
     """
@@ -142,14 +179,18 @@ class Access():
         if has_request_context() and getattr(g, 'caller', None) and g.caller['id'] == userid:
             return g.caller
         if userid in (0, '0', None):
-            caller = {'id': 0, 'admin': True, 'usergroups': {}}
+            caller = {'id': 0, 'admin': True, 'usergroups': {}, 'hardware': set()}
         else:
             rows = Database().get_record(table='user', where=f"id = '{userid}'")
             admin = bool(rows) and Helper().make_bool(rows[0]['admin']) is True
-            usergroups = {}
+            usergroups, hardware = {}, set()
             for row in Database().get_record(table='usergroupmember', where=f"userid = '{userid}'") or []:
                 usergroups[int(row['usergroupid'])] = row['role']
-            caller = {'id': int(userid), 'admin': admin, 'usergroups': usergroups}
+            leading = [gid for gid, role in usergroups.items() if role in ('admin', 'manager')]
+            if leading:
+                for row in Database().get_record(table='usergroup', where=f"id IN ({','.join(map(str, leading))}) AND hardware = '1'") or []:
+                    hardware.add(int(row['id']))
+            caller = {'id': int(userid), 'admin': admin, 'usergroups': usergroups, 'hardware': hardware}
         if has_request_context():
             g.caller = caller
         return caller
@@ -243,16 +284,92 @@ class Access():
             return Database().name_by_id(table, row[column])
         return None
 
-    def require_create(self, table=None):
+    def may_create(self, caller=None, table=None, body=None):
         """
-        Creating a governed object stays with rootus and admin until the create rules land.
+        The create rule. rootus and admin create anything. A department, admins and managers
+        of a usergroup, creates group, osimage and profile; with the usergroup's hardware
+        flag also nodes into groups that usergroup is listed on with w, on networks the
+        caller may read, and the hardware catalogue. Raises AccessRefused otherwise.
+        """
+        if caller['admin']:
+            return
+        leading = [gid for gid, role in caller['usergroups'].items() if role in ('admin', 'manager')]
+        if table in DEPARTMENT_CREATES and leading:
+            return
+        if table in HARDWARE_CREATES and caller['hardware']:
+            if table == 'node':
+                self._node_create_fences(caller, body or {})
+            return
+        if table in DEPARTMENT_CREATES or table in HARDWARE_CREATES:
+            raise AccessRefused(403, f'creating a {table} needs the admin or manager role in a usergroup'
+                                + (' with the hardware flag' if table in HARDWARE_CREATES else ''))
+        raise AccessRefused(403, f'creating a {table} is for rootus and admin users')
+
+    def _node_create_fences(self, caller, body):
+        """
+        A department creates nodes only into its own groups, and only with addresses on
+        networks it may read: rootus fences by withholding r on a network.
+        """
+        group = body.get('group')
+        if not group:
+            raise AccessRefused(403, 'creating a node needs a group the usergroup is listed on')
+        row = self.row('group', group)
+        if row is None or not (set(self.ids(row.get('usergroups'))) & caller['hardware']) \
+                or 'w' not in self.bits(caller, 'group', row):
+            raise AccessRefused(403, f'creating a node into group {group} needs w on it through a usergroup with the hardware flag')
+        for interface in body.get('interfaces') or []:
+            network = interface.get('network') if isinstance(interface, dict) else None
+            if network:
+                self.allowed(caller['id'], 'network', network, 'r')
+
+    def require_create(self, table=None, body=None):
+        """
+        The create rule from inside a route, for a second object that does not exist yet.
         Output - (True, None) or (False, message, code)
         """
-        if not has_request_context() or getattr(g, 'userid', None) is None:
+        caller = self.request_caller()
+        if caller is None:
             return True, None
-        if self.caller(g.userid)['admin']:
+        try:
+            self.may_create(caller, table, body)
             return True, None
-        return False, f'creating a {table} is for rootus and admin users', 403
+        except AccessRefused as exp:
+            return False, exp.message, exp.code
+
+    def created_row(self, table=None, row=None):
+        """
+        Input - the row about to be inserted, as make_rows builds it
+        Output - the same row carrying the three columns: a node copies its group's; any
+                 other object created by a department lists every usergroup in which the
+                 creator is admin or manager and names the creator as owner; a rootus or
+                 admin create leaves them NULL. Called at every insert into a governed table;
+                 the derived test checks that.
+        """
+        if table not in GOVERNED:
+            return row
+        columns = {entry['column']: entry['value'] for entry in row}
+        if any(columns.get(key) for key in ('owners', 'usergroups', 'access')):
+            return row
+        caller = self.request_caller()
+        values = {}
+        if table == 'node' and columns.get('groupid'):
+            groups = Database().get_record(table='group', where=f"id = '{columns['groupid']}'")
+            if groups:
+                values = {key: groups[0].get(key) for key in ('owners', 'usergroups', 'access')}
+        elif caller is not None and not caller['admin']:
+            leading = [gid for gid, role in caller['usergroups'].items() if role in ('admin', 'manager')]
+            values = {'owners': str(caller['id']), 'usergroups': ','.join(str(gid) for gid in leading)}
+        for key, value in values.items():
+            if value:
+                row = [entry for entry in row if entry['column'] != key] + [{'column': key, 'value': value}]
+        return row
+
+    def hardware_allowed(self, caller=None, row=None):
+        """
+        Whether the caller may touch the hardware fields of this node or group: rootus, admin,
+        or a leading role in a listed usergroup with the hardware flag.
+        """
+        return caller['admin'] or bool(set(self.ids(row.get('usergroups'))) & caller['hardware'])
 
     def require(self, table=None, name=None, bit=None):
         """
@@ -353,14 +470,23 @@ class Access():
             if kind in ('open', 'self', 'provision'):
                 return True, None, None
             caller = self.caller(userid)
-            if kind in ('rootus', 'membership'):
+            if kind == 'rootus':
                 if not caller['admin']:
                     raise AccessRefused(403, f"{requirement.get('entity')} is for rootus and admin users")
+                return True, None, None
+            if kind == 'membership':
+                self._membership(caller, requirement.get('name'))
                 return True, None, None
             if kind == 'object':
                 if requirement.get('name') is None:
                     return True, None, None
-                self.allowed(userid, requirement['entity'], requirement['name'], requirement['bit'])
+                entity, name, bit = requirement['entity'], requirement['name'], requirement['bit']
+                if not caller['admin'] and bit == 'w' and self.row(entity, name) is None:
+                    self.may_create(caller, entity, self._body_of(entity, name))
+                    return True, None, None
+                row = self.allowed(userid, entity, name, bit)
+                if bit == 'w' and entity in HARDWARE_FIELDS and row is not None:
+                    self._hardware(caller, entity, name, row)
                 return True, None, None
             if kind == 'dynamic':
                 bit = 'r' if 'status' in str(requirement.get('action')) else 'x'
@@ -385,8 +511,7 @@ class Access():
         entity, name, args = requirement['entity'], requirement.get('name'), requirement.get('args', {})
         if action == 'clone':
             self.allowed(userid, entity, name, 'r')
-            if not caller['admin']:
-                raise AccessRefused(403, f'creating a {entity} is for rootus and admin users')
+            self.may_create(caller, entity, self._body_of(entity, name))
         elif action in ('ospush', 'osgrab', 'biospush', 'biosgrab', 'firmwarepush', 'redfish', 'provision'):
             if name is None:
                 self._hostlist(userid, caller, 'x')
@@ -400,6 +525,41 @@ class Access():
         else:
             raise AccessRefused(403, f'{action} has no rule')
 
+
+    def _body_of(self, entity, name):
+        """
+        The request body for one object, config.<entity>.<name>, or an empty dict.
+        """
+        try:
+            body = request.get_json(force=True, silent=True) or {}
+            return body['config'][entity][name] or {}
+        except (KeyError, TypeError, AttributeError):
+            return {}
+
+    def _hardware(self, caller, entity, name, row):
+        """
+        A write to a node or group that names a hardware field, or writes its interfaces,
+        needs the hardware axis: refused for anyone else, naming the field.
+        """
+        if self.hardware_allowed(caller, row):
+            return
+        rule = request.url_rule.rule if request.url_rule else ''
+        if '/interfaces' in rule:
+            raise AccessRefused(403, f'{entity} {name}: interfaces are hardware, for rootus, admin or a usergroup with the hardware flag')
+        named = sorted(set(self._body_of(entity, name)) & HARDWARE_KEYS[entity])
+        if named:
+            raise AccessRefused(403, f"{entity} {name}: {', '.join(named)} is hardware, for rootus, admin or a usergroup with the hardware flag")
+
+    def _membership(self, caller, usergroup):
+        """
+        The members path: rootus and admin anywhere; the admin role in that usergroup.
+        """
+        if caller['admin']:
+            return
+        rows = Database().get_record(table='usergroup', where=f"name = '{usergroup}'")
+        if rows and caller['usergroups'].get(int(rows[0]['id'])) == 'admin':
+            return
+        raise AccessRefused(403, f'the members of usergroup {usergroup} are managed by its admins, rootus and admin users')
 
     def _hostlist(self, userid, caller, bit, control=False):
         """

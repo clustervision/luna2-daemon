@@ -215,7 +215,7 @@ class Model():
             column_check = Helper().compare_list(data, columns)
             if column_check:
                 row = Helper().make_rows(data)
-                Database().insert(table, row)
+                Database().insert(table, Access().created_row(table, row))
                 self.logger.info(f'{name} successfully added in {table}')
                 response = f'{name} successfully added in {table}'
                 status=True
@@ -297,7 +297,7 @@ class Model():
             column_check = Helper().compare_list(data, columns)
             row = Helper().make_rows(data)
             if column_check:
-                Database().insert(table, row)
+                Database().insert(table, Access().created_row(table, row))
                 response = f'{name} cloned as {new_record} successfully'
                 status=True
             else:

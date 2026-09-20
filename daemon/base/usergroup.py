@@ -50,7 +50,7 @@ class UserGroup():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        self.fields = ['newusergroupname', 'comment']
+        self.fields = ['newusergroupname', 'comment', 'hardware']
 
 
     def get_usergroup(self, name=None):
@@ -66,6 +66,7 @@ class UserGroup():
             config = {}
             for usergroup in usergroups:
                 config[usergroup['name']] = {'comment': usergroup['comment'],
+                                             'hardware': Helper().make_bool(usergroup['hardware']) is True,
                                              'members': members.get(usergroup['id'], {})}
             response = {'config': {'usergroup': dict(sorted(config.items()))}}
             status = True
@@ -89,6 +90,9 @@ class UserGroup():
         create = not existing
         if create:
             data['name'] = name
+            data.setdefault('hardware', False)
+        if 'hardware' in data:
+            data['hardware'] = Helper().bool_to_string(data['hardware'])
         if 'newusergroupname' in data:
             if create:
                 return False, 'Invalid request: newusergroupname needs an existing usergroup'

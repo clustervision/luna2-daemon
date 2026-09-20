@@ -190,7 +190,7 @@ class Rack():
                 Database().update('rack', row, where)
             elif create:
                 row = Helper().make_rows(data)
-                rackid = Database().insert('rack', row)
+                rackid = Database().insert('rack', Access().created_row('rack', row))
 
             if not rackid:
                 return False, f"Could not update or create rack {name}"

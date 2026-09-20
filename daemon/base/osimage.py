@@ -342,7 +342,7 @@ class OSImage():
                 if create:
                     data['name'] = name
                     row = Helper().make_rows(data)
-                    Database().insert('osimage', row)
+                    Database().insert('osimage', Access().created_row('osimage', row))
                     response = f'OS Image {name} created'
                     status=True
             else:
@@ -423,7 +423,7 @@ class OSImage():
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
                 row = Helper().make_rows(data)
-                img_id = Database().insert('osimage', row)
+                img_id = Database().insert('osimage', Access().created_row('osimage', row))
                 if not img_id:
                     status = False
                     return status, "Internal error: Failed cloning image"

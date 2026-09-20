@@ -339,7 +339,8 @@ DATABASE_LAYOUT_user = [
 DATABASE_LAYOUT_usergroup = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "50", "key": "UNIQUE"},
-{"column": "comment",              "datatype": "TEXT"}]
+{"column": "comment",              "datatype": "TEXT"},
+{"column": "hardware",             "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_usergroupmember = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

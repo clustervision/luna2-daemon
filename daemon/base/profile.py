@@ -202,7 +202,7 @@ class Profile():
             else:
                 data['name'] = name
                 row = Helper().make_rows(data)
-                profileid = Database().insert('profile', row)
+                profileid = Database().insert('profile', Access().created_row('profile', row))
                 if not profileid:
                     response = f'Internal error: profile {name} create failed'
                     self.logger.error(response)
@@ -273,7 +273,7 @@ class Profile():
                         del newprofile['id']
                         newprofile['name'] = newname
                         row = Helper().make_rows(newprofile)
-                        new_profileid = Database().insert('profile', row)
+                        new_profileid = Database().insert('profile', Access().created_row('profile', row))
                         where = f"profileid = '{profileid}'"
                         for record in Database().get_record(table='profilefile', where=where) or []:
                             del record['id']

@@ -71,7 +71,7 @@ def _whoami(app, token):
 def test_the_configuration_file_account(app):
     code, body = _whoami(app, _token(0))
     assert code == 200
-    assert body == {'user': 'luna', 'id': 0, 'source': 'ini', 'admin': True, 'usergroups': {}}
+    assert body == {'user': 'luna', 'id': 0, 'source': 'ini', 'admin': True, 'usergroups': {}, 'hardware': []}
 
 
 def test_a_local_user_with_its_usergroups_and_roles(app, db):

@@ -996,7 +996,7 @@ class Node():
                         return False, 'Invalid request: group name is required for new nodes'
                     data['name'] = name
                     row = Helper().make_rows(data)
-                    nodeid = Database().insert('node', row)
+                    nodeid = Database().insert('node', Access().created_row('node', row))
                     response = f'Node {name} created successfully'
                     status = True
 
@@ -1118,7 +1118,7 @@ class Node():
             if columns_check:
                 new_nodeid=None
                 row = Helper().make_rows(data)
-                new_nodeid = Database().insert('node', row)
+                new_nodeid = Database().insert('node', Access().created_row('node', row))
                 if not new_nodeid:
                     return False, f'Internal error: Node {newnodename} is not created due to possible property clash'
                 response = f'Node {newnodename} created successfully'

@@ -213,7 +213,8 @@ def test_listings_pass_the_gate_and_rootus_routes_do_not(client, world):
     code, body = me.get('/hash')
     assert code == 403 and 'rootus and admin' in body['message']
     assert me.post('/config/usergroup/intel/members')[0] == 403, 'membership delegation is a later ticket'
-    assert me.post('/config/node/newnode')[0] == 404, 'creating stays with rootus and admin for now'
+    code, body = me.post('/config/node/newnode')
+    assert code == 403 and 'creating a node needs' in body['message'], 'a reader creates nothing'
 
 
 # ── chmod, chgrp, chown ─────────────────────────────────────────────────────

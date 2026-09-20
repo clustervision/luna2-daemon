@@ -186,7 +186,7 @@ def test_an_empty_password_removes_the_digest(client, monkeypatch):
 def test_a_usergroup_is_created_renamed_and_deleted(client):
     assert client.usergroup('intel', comment='Intel Corporation').status_code == 201
     shown = _body(client.get('/config/usergroup/intel'))['config']['usergroup']['intel']
-    assert shown == {'comment': 'Intel Corporation', 'members': {}}
+    assert shown == {'comment': 'Intel Corporation', 'hardware': False, 'members': {}}
     assert client.usergroup('intel', newusergroupname='intel-nl').status_code == 204
     assert client.get('/config/usergroup/intel').status_code == 404
     assert client.get('/config/usergroup/intel-nl/_delete').status_code == 204

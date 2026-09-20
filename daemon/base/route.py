@@ -110,7 +110,7 @@ class Route():
             if target_name != name:
                 return True, f"Route {name} renamed to {target_name}"
             return True, f"Route {name} updated"
-        Database().insert('route', row)
+        Database().insert('route', Access().created_row('route', row))
         return True, f"Route {name} created"
 
     def delete_route(self, name=None):

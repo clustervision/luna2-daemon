@@ -219,7 +219,7 @@ class RedfishSetup():
                 # cannot tell whether the certificate is checked, and the behaviour
                 # would rest on None happening to be falsy where it is consumed
                 data['verify'] = '0'
-            setupid = Database().insert(self.table, Helper().make_rows(data))
+            setupid = Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(data)))
             if not setupid:
                 response = f'Internal error: {self.table_cap} {name} create failed'
                 self.logger.error(response)
@@ -285,7 +285,7 @@ class RedfishSetup():
         newsetup = dict(setup[0])
         del newsetup['id']
         newsetup['name'] = newname
-        new_setupid = Database().insert(self.table, Helper().make_rows(newsetup))
+        new_setupid = Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(newsetup)))
         where = f"redfishsetupid = '{setupid}'"
         for record in Database().get_record(table='redfishaccount', where=where) or []:
             del record['id']

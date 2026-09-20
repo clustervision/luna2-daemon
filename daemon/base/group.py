@@ -689,7 +689,7 @@ class Group():
                 elif create:
                     data['name'] = name
                     row = Helper().make_rows(data)
-                    group_id = Database().insert('group', row)
+                    group_id = Database().insert('group', Access().created_row('group', row))
                     if group_id:
                         response = f'Group {name} created successfully'
                         status=True
@@ -862,7 +862,7 @@ class Group():
             column_check = Helper().compare_list(data, group_columns)
             if column_check:
                 row = Helper().make_rows(data)
-                new_group_id = Database().insert('group', row)
+                new_group_id = Database().insert('group', Access().created_row('group', row))
                 if not new_group_id:
                     return False, f'Internal error: Group {newgroupname} is not created due to possible property clash'
                 # response = f'Group {name} created successfully'

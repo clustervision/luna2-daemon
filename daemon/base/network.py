@@ -651,7 +651,7 @@ class Network():
             if column_check:
                 row = Helper().make_rows(data)
                 if create:
-                    networkid = Database().insert('network', row)
+                    networkid = Database().insert('network', Access().created_row('network', row))
                     response = f'Network {name} created successfully'
                     status=True
                     if network_routes is not None:

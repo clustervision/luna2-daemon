@@ -322,7 +322,7 @@ class Bios():
         row['updated'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         if 'comment' in data:
             row['comment'] = data['comment']
-        Database().insert(self.table, Helper().make_rows(row))
+        Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(row)))
         return True, f'BIOS configuration {name} cloned to {newname}'
 
 
@@ -602,7 +602,7 @@ class Bios():
             # than an empty one, so it is visible and editable from the start -
             # an administrator who cannot see what was excluded cannot judge it
             row['grab_exclude'] = self.encode(', '.join(DEFAULT_EXCLUDE))
-            Database().insert(self.table, Helper().make_rows(row))
+            Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(row)))
         dropped = data.get('dropped') or {}
         kept = len(data.get('attributes') or {})
         return True, (f"BIOS configuration {name} grabbed from {data.get('node')}: "

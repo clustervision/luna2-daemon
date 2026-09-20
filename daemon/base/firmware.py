@@ -128,7 +128,7 @@ class Firmware():
                 return False, (f'Invalid request: a new {self.table} entry needs '
                                f'{", ".join(missing)}')
             row = Helper().make_rows(data)
-            if not Database().insert(self.table, row):
+            if not Database().insert(self.table, Access().created_row(self.table, row)):
                 return False, f'Internal error: {self.table_cap} {name} create failed'
             return True, f'{self.table_cap} {name} created' + self.staging_note(data.get('imagefile'))
         del data['name']

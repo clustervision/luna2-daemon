@@ -35,6 +35,7 @@ from utils.helper import Helper
 from utils.config import Config
 from utils.service import Service
 from utils.model import Model
+from utils.access import Access
 
 class Switch():
     """
@@ -193,7 +194,7 @@ class Switch():
                 row = Helper().make_rows(data)
                 if column_check:
                     if create:
-                        switchid = Database().insert(self.table, row)
+                        switchid = Database().insert(self.table, Access().created_row(self.table, row))
                         response = f'Switch {name} created successfully'
                         status=True
                     if update:
@@ -282,7 +283,7 @@ class Switch():
                         if key not in data:
                             data[key] = switch[0][key]
                     row = Helper().make_rows(data)
-                    switch_id = Database().insert(self.table, row)
+                    switch_id = Database().insert(self.table, Access().created_row(self.table, row))
                     if not switch_id:
                         status=False
                         return status, 'Internal error: Switch not cloned due to clashing config'

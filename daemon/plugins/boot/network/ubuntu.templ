@@ -36,6 +36,14 @@ $(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] 
     {%- if LUNA_INTERFACES[interface]['mtu'] %}
       mtu: {{ LUNA_INTERFACES[interface]['mtu'] }}
     {%- endif %}
+{#- the first slave's address, as the kernel would pick itself. Left unset,
+    networkd derives one from the machine-id, which every node booted from
+    this image shares #}
+    {%- if LUNA_INTERFACES[interface]['bond_slaves'][0] == PROVISION_INTERFACE %}
+      macaddress: $(cat /sys/class/net/${interface_bootif}/address)
+    {%- else %}
+      macaddress: $(cat /sys/class/net/{{ LUNA_INTERFACES[interface]['bond_slaves'][0] }}/address)
+    {%- endif %}
       interfaces:
   {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
     {%- if bond_slave == PROVISION_INTERFACE %}
@@ -45,6 +53,14 @@ $(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] 
         - {{ bond_slave }}
     {%- endif %}
   {%- endfor %}
+{#- netplan knows the modes by name only, where the daemon also accepts 0-6.
+    Link monitoring is off unless asked for; 100 ms is what NetworkManager gives
+    the EL templates by default #}
+{%- set bond_modes = {'0': 'balance-rr', '1': 'active-backup', '2': 'balance-xor', '3': 'broadcast',
+                      '4': '802.3ad', '5': 'balance-tlb', '6': 'balance-alb'} %}
+      parameters:
+        mode: {{ bond_modes.get(LUNA_INTERFACES[interface]['bond_mode'], LUNA_INTERFACES[interface]['bond_mode']) }}
+        mii-monitor-interval: 100
 {%- else %}
   ethernets:
     ${interface_name}:

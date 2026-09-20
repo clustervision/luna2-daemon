@@ -218,6 +218,26 @@ class User():
                 {'userid': userid, 'usergroupid': usergroupid, 'role': role, 'source': source}))
 
 
+    def whoami(self, userid=None):
+        """
+        This method answers who a token belongs to: name, id, source, the admin flag and the
+        usergroups with the role held in each. Id 0 is the configuration-file account.
+        A row that is gone or disabled is refused, so a stale token learns it here.
+        """
+        if userid in (0, '0'):
+            return True, {'user': CONSTANT['API']['USERNAME'], 'id': 0, 'source': 'ini',
+                          'admin': True, 'usergroups': {}}
+        users = Database().get_record(table='user', where=f"id = '{userid}'")
+        if not users:
+            return False, f'User {userid} no longer exists'
+        user = users[0]
+        if not Helper().make_bool(user['enabled']):
+            return False, f"User {user['username']} is disabled"
+        return True, {'user': user['username'], 'id': user['id'], 'source': user['source'],
+                      'admin': Helper().make_bool(user['admin']),
+                      'usergroups': self.memberships().get(user['id'], {})}
+
+
     def digest(self, password=None):
         """
         Input - a password

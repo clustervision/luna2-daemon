@@ -31,10 +31,12 @@ __status__      = 'Development'
 
 
 from json import dumps
-from flask import Blueprint, request
+from flask import Blueprint, request, g
 from utils.log import Log
+from common.validate_auth import token_required
 from common.validate_input import validate_name, input_filter
 from base.authentication import Authentication
+from base.user import User
 
 LOGGER = Log.get_logger()
 auth_blueprint = Blueprint('auth', __name__)
@@ -52,6 +54,19 @@ def jwt_token():
     if status is True:
         access_code = 201
     return response, access_code
+
+
+@auth_blueprint.route('/whoami', methods=['GET'])
+@token_required
+def whoami():
+    """
+    This route answers who the token belongs to: user, id, source, admin flag and the
+    usergroups with the role held in each.
+    """
+    status, response = User().whoami(g.userid)
+    if status is True:
+        return dumps(response), 200
+    return dumps({'message': response}), 401
 
 
 @auth_blueprint.route('/tpm/<string:nodename>', methods=['POST'])

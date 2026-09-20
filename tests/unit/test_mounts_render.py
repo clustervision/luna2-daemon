@@ -228,6 +228,7 @@ def _dry_render(monkeypatch):
     render = MountsRender()
     monkeypatch.setattr(render, 'my_names', lambda: CONTROLLER)
     monkeypatch.setattr(render, 'my_addresses', lambda: {'controller': 'ctrl', 'self': 'ctrl1'})
+    monkeypatch.setattr(render, 'foreign_fstab', lambda root='/': {})
     monkeypatch.setattr(render, 'write_exports', lambda text: written.setdefault('exports', text) and (True, 'ok'))
     monkeypatch.setattr(render, 'write_fstab', lambda block, root='/': written.setdefault('fstab', block) and (True, 'ok'))
     monkeypatch.setattr(render, 'make_dirs', lambda dirs, root='/': written.setdefault('dirs', dirs))
@@ -258,12 +259,47 @@ def test_render_controller_exports_from_every_document_and_mounts_from_the_clust
     assert ('/trinity/home', '-', '-', '-') in written['dirs'] and ('/srv/archive', '-', '-', '-') in written['dirs']
 
 
+def test_a_mountpoint_already_in_fstab_outside_the_block_is_left_to_that_line(db, monkeypatch, tmp_path):
+    _stored_corpus_and_group(monkeypatch, tmp_path)
+    render, written = _dry_render(monkeypatch)
+    # /home/corp identical to what luna would write; /beegfs with other options
+    monkeypatch.setattr(render, 'foreign_fstab', lambda root='/': mountsrender.foreign_mountpoints([
+        '/dev/sda1 / xfs defaults 0 0',
+        'nas01.corp.example:/exports/users /home/corp nfs nfsvers=4.2,rw,retrans=4,_netdev,nofail 0 0',
+        'beegfs_nodev /beegfs beegfs defaults 0 0',
+        mountsrender.FSTAB_BEGIN, 'stale:/x /trinity/scratch nfs defaults 0 0', mountsrender.FSTAB_END]))
+    status, message = render.render_controller()
+    assert status is False and 'not written: /beegfs' in message
+    fstab_paths = [line.split()[1] for line in written['fstab'].splitlines() if not line.startswith('#')]
+    # neither is written twice: the identical one is left to its line, the conflicting one too
+    assert fstab_paths == ['/trinity/archive', '/trinity/scratch', '/lustre/work']
+    # the identical one is still mounted (its line does the same); the conflicting one is not touched
+    assert '/home/corp' in written['mount'] and '/beegfs' not in written['mount']
+
+
+def test_foreign_mountpoints_reads_only_outside_the_block_and_split_rows_tells_identical_from_conflicting():
+    lines = ['# comment', '', 'UUID=1 / xfs defaults 0 0', 'srv:/a /a nfs ro 0 0', 'srv:/b /b nfs',
+             mountsrender.FSTAB_BEGIN, 'srv:/c /c nfs defaults 0 0', mountsrender.FSTAB_END]
+    foreign = mountsrender.foreign_mountpoints(lines)
+    assert set(foreign) == {'/', '/a', '/b'}
+    rows = [{'device': 'srv:/a', 'path': '/a', 'fstype': 'nfs', 'options': 'ro'},
+            {'device': 'srv:/b', 'path': '/b', 'fstype': 'nfs', 'options': 'defaults'},
+            {'device': 'srv:/c', 'path': '/c', 'fstype': 'nfs', 'options': 'defaults'},
+            {'device': 'other:/a', 'path': '/a', 'fstype': 'nfs', 'options': 'ro'}]
+    kept, identical, conflicting = mountsrender.split_rows(rows, foreign)
+    assert [r['path'] for r in kept] == ['/c']
+    # a three-field line has no options and counts as defaults, so /b is identical
+    assert [r['path'] for r, _ in identical] == ['/a', '/b']
+    assert [r['device'] for r, _ in conflicting] == ['other:/a']
+
+
 def test_the_served_directories_exist_before_the_exports_are_written(db, monkeypatch, tmp_path):
     _stored_corpus_and_group(monkeypatch, tmp_path)
     order = []
     render = MountsRender()
     monkeypatch.setattr(render, 'my_names', lambda: CONTROLLER)
     monkeypatch.setattr(render, 'my_addresses', lambda: {'controller': 'ctrl', 'self': 'ctrl1'})
+    monkeypatch.setattr(render, 'foreign_fstab', lambda root='/': {})
     monkeypatch.setattr(render, 'make_dirs', lambda dirs, root='/': order.append(('dirs', [d[0] for d in dirs])))
     monkeypatch.setattr(render, 'write_exports', lambda text: order.append(('exports', None)) or (True, 'ok'))
     monkeypatch.setattr(render, 'write_fstab', lambda block, root='/': order.append(('fstab', None)) or (True, 'ok'))

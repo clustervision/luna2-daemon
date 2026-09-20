@@ -129,6 +129,44 @@ def export_dirs(entries):
     return rows
 
 
+def foreign_mountpoints(lines):
+    """The mountpoints fstab lines outside the managed block already carry, each
+    mapped to its line. Those lines are somebody else's: a mountpoint is never
+    written twice, whatever the device or the options say, because a second line
+    for one mountpoint breaks systemd's fstab generator and mount takes the first."""
+    foreign, inside = {}, False
+    for line in lines:
+        if line == FSTAB_BEGIN:
+            inside = True
+            continue
+        if line == FSTAB_END:
+            inside = False
+            continue
+        fields = line.split()
+        if inside or len(fields) < 3 or fields[0].startswith('#'):
+            continue
+        foreign.setdefault(fields[1], line)
+    return foreign
+
+
+def split_rows(rows, foreign):
+    """The fstab rows against the foreign mountpoints: (kept, identical, conflicting),
+    the last two as (row, line). Identical means the same device, type and options,
+    so the state is already what the document wants; conflicting means the foreign
+    line wins with something else."""
+    kept, identical, conflicting = [], [], []
+    for row in rows:
+        line = foreign.get(row['path'])
+        if line is None:
+            kept.append(row)
+            continue
+        fields = line.split()
+        options = fields[3] if len(fields) > 3 else 'defaults'
+        same = fields[0] == row['device'] and fields[2] == row['fstype'] and options == row['options']
+        (identical if same else conflicting).append((row, line))
+    return kept, identical, conflicting
+
+
 def export_rows(entries, networks, logger=None):
     """The rows the exports template lays out: the directory and one client
     specification per client, each carrying the export's default options followed
@@ -262,6 +300,15 @@ class MountsRender():
             return False, f'{EXPORTS_FILE} written, exportfs refused it: {result.stderr.strip()}'
         return True, f'{EXPORTS_FILE} written and exported'
 
+    def foreign_fstab(self, root='/'):
+        """The mountpoints <root>/etc/fstab carries outside the managed block."""
+        fstab = os.path.join(root, FSTAB_FILE.lstrip('/'))
+        try:
+            with open(fstab, 'r', encoding='utf-8') as handle:
+                return foreign_mountpoints(handle.read().splitlines())
+        except FileNotFoundError:
+            return {}
+
     def write_fstab(self, block, root='/'):
         """Write the managed block into <root>/etc/fstab, replacing what a previous
         render left there and touching nothing outside the markers."""
@@ -365,6 +412,15 @@ class MountsRender():
         cluster_entries = next((entries for name, entries in documents if name == 'cluster'), [])
         mine = [entry for entry in cluster_entries if mounts(entry, names)]
         rows, dirs = fstab_rows(mine, self.my_addresses())
+        rows, identical, conflicting = split_rows(rows, self.foreign_fstab())
+        for row, line in identical:
+            self.logger.warning(f"mounts: {row['path']} is already in fstab outside the managed "
+                                "block with the same line; left to it")
+        for row, line in conflicting:
+            self.logger.error(f"mounts: {row['path']} is already in fstab outside the managed block "
+                              f"as '{line}', which wins; luna's line is not written, remove the "
+                              "other to let luna manage it")
+        skipped = {row['path'] for row, _ in conflicting}
         # the served directories first: exportfs refuses a directory that is not there
         # yet, and the roles that make the shares may run after this render
         self.make_dirs(export_dirs(serving) + dirs)
@@ -372,7 +428,9 @@ class MountsRender():
         if refused:
             estatus, emessage = False, f"{emessage}, not exported: {', '.join(refused)}"
         fstatus, fmessage = self.write_fstab(self.render_fstab(rows))
-        mstatus, mmessage = self.mount(mine)
+        if skipped:
+            fstatus, fmessage = False, f"{fmessage}, not written: {', '.join(sorted(skipped))}"
+        mstatus, mmessage = self.mount([entry for entry in mine if entry['path'] not in skipped])
         summary = f"{len(serving)} exports, {len(rows)} mounts: {emessage}; {fmessage}; {mmessage}"
         if estatus and fstatus and mstatus:
             self.logger.info(f"mounts: {summary}")

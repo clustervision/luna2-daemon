@@ -624,22 +624,16 @@
   "name": null
  },
  "GET /config/secrets/cluster": {
-  "bit": "r",
-  "entity": "cluster",
-  "kind": "object",
-  "name": "cluster"
+  "entity": "clustersecrets",
+  "kind": "rootus"
  },
  "GET /config/secrets/cluster/<string:secret>": {
-  "bit": "r",
-  "entity": "cluster",
-  "kind": "object",
-  "name": "cluster"
+  "entity": "clustersecrets",
+  "kind": "rootus"
  },
  "GET /config/secrets/cluster/<string:secret>/_delete": {
-  "bit": "w",
-  "entity": "cluster",
-  "kind": "object",
-  "name": "cluster"
+  "entity": "clustersecrets",
+  "kind": "rootus"
  },
  "GET /config/secrets/group/<string:name>": {
   "bit": "r",
@@ -1276,25 +1270,16 @@
   "name": "<name>"
  },
  "POST /config/secrets/cluster": {
-  "bit": "w",
-  "entity": "cluster",
-  "kind": "object",
-  "name": "cluster"
+  "entity": "clustersecrets",
+  "kind": "rootus"
  },
  "POST /config/secrets/cluster/<string:secret>": {
-  "bit": "w",
-  "entity": "cluster",
-  "kind": "object",
-  "name": "cluster"
+  "entity": "clustersecrets",
+  "kind": "rootus"
  },
  "POST /config/secrets/cluster/<string:secret>/_clone": {
-  "action": "clone",
-  "args": {
-   "secret": "<secret>"
-  },
-  "entity": "cluster",
-  "kind": "override",
-  "name": "cluster"
+  "entity": "clustersecrets",
+  "kind": "rootus"
  },
  "POST /config/secrets/group/<string:name>": {
   "bit": "w",

@@ -41,7 +41,7 @@ from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.bios import Bios
 from utils.journal import Journal
-from common.access import Access
+from utils.access import Access
 from utils.helper import Helper
 
 

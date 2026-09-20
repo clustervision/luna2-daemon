@@ -46,6 +46,7 @@ from utils.helper import Helper
 from utils.hashes import Hashes
 from utils.model import Model
 from utils.database import Database
+from utils.access import Access
 
 class OSImage():
     """
@@ -76,7 +77,7 @@ class OSImage():
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
         os_image_plugin=Helper().plugin_load(self.osimage_plugins,
                                            'osimage/filesystem',filesystem_plugin)
-        all_records = Database().get_record(table='osimage', orderby='name')
+        all_records = Access().visible('osimage', Database().get_record(table='osimage', orderby='name'))
         if all_records:
             status = True
             response = {'config': {self.table: {} }}
@@ -118,7 +119,7 @@ class OSImage():
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
         os_image_plugin=Helper().plugin_load(self.osimage_plugins,
                                            'osimage/filesystem',filesystem_plugin)
-        all_records = Database().get_record(table='osimage', where=f"name = '{name}'")
+        all_records = Access().visible('osimage', Database().get_record(table='osimage', where=f"name = '{name}'"))
         if all_records:
             status = True
             response = {'config': {self.table: {} }}
@@ -206,7 +207,10 @@ class OSImage():
             groups = Helper().convert_list_to_dict(allgroups, 'id')
             nodes = Helper().convert_list_to_dict(allnodes, 'id')
             response = {'config': {'osimagetag': {} }}
+            readable = set(Access().visible_names('osimage', {image['osimagename'] for image in image_details}))
             for image in image_details:
+                if image['osimagename'] not in readable:
+                    continue
                 nodes_using = []
                 groups_using = []
                 data = {}

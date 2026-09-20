@@ -132,6 +132,9 @@ def requirement(rule=None, method=None, args=None, declared=None):
             return {'kind': 'membership', 'entity': 'usergroup', 'name': args.get('name'),
                     'bit': 'r' if method == 'GET' else 'w'}
         return {'kind': 'rootus', 'entity': entity}
+    if entity == 'secrets' and len(parts) > 2 and parts[2] == 'cluster':
+        # clustersecrets is the named exception: cluster is readable by everyone, its secrets are not
+        return {'kind': 'rootus', 'entity': 'clustersecrets'}
     if entity in ('secrets', 'profiles') and len(parts) > 2 and parts[2] in ('node', 'group', 'cluster'):
         entity = parts[2]
     elif entity == 'secrets':

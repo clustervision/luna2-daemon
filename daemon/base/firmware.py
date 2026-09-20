@@ -50,7 +50,7 @@ from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED, RESTORE_PEN
 from utils.firmware_push import FirmwarePush
 from utils.status import Status
 from common.constant import CONSTANT
-from common.access import Access
+from utils.access import Access
 from base.authentication import TOKEN_GATED_EXTENSIONS
 
 
@@ -72,7 +72,7 @@ class Firmware():
         """
         This method will return every entry in the catalogue.
         """
-        records = Database().get_record(table=self.table, where=None)
+        records = Access().visible(self.table, Database().get_record(table=self.table, where=None))
         if not records:
             return False, 'No firmware catalogue entry is available'
         response = {'config': {self.table: {}}}
@@ -85,7 +85,7 @@ class Firmware():
         """
         This method will return one catalogue entry.
         """
-        record = Database().get_record(table=self.table, where=f"name = '{name}'")
+        record = Access().visible(self.table, Database().get_record(table=self.table, where=f"name = '{name}'"))
         if not record:
             return False, f'{self.table_cap} {name} is not available'
         return True, {'config': {self.table: {name: self.detail(record[0])}}}
@@ -344,6 +344,8 @@ class Firmware():
         latest, summary = {}, {}
         # a restore is owed by the node, not by the request that left it owed: a
         # newer request must not push it out of view before it has settled
+        readable = set(Access().visible_names('node', {record['nodename'] for record in records}))
+        records = [record for record in records if record['nodename'] in readable]
         owed = {record['nodename'] for record in records
                 if record['restore'] == RESTORE_PENDING}
         for record in records:

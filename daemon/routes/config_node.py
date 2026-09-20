@@ -42,7 +42,7 @@ from base.node import Node
 from base.interface import Interface
 from base.osimage import OSImage
 from utils.journal import Journal
-from common.access import Access
+from utils.access import Access
 from utils.helper import Helper
 from utils.status import Status
 from utils.ha import HA

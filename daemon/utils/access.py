@@ -37,7 +37,7 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-from flask import g, has_request_context
+from flask import g, has_request_context, request
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
@@ -270,6 +270,75 @@ class Access():
             return False, exp.message, exp.code
 
 
+    # ── what a caller may see, for the list and show paths ──────────────────
+
+    def request_caller(self):
+        """
+        Output - the caller of the current request, or None outside a request (a journal
+                 replay, housekeeping, a test calling a base class directly).
+        """
+        if not has_request_context() or getattr(g, 'userid', None) is None:
+            return None
+        return self.caller(g.userid)
+
+    def admin_caller(self):
+        """
+        Output - True when there is nobody to hide anything from: no request, rootus, admin.
+        """
+        caller = self.request_caller()
+        return caller is None or caller['admin']
+
+    def visible(self, table=None, records=None):
+        """
+        Input - rows of a governed table as fetched, carrying name and the three columns
+        Output - the rows the caller may read, with owners and usergroups as names and access
+                 as rwx text. Every row when there is nobody to hide from. Called by every
+                 list and show over the rows it already holds; the derived test checks that.
+        """
+        records = records or []
+        caller = self.request_caller()
+        if caller is None or caller['admin']:
+            kept = list(records)
+        else:
+            kept = [row for row in records if 'r' in self.bits(caller, table, row)]
+        self._render(table, kept)
+        return kept
+
+    def visible_names(self, table=None, names=None):
+        """
+        Input - names of rows of a governed table, from a join or a child listing
+        Output - those the caller may read, in the same order; one read of the table.
+                 A table that is not governed is for rootus and admin only.
+        """
+        names = list(names or [])
+        caller = self.request_caller()
+        if caller is None or caller['admin']:
+            return names
+        if table not in GOVERNED:
+            return []
+        rows = {row['name']: row for row in Database().get_record(
+            select=['name', 'owners', 'usergroups', 'access'], table=table) or []}
+        return [name for name in names if name in rows and 'r' in self.bits(caller, table, rows[name])]
+
+    def _render(self, table=None, rows=None):
+        """
+        Replace the stored ids and octal with names and rwx, in place, with two lookups for
+        the whole listing rather than two per row.
+        """
+        owner_ids, group_ids = set(), set()
+        for row in rows:
+            owner_ids.update(self.ids(row.get('owners')))
+            group_ids.update(self.ids(row.get('usergroups')))
+        owners = {int(r['id']): r['username'] for r in (Database().get_record(
+            table='user', where=f"id IN ({','.join(map(str, owner_ids))})") if owner_ids else [])}
+        groups = {int(r['id']): r['name'] for r in (Database().get_record(
+            table='usergroup', where=f"id IN ({','.join(map(str, group_ids))})") if group_ids else [])}
+        for row in rows:
+            row['access'] = self.mode_text(row.get('access'), table)
+            row['owners'] = [owners.get(i, str(i)) for i in self.ids(row.get('owners'))] or ['rootus']
+            row['usergroups'] = [groups.get(i, str(i)) for i in self.ids(row.get('usergroups'))]
+
+
     # ── the check the decorators run ───────────────────────────────────────
 
     def check(self, userid=None, requirement=None):
@@ -294,9 +363,10 @@ class Access():
                 self.allowed(userid, requirement['entity'], requirement['name'], requirement['bit'])
                 return True, None, None
             if kind == 'dynamic':
-                if requirement.get('name') is None:
-                    return True, None, None
                 bit = 'r' if 'status' in str(requirement.get('action')) else 'x'
+                if requirement.get('name') is None:
+                    self._hostlist(userid, caller, bit, control=True)
+                    return True, None, None
                 self.allowed(userid, 'node', requirement['name'], bit)
                 return True, None, None
             if kind == 'override':
@@ -318,7 +388,9 @@ class Access():
             if not caller['admin']:
                 raise AccessRefused(403, f'creating a {entity} is for rootus and admin users')
         elif action in ('ospush', 'osgrab', 'biospush', 'biosgrab', 'firmwarepush', 'redfish', 'provision'):
-            if name is not None:
+            if name is None:
+                self._hostlist(userid, caller, 'x')
+            else:
                 self.allowed(userid, entity, name, 'x')
         elif action in ('couple', 'decouple'):
             self.allowed(userid, entity, name, 'r')
@@ -327,6 +399,45 @@ class Access():
             self.allowed(userid, args.get('entity', entity), name, 'r')
         else:
             raise AccessRefused(403, f'{action} has no rule')
+
+
+    def _hostlist(self, userid, caller, bit, control=False):
+        """
+        A hostlist or group-wide action names its nodes in the body: under
+        control.<subsystem>.<action>.hostlist, or config.node.hostlist and config.node.group.
+        Every node named needs the bit; refused whole, naming the nodes that were refused.
+        """
+        if caller['admin']:
+            return
+        try:
+            body = request.get_json(force=True, silent=True) or {}
+        except Exception:
+            body = {}
+        raw_hosts, group = None, None
+        try:
+            if control:
+                subsystem = list(body['control'].keys())[0]
+                action = list(body['control'][subsystem].keys())[0]
+                raw_hosts = body['control'][subsystem][action].get('hostlist')
+            else:
+                raw_hosts = body['config']['node'].get('hostlist')
+                group = body['config']['node'].get('group')
+        except (KeyError, IndexError, AttributeError, TypeError):
+            raw_hosts = None
+        names = list(Helper().get_hostlist(raw_hosts) or []) if raw_hosts else []
+        if group:
+            names += [row['name'] for row in Database().get_record_join(
+                ['node.name'], ['node.groupid=group.id'], [f"`group`.name='{group}'"]) or []]
+        if not names:
+            return
+        refused = []
+        for name in names:
+            try:
+                self.allowed(userid, 'node', name, bit)
+            except AccessRefused as exp:
+                refused.append(f'{name} ({exp.message})')
+        if refused:
+            raise AccessRefused(403, f"refused for {len(refused)} of {len(names)} nodes: {'; '.join(refused)}")
 
 
     # ── who may change who may ─────────────────────────────────────────────

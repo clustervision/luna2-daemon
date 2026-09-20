@@ -42,7 +42,7 @@ from base.group import Group
 from base.interface import Interface
 from base.osimage import OSImage
 from utils.journal import Journal
-from common.access import Access
+from utils.access import Access
 from utils.helper import Helper
 
 LOGGER = Log.get_logger()

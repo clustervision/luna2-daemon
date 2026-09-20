@@ -40,6 +40,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 from utils.queue import Queue
+from utils.access import Access
 
 # the node's own monitor row holds its install state; a delivery outcome needs a
 # reference of its own or the two overwrite each other
@@ -109,7 +110,7 @@ class Profile():
         This method will return all profiles in detailed format.
         """
         status=False
-        profiles = Database().get_record(table='profile')
+        profiles = Access().visible('profile', Database().get_record(table='profile'))
         if profiles:
             response = {'config': {'profiles': {} }}
             for profile in profiles:
@@ -127,7 +128,7 @@ class Profile():
         This method will return a requested profile in detailed format.
         """
         status=False
-        profile = Database().get_record(table='profile', where=f"name = '{name}'")
+        profile = Access().visible('profile', Database().get_record(table='profile', where=f"name = '{name}'"))
         if profile:
             response = {'config': {'profiles': {name: self._profile_with_files(profile[0])} }}
             status=True
@@ -568,6 +569,8 @@ class Profile():
                     members[key].append(row['name'])
         # a node inside a group that applies it is covered by the group, and listing it
         # again would suggest an assignment it does not have
+        members = {'groups': Access().visible_names('group', members['groups']),
+                   'nodes': Access().visible_names('node', members['nodes'])}
         response = {'config': {'profiles': {name: {'members': members}} }}
         status=True
         return status, response
@@ -612,7 +615,7 @@ class Profile():
           not applied  no profiles, and nothing was ever delivered: uninvolved
         """
         where = f"name = '{name}'" if name else None
-        nodes = Database().get_record(table='node', where=where)
+        nodes = Access().visible('node', Database().get_record(table='node', where=where))
         if not nodes:
             return False, f'Node {name} is not available' if name else 'No nodes available'
         response = {'config': {'profiles': {'status': {}, 'summary': {} } } }

@@ -35,7 +35,7 @@ from flask import Blueprint, request, g
 from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
-from common.access import Access, AccessRefused, GOVERNED
+from utils.access import Access, AccessRefused, GOVERNED
 from utils.journal import Journal
 from utils.helper import Helper
 

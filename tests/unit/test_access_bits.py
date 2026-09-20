@@ -294,6 +294,6 @@ def test_an_unknown_name_in_a_list_is_refused_not_dropped(client, world):
 @pytest.mark.parametrize('octal, text', [('750', 'rwxr-x---'), ('644', 'rw-r--r--'), ('770', 'rwxrwx---'),
                                          ('774', 'rwxrwxr--'), ('000', '---------'), ('777', 'rwxrwxrwx')])
 def test_modes_round_trip(octal, text):
-    from common.access import Access
+    from utils.access import Access
     assert Access().mode_text(octal) == text
     assert Access().mode_octal(text) == octal

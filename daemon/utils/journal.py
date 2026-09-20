@@ -76,7 +76,7 @@ from base.profile import Profile
 from base.osuser import OsUser
 from base.user import User
 from base.usergroup import UserGroup
-from common.access import Access
+from utils.access import Access
 from base.monitor import Monitor
 from base.cloud import Cloud
 from base.plugin_import import Import

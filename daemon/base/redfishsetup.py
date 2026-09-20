@@ -38,6 +38,7 @@ __status__      = 'Development'
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
+from utils.access import Access
 
 
 class RedfishSetup():
@@ -84,7 +85,7 @@ class RedfishSetup():
         This method will return all the redfishsetup in detailed format.
         """
         status = False
-        setups = Database().get_record(table=self.table)
+        setups = Access().visible(self.table, Database().get_record(table=self.table))
         if setups:
             response = {'config': {self.table: {}}}
             for setup in setups:
@@ -101,7 +102,7 @@ class RedfishSetup():
         This method will return requested redfishsetup in detailed format.
         """
         status = False
-        setup = Database().get_record(table=self.table, where=f"name = '{name}'")
+        setup = Access().visible(self.table, Database().get_record(table=self.table, where=f"name = '{name}'"))
         if setup:
             response = {'config': {self.table: {name: self._setup_with_accounts(setup[0])}}}
             status = True
@@ -119,6 +120,11 @@ class RedfishSetup():
         if not setup:
             return status, f'{self.table_cap} {name} is not available'
         members = self.assigned_to(name)
+        # 'node x' and 'group y' strings: shown for the objects the caller may read
+        readable = {}
+        for kind in {m.split(' ', 1)[0] for m in members}:
+            readable[kind] = set(Access().visible_names(kind, [m.split(' ', 1)[1] for m in members if m.startswith(kind + ' ')]))
+        members = [m for m in members if m.split(' ', 1)[1] in readable[m.split(' ', 1)[0]]]
         if members:
             response = {'config': {self.table: {name: {'members': members}}}}
             status = True

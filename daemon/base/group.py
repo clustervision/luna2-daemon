@@ -43,6 +43,7 @@ from utils.helper import Helper
 from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
+from utils.access import Access
 
 # The fields a group can hold in its own right rather than inherit, and which
 # therefore mean the group deviates from what it would otherwise be given.
@@ -85,7 +86,7 @@ class Group():
         bmcsetups = Database().get_record(table='bmcsetup')
         osimage = Helper().convert_list_to_dict(osimages, 'id')
         bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
-        groups = Database().get_record(table='group', orderby='name')
+        groups = Access().visible('group', Database().get_record(table='group', orderby='name'))
         if groups:
             response = {'config': {'group': {} }}
             for group in groups:
@@ -187,7 +188,7 @@ class Group():
         b64items = {'prescript': '', 'partscript': '', 'postscript': '',
                     'disklayout': '', 'osimage_filter': '', 'mounts': ''}
         cluster = Database().get_record(table='cluster')
-        groups = Database().get_record(table='group', where=f"name = '{name}'")
+        groups = Access().visible('group', Database().get_record(table='group', where=f"name = '{name}'"))
         if groups:
             response = {'config': {'group': {} }}
             group = groups[0]
@@ -350,6 +351,7 @@ class Group():
                 nodes = []
                 for node in node_list:
                     nodes.append(node['name'])
+                nodes = Access().visible_names('node', nodes)
                 response['config']['group'][name]['members'] = nodes
                 status=True
             else:

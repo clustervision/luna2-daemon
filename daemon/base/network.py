@@ -39,6 +39,7 @@ from base.route import Route
 from utils.config import Config
 from utils.service import Service
 from utils.controller import Controller
+from utils.access import Access
 
 
 class Network():
@@ -144,7 +145,7 @@ class Network():
         This method will return all the network in detailed format.
         """
         status=False
-        networks = Database().get_record(table='network')
+        networks = Access().visible('network', Database().get_record(table='network'))
         if networks:
             response = {'config': {'network': {} }}
             for network in networks:
@@ -184,7 +185,7 @@ class Network():
         This method will return requested network in detailed format.
         """
         status=False
-        networks = Database().get_record(table='network', where=f"name = '{name}'")
+        networks = Access().visible('network', Database().get_record(table='network', where=f"name = '{name}'"))
         if networks:
             response = {'config': {'network': {} }}
             for network in networks:
@@ -873,12 +874,14 @@ class Network():
             ip_list = Database().get_record(table='ipaddress', where=where)
             if ip_list:
                 for each in ip_list:
+                    kind = each['tableref']
                     if 'interface' in each['tableref']:
                         tablerefid = each['tablerefid']
                         where = f"id = '{tablerefid}'"
                         nodeid = Database().get_record(table='nodeinterface', where=where)
                         nodeid = nodeid[0]['nodeid']
                         device_name = Database().name_by_id('node', nodeid)
+                        kind = 'node'
                     elif 'controller' in each['tableref']:
                         tablerefid = each['tablerefid']
                         where = f"id = '{tablerefid}'"
@@ -890,8 +893,13 @@ class Network():
                             device_name = "Controller has No Hostname"
                     else:
                         device_name = Database().name_by_id(each['tableref'], each['tablerefid'])
-                    taken.append({'ipaddress': each['ipaddress'], 'device': device_name})
+                    taken.append({'ipaddress': each['ipaddress'], 'device': device_name, '_kind': kind})
                     device_name = ""
+                # an address belongs to the device holding it: shown to whoever may read that device
+                readable = {kind: set(Access().visible_names(kind, [t['device'] for t in taken if t['_kind'] == kind]))
+                            for kind in {t['_kind'] for t in taken}}
+                taken = [{'ipaddress': t['ipaddress'], 'device': t['device']}
+                         for t in taken if t['device'] in readable[t['_kind']]]
                 response = {'config': {'network': {name: {'taken': taken} } } }
                 status=True
             else:

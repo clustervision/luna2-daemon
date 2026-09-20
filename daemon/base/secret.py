@@ -32,6 +32,7 @@ __status__      = 'Development'
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
+from utils.access import Access
 
 
 class Secret():
@@ -71,7 +72,8 @@ class Secret():
         status=False
         nodesecrets = Database().get_record(table='nodesecrets')
         groupsecrets = Database().get_record(table='groupsecrets')
-        clustersecrets = Database().get_record(table='clustersecrets')
+        # cluster secrets are the named exception: for rootus and admin only, whatever cluster's bits
+        clustersecrets = Database().get_record(table='clustersecrets') if Access().admin_caller() else []
         if nodesecrets or groupsecrets or clustersecrets:
             response = {'config': {'secrets': {} }}
             status=True
@@ -80,8 +82,11 @@ class Secret():
             status=False
         if nodesecrets:
             response['config']['secrets']['node'] = {}
+            readable = set(Access().visible_names('node', {Database().name_by_id('node', n['nodeid']) for n in nodesecrets}))
             for node in nodesecrets:
                 nodename = Database().name_by_id('node', node['nodeid'])
+                if nodename not in readable:
+                    continue
                 if nodename not in response['config']['secrets']['node']:
                     response['config']['secrets']['node'][nodename] = []
                 del node['nodeid']
@@ -90,8 +95,11 @@ class Secret():
                 response['config']['secrets']['node'][nodename].append(node)
         if groupsecrets:
             response['config']['secrets']['group'] = {}
+            readable = set(Access().visible_names('group', {Database().name_by_id('group', g['groupid']) for g in groupsecrets}))
             for group in groupsecrets:
                 groupname = Database().name_by_id('group', group['groupid'])
+                if groupname not in readable:
+                    continue
                 if groupname not in response['config']['secrets']['group']:
                     response['config']['secrets']['group'][groupname] = []
                 del group['groupid']

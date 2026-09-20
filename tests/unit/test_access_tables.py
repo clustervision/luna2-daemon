@@ -5,7 +5,7 @@ only by name. A table in none of the three is unclassified, and the next table a
 would be exactly that.
 """
 import common.database_layout as layout
-from common.access import CHILDREN, GOVERNED, ROOTUS
+from utils.access import CHILDREN, GOVERNED, ROOTUS
 from utils.dbstructure import DBStructure
 
 COLUMNS = ('owners', 'usergroups', 'access')
@@ -43,7 +43,7 @@ def test_every_child_names_a_column_it_has_and_a_parent_that_is_governed():
 
 
 def test_default_modes_are_the_ones_the_design_states():
-    from common.access import Access
+    from utils.access import Access
     assert Access().mode_text(None, 'node') == 'rwxrwx---'
     assert Access().mode_text(None, 'osimage') == 'rwxrwxr--'
     assert Access().mode_text(None, 'network') == 'rw-r--r--'

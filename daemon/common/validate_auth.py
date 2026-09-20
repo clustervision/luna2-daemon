@@ -38,7 +38,7 @@ import jwt
 from utils.log import Log
 from common.constant import CONSTANT
 from common.route_grammar import requirement, GrammarError
-from common.access import Access
+from utils.access import Access
 
 LOGGER = Log.get_logger()
 

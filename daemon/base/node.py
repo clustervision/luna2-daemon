@@ -45,6 +45,7 @@ from base.interface import Interface
 from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
+from utils.access import Access
 
 # The named things a node points at, and whether a supplied value may be empty.
 # True means: cannot be empty if supplied. False means: can only be empty or correct
@@ -81,7 +82,7 @@ class Node():
         # we collect all needed info from all tables at once and use dicts to collect data/info
         # A join is not really suitable as there are too many permutations in where the below
         # is way more efficient. -Antoine
-        nodes = Database().get_record(table='node', orderby='name')
+        nodes = Access().visible('node', Database().get_record(table='node', orderby='name'))
         groups = Database().get_record(table='group')
         osimages = Database().get_record(table='osimage')
         switches = Database().get_record(table='switch')
@@ -324,7 +325,7 @@ class Node():
         This method will return requested node in detailed format.
         """
         status = False
-        nodes = Database().get_record(table='node', where=f"name = '{name}'")
+        nodes = Access().visible('node', Database().get_record(table='node', where=f"name = '{name}'"))
         all_nodes = Database().get_record_join(
             [
                 'node.*',

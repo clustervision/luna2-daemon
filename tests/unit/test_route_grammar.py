@@ -22,7 +22,7 @@ def test_the_daemon_registers_every_blueprint_the_route_modules_define():
 
 def test_every_route_is_deliberately_open_or_classified():
     from common.route_grammar import OPEN, KINDS, requirement
-    from common.access import GOVERNED
+    from utils.access import GOVERNED
 
     app = _app()
     seen_open = set()

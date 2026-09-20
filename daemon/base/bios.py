@@ -53,6 +53,7 @@ from utils.status import Status
 from utils.helper import Helper
 from utils.bios import Bios as BiosPlanner, DEFAULT_EXCLUDE
 from utils.redfish import Redfish, RedfishAccess
+from utils.access import Access
 from base.nodeinventory import NodeInventory
 
 
@@ -115,7 +116,7 @@ class Bios():
         """
         This method will return all the BIOS configurations.
         """
-        records = Database().get_record(table=self.table, where=None)
+        records = Access().visible(self.table, Database().get_record(table=self.table, where=None))
         if not records:
             return False, 'No BIOS configuration is available'
         response = {'config': {self.table: {}}}
@@ -128,7 +129,7 @@ class Bios():
         """
         This method will return one BIOS configuration, with its attributes.
         """
-        record = Database().get_record(table=self.table, where=f"name = '{name}'")
+        record = Access().visible(self.table, Database().get_record(table=self.table, where=f"name = '{name}'"))
         if not record:
             return False, f'BIOS configuration {name} is not available'
         detail = self.detail(record[0])
@@ -723,6 +724,9 @@ class Bios():
         else:
             nodes = Database().get_record(
                 table='node', where=f"name = '{name}'" if name else None)
+        if nodes:
+            readable = set(Access().visible_names('node', [node['name'] for node in nodes]))
+            nodes = [node for node in nodes if node['name'] in readable]
         if not nodes:
             if name:
                 return False, f'Node {name} is not available'

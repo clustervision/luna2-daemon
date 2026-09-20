@@ -41,6 +41,7 @@ from utils.controller import Controller
 from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64, request_entry_path
 from utils.mountsrender import MountsRender
 from common.constant import CONSTANT
+from utils.access import Access
 
 
 class Cluster():
@@ -61,7 +62,7 @@ class Cluster():
         This method will return all the cluster info in detailed format.
         """
         status=False
-        cluster = Database().get_record(table='cluster')
+        cluster = Access().visible('cluster', Database().get_record(table='cluster'))
         if cluster:
             cluster_id = cluster[0]['id']
             del cluster[0]['id']

@@ -3,73 +3,13 @@ Every registered route declares what it requires (TRIX-2084), proven from Flask'
 route map rather than by review: a text scan of the route files misses decorators with
 nested parentheses, and the whole failure mode is the next route being forgotten.
 """
-import ast
-import importlib
-import os
-import pkgutil
-
 import pytest
 from flask import Blueprint, Flask
 
-DAEMON = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'daemon'))
-SKIP_METHODS = {'HEAD', 'OPTIONS'}
-
-
-def _blueprints():
-    """Every Blueprint defined by a module under routes/, keyed by the name luna.py imports."""
-    import routes
-    found = {}
-    for module_info in pkgutil.iter_modules(routes.__path__):
-        module = importlib.import_module(f'routes.{module_info.name}')
-        for attribute, value in vars(module).items():
-            if isinstance(value, Blueprint):
-                found[attribute] = value
-    return found
-
-
-def _registered_by_the_daemon():
-    """The blueprint names luna.py hands to register_blueprint, read from the file itself."""
-    with open(os.path.join(DAEMON, 'luna.py'), encoding='utf-8') as source:
-        tree = ast.parse(source.read())
-    names = set()
-    for node in ast.walk(tree):
-        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                and node.func.attr == 'register_blueprint' and node.args
-                and isinstance(node.args[0], ast.Name)):
-            names.add(node.args[0].id)
-    return names
-
-
-def _app():
-    app = Flask(__name__)
-    for blueprint in _blueprints().values():
-        app.register_blueprint(blueprint)
-    return app
-
-
-def _token_wrapper_codes():
-    """The code objects of the two decorators' inner functions: what a wrapped view runs first."""
-    from common.validate_auth import provision_token_required, token_required
-    return {token_required(lambda **kwargs: None).__code__,
-            provision_token_required(lambda **kwargs: None).__code__}
-
-
-def _has_token_decorator(view):
-    """
-    Walk the wrapper chain functools.wraps leaves behind. wraps copies the view's own
-    name onto every wrapper, so a name tells nothing; the code object does.
-    """
-    codes = _token_wrapper_codes()
-    while view is not None:
-        if getattr(view, '__code__', None) in codes:
-            return True
-        view = getattr(view, '__wrapped__', None)
-    return False
-
-
-def _fake_args(rule):
-    """One value per path argument, so the grammar sees the shape a real request has."""
-    return {argument: f'<{argument}>' for argument in rule.arguments}
+from cases.route_requirements_cases import (SKIP_METHODS, app as _app, blueprints as _blueprints,
+                                            fake_args as _fake_args,
+                                            registered_by_the_daemon as _registered_by_the_daemon,
+                                            token_layer as _token_layer)
 
 
 def test_the_daemon_registers_every_blueprint_the_route_modules_define():
@@ -90,16 +30,16 @@ def test_every_route_is_deliberately_open_or_classified():
     for rule in app.url_map.iter_rules():
         if rule.endpoint == 'static':
             continue
-        view = app.view_functions[rule.endpoint]
+        layer = _token_layer(app.view_functions[rule.endpoint])
         for method in sorted(rule.methods - SKIP_METHODS):
-            if not _has_token_decorator(view):
+            if layer is None:
                 if (rule.rule, method) not in OPEN:
                     unlisted_open.append(f'{method} {rule.rule}')
                 seen_open.add((rule.rule, method))
                 continue
             assert (rule.rule, method) not in OPEN, f"{method} {rule.rule} is on the open list but has a token decorator"
             try:
-                answer = requirement(rule.rule, method, _fake_args(rule))
+                answer = requirement(rule.rule, method, _fake_args(rule), getattr(layer, 'requires', None))
             except Exception as exp:
                 unclassified.append(f'{method} {rule.rule}: {exp}')
                 continue
@@ -165,3 +105,27 @@ def test_overrides_and_dynamic_routes_carry_what_the_later_check_needs():
     power = requirement('/control/action/<string:subsystem>/<string:hostname>/_<string:action>', 'GET',
                         {'subsystem': 'power', 'hostname': 'node001', 'action': 'off'})
     assert power == {'kind': 'dynamic', 'entity': 'node', 'name': 'node001', 'action': 'off'}
+
+
+def test_a_declaration_on_the_decorator_wins_over_the_grammar():
+    """The author of an odd route says what it needs where the route is written."""
+    from common.route_grammar import GrammarError, requirement
+    from common.validate_auth import token_required
+
+    @token_required(requires=('node', 'x'))
+    def power(name=None):
+        return name
+
+    @token_required(requires='rootus')
+    def sweep():
+        return None
+
+    assert power.requires == ('node', 'x') and sweep.requires == 'rootus'
+    assert requirement('/config/node/<string:name>', 'GET', {'name': 'node001'}, power.requires) == {
+        'kind': 'object', 'entity': 'node', 'name': 'node001', 'bit': 'x'}
+    assert requirement('/config/node/<string:name>', 'GET', {'name': 'node001'}, sweep.requires) == {
+        'kind': 'rootus', 'entity': 'config'}
+    with pytest.raises(GrammarError):
+        requirement('/config/node/<string:name>', 'GET', {}, 'superuser')
+    with pytest.raises(GrammarError):
+        requirement('/config/node/<string:name>', 'GET', {}, ('node', 'q'))

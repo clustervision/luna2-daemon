@@ -1,0 +1,1390 @@
+{
+ "GET /announce": {
+  "kind": "no-token"
+ },
+ "GET /boot": {
+  "kind": "no-token"
+ },
+ "GET /boot/disk": {
+  "kind": "no-token"
+ },
+ "GET /boot/install/<string:node>": {
+  "entity": "node",
+  "kind": "provision",
+  "name": "<node>"
+ },
+ "GET /boot/manual/group/<string:groupname>/<string:macaddress>": {
+  "kind": "no-token"
+ },
+ "GET /boot/manual/hostname/<string:hostname>/<string:macaddress>": {
+  "kind": "no-token"
+ },
+ "GET /boot/profiles/<string:profile>": {
+  "entity": "node",
+  "kind": "provision",
+  "name": null
+ },
+ "GET /boot/roles/<string:role>": {
+  "entity": "node",
+  "kind": "provision",
+  "name": null
+ },
+ "GET /boot/scripts/<string:script>": {
+  "entity": "node",
+  "kind": "provision",
+  "name": null
+ },
+ "GET /boot/search/mac/<string:macaddress>": {
+  "kind": "no-token"
+ },
+ "GET /boot/short": {
+  "kind": "no-token"
+ },
+ "GET /boot/switch/<string:name>": {
+  "kind": "no-token"
+ },
+ "GET /boot/switch/<string:name>/commands": {
+  "kind": "no-token"
+ },
+ "GET /config/biosconfig": {
+  "bit": "r",
+  "entity": "biosconfig",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/biosconfig/<string:name>": {
+  "bit": "r",
+  "entity": "biosconfig",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/biosconfig/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "biosconfig",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/biosconfig/status": {
+  "bit": "r",
+  "entity": "biosconfig",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/biosconfig/status/<string:name>": {
+  "bit": "r",
+  "entity": "biosconfig",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/biosconfig/status/group/<string:name>": {
+  "bit": "r",
+  "entity": "biosconfig",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/bmcsetup": {
+  "bit": "r",
+  "entity": "bmcsetup",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/bmcsetup/<string:name>": {
+  "bit": "r",
+  "entity": "bmcsetup",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/bmcsetup/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "bmcsetup",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/bmcsetup/<string:name>/_member": {
+  "bit": "r",
+  "entity": "bmcsetup",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/cloud": {
+  "bit": "r",
+  "entity": "cloud",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/cloud/<string:name>": {
+  "bit": "r",
+  "entity": "cloud",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/cloud/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "cloud",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/cluster": {
+  "bit": "r",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "GET /config/cluster/export": {
+  "bit": "r",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "GET /config/cluster/mounts": {
+  "bit": "r",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "GET /config/dns/<string:name>": {
+  "bit": "r",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/dns/<string:network>/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/firmwarecatalog": {
+  "bit": "r",
+  "entity": "firmwarecatalog",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/firmwarecatalog/<string:name>": {
+  "bit": "r",
+  "entity": "firmwarecatalog",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/firmwarecatalog/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "firmwarecatalog",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/firmwarecatalog/status": {
+  "bit": "r",
+  "entity": "firmwarecatalog",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/firmwarecatalog/status/<string:name>": {
+  "bit": "r",
+  "entity": "firmwarecatalog",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/firmwarecatalog/status/group/<string:name>": {
+  "bit": "r",
+  "entity": "firmwarecatalog",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/group": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/group/<string:name>": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/group/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/group/<string:name>/_member": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/group/<string:name>/disklayout": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/group/<string:name>/firmware/_preview": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/group/<string:name>/interfaces": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/group/<string:name>/interfaces/<string:interface>": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/group/<string:name>/interfaces/<string:interface>/_delete": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/group/<string:name>/mounts": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/network": {
+  "bit": "r",
+  "entity": "network",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/network/<string:name>": {
+  "bit": "r",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/network/<string:name>/<string:ipaddress>": {
+  "bit": "r",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/network/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/network/<string:name>/_member": {
+  "bit": "r",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/network/<string:name>/_nextfreeip": {
+  "bit": "r",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/node/<string:name>": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node/<string:name>/disklayout": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node/<string:name>/firmware/_preview": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node/<string:name>/interfaces": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node/<string:name>/interfaces/<string:interface>": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node/<string:name>/interfaces/<string:interface>/_delete": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node/<string:name>/inventory": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node/<string:name>/inventory/_redfish": {
+  "action": "redfish",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "node",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "GET /config/node/<string:name>/mounts": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/node/inventory": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/osgroup": {
+  "entity": "osgroup",
+  "kind": "rootus"
+ },
+ "GET /config/osgroup/<string:name>": {
+  "entity": "osgroup",
+  "kind": "rootus"
+ },
+ "GET /config/osgroup/<string:name>/_delete": {
+  "entity": "osgroup",
+  "kind": "rootus"
+ },
+ "GET /config/osimage": {
+  "bit": "r",
+  "entity": "osimage",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/osimage/<string:name>": {
+  "bit": "r",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/osimage/<string:name>/_cancel": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/osimage/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/osimage/<string:name>/_member": {
+  "bit": "r",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/osimage/<string:name>/_pack": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/osimage/<string:name>/_updatecerts": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/osimage/<string:name>/osimagetag/<string:tagname>/_delete": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/osimagetag": {
+  "bit": "r",
+  "entity": "osimage",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/osimagetag/<string:name>": {
+  "bit": "r",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/osuser": {
+  "entity": "osuser",
+  "kind": "rootus"
+ },
+ "GET /config/osuser/<string:name>": {
+  "entity": "osuser",
+  "kind": "rootus"
+ },
+ "GET /config/osuser/<string:name>/_delete": {
+  "entity": "osuser",
+  "kind": "rootus"
+ },
+ "GET /config/otherdev": {
+  "bit": "r",
+  "entity": "otherdevices",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/otherdev/<string:name>": {
+  "bit": "r",
+  "entity": "otherdevices",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/otherdev/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "otherdevices",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/profiles": {
+  "bit": "r",
+  "entity": "profile",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/profiles/<string:name>": {
+  "bit": "r",
+  "entity": "profile",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/profiles/<string:name>/<string:filename>/_delete": {
+  "bit": "w",
+  "entity": "profile",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/profiles/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "profile",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/profiles/<string:name>/_member": {
+  "bit": "r",
+  "entity": "profile",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/profiles/node/<string:name>": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/profiles/status": {
+  "bit": "r",
+  "entity": "profile",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/profiles/status/<string:name>": {
+  "bit": "r",
+  "entity": "profile",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/rack": {
+  "bit": "r",
+  "entity": "rack",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/rack/<string:name>": {
+  "bit": "r",
+  "entity": "rack",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/rack/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "rack",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/rack/inventory": {
+  "bit": "r",
+  "entity": "rack",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/rack/inventory/<string:name>/type/<string:device_type>/_delete": {
+  "bit": "w",
+  "entity": "rack",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/rack/inventory/<string:subset>": {
+  "bit": "r",
+  "entity": "rack",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/redfishsetup": {
+  "bit": "r",
+  "entity": "redfishsetup",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/redfishsetup/<string:name>": {
+  "bit": "r",
+  "entity": "redfishsetup",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/redfishsetup/<string:name>/<string:account>/_delete": {
+  "bit": "w",
+  "entity": "redfishsetup",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/redfishsetup/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "redfishsetup",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/redfishsetup/<string:name>/_member": {
+  "bit": "r",
+  "entity": "redfishsetup",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/route": {
+  "bit": "r",
+  "entity": "route",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/route/<string:name>": {
+  "bit": "r",
+  "entity": "route",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/route/<string:name>/<string:tableref>/<string:target>/_couple": {
+  "action": "couple",
+  "args": {
+   "name": "<name>",
+   "tableref": "<tableref>",
+   "target": "<target>"
+  },
+  "entity": "route",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "GET /config/route/<string:name>/<string:tableref>/<string:target>/_decouple": {
+  "action": "decouple",
+  "args": {
+   "name": "<name>",
+   "tableref": "<tableref>",
+   "target": "<target>"
+  },
+  "entity": "route",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "GET /config/route/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "route",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/secrets": {
+  "bit": "r",
+  "entity": "secrets",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/secrets/cluster": {
+  "bit": "r",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "GET /config/secrets/cluster/<string:secret>": {
+  "bit": "r",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "GET /config/secrets/cluster/<string:secret>/_delete": {
+  "bit": "w",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "GET /config/secrets/group/<string:name>": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/secrets/group/<string:name>/<string:secret>": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/secrets/group/<string:name>/<string:secret>/_delete": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/secrets/node/<string:name>": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/secrets/node/<string:name>/<string:secret>": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/secrets/node/<string:name>/<string:secret>/_delete": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/status/<string:request_id>": {
+  "kind": "no-token"
+ },
+ "GET /config/switch": {
+  "bit": "r",
+  "entity": "switch",
+  "kind": "object",
+  "name": null
+ },
+ "GET /config/switch/<string:name>": {
+  "bit": "r",
+  "entity": "switch",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/switch/<string:name>/_delete": {
+  "bit": "w",
+  "entity": "switch",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/switch/<string:name>/interfaces": {
+  "bit": "r",
+  "entity": "switch",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/switch/<string:name>/interfaces/<string:interface>": {
+  "bit": "r",
+  "entity": "switch",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/switch/<string:name>/interfaces/<string:interface>/_delete": {
+  "bit": "w",
+  "entity": "switch",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/user": {
+  "entity": "user",
+  "kind": "rootus"
+ },
+ "GET /config/user/<string:name>": {
+  "entity": "user",
+  "kind": "rootus"
+ },
+ "GET /config/user/<string:name>/_delete": {
+  "entity": "user",
+  "kind": "rootus"
+ },
+ "GET /config/usergroup": {
+  "entity": "usergroup",
+  "kind": "rootus"
+ },
+ "GET /config/usergroup/<string:name>": {
+  "entity": "usergroup",
+  "kind": "rootus"
+ },
+ "GET /config/usergroup/<string:name>/_delete": {
+  "entity": "usergroup",
+  "kind": "rootus"
+ },
+ "GET /config/usergroup/<string:name>/members": {
+  "bit": "r",
+  "entity": "usergroup",
+  "kind": "membership",
+  "name": "<name>"
+ },
+ "GET /config/usergroupmap": {
+  "entity": "usergroupmap",
+  "kind": "rootus"
+ },
+ "GET /control/action/<string:subsystem>/<string:hostname>/_<string:action>": {
+  "action": "<action>",
+  "entity": "node",
+  "kind": "dynamic",
+  "name": "<hostname>"
+ },
+ "GET /control/status/<string:request_id>": {
+  "kind": "no-token"
+ },
+ "GET /export/<string:name>": {
+  "kind": "no-token"
+ },
+ "GET /files": {
+  "kind": "no-token"
+ },
+ "GET /files/<string:filename>": {
+  "kind": "no-token"
+ },
+ "GET /filesauth": {
+  "kind": "no-token"
+ },
+ "GET /ha/controllers": {
+  "entity": "ha",
+  "kind": "rootus"
+ },
+ "GET /ha/master": {
+  "entity": "ha",
+  "kind": "rootus"
+ },
+ "GET /ha/master/_set": {
+  "entity": "ha",
+  "kind": "rootus"
+ },
+ "GET /ha/overrule/_set": {
+  "entity": "ha",
+  "kind": "rootus"
+ },
+ "GET /ha/state": {
+  "entity": "ha",
+  "kind": "rootus"
+ },
+ "GET /ha/syncimage/<string:name>": {
+  "entity": "ha",
+  "kind": "rootus"
+ },
+ "GET /hash": {
+  "entity": "hash",
+  "kind": "rootus"
+ },
+ "GET /hash/<string:object_type>/<string:name>": {
+  "entity": "hash",
+  "kind": "rootus"
+ },
+ "GET /hash/<string:object_type>/<string:name>/<string:file>": {
+  "entity": "hash",
+  "kind": "rootus"
+ },
+ "GET /journal": {
+  "entity": "journal",
+  "kind": "rootus"
+ },
+ "GET /journal/<string:name>": {
+  "entity": "journal",
+  "kind": "rootus"
+ },
+ "GET /journal/<string:name>/_delete": {
+  "entity": "journal",
+  "kind": "rootus"
+ },
+ "GET /kickstart/install/<string:node>": {
+  "kind": "no-token"
+ },
+ "GET /monitor/ha": {
+  "kind": "no-token"
+ },
+ "GET /monitor/ha/<string:name>": {
+  "kind": "no-token"
+ },
+ "GET /monitor/mother": {
+  "kind": "no-token"
+ },
+ "GET /monitor/mother/<string:name>": {
+  "kind": "no-token"
+ },
+ "GET /monitor/node": {
+  "kind": "no-token"
+ },
+ "GET /monitor/node/<string:node>": {
+  "kind": "no-token"
+ },
+ "GET /monitor/osimage": {
+  "kind": "no-token"
+ },
+ "GET /monitor/osimage/<string:name>": {
+  "kind": "no-token"
+ },
+ "GET /monitor/queue": {
+  "entity": "monitor",
+  "kind": "rootus"
+ },
+ "GET /monitor/service/<string:name>": {
+  "kind": "no-token"
+ },
+ "GET /monitor/status": {
+  "entity": "monitor",
+  "kind": "rootus"
+ },
+ "GET /monitor/sync": {
+  "kind": "no-token"
+ },
+ "GET /monitor/sync/<string:name>": {
+  "kind": "no-token"
+ },
+ "GET /ping": {
+  "kind": "no-token"
+ },
+ "GET /scrape": {
+  "kind": "no-token"
+ },
+ "GET /service/<string:name>/<string:action>": {
+  "entity": "service",
+  "kind": "rootus"
+ },
+ "GET /service/status/<string:request_id>": {
+  "kind": "no-token"
+ },
+ "GET /table/data/<string:name>": {
+  "entity": "table",
+  "kind": "rootus"
+ },
+ "GET /table/hashes": {
+  "entity": "table",
+  "kind": "rootus"
+ },
+ "GET /whoami": {
+  "kind": "self"
+ },
+ "POST /config/biosconfig/<string:name>": {
+  "bit": "w",
+  "entity": "biosconfig",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/biosconfig/<string:name>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "biosconfig",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/bmcsetup/<string:name>": {
+  "bit": "w",
+  "entity": "bmcsetup",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/bmcsetup/<string:name>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "bmcsetup",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/cloud/<string:name>": {
+  "bit": "w",
+  "entity": "cloud",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/cluster": {
+  "bit": "w",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "POST /config/cluster/import": {
+  "bit": "w",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "POST /config/cluster/mounts": {
+  "bit": "w",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "POST /config/cluster/mounts/_remove": {
+  "bit": "w",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "POST /config/dns/<string:name>": {
+  "bit": "w",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/firmwarecatalog/<string:name>": {
+  "bit": "w",
+  "entity": "firmwarecatalog",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>/_biospush": {
+  "action": "biospush",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "group",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "group",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>/_firmwarepush": {
+  "action": "firmwarepush",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "group",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>/_ospush": {
+  "action": "ospush",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "group",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>/interfaces": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>/mounts": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>/mounts/_remove": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>/profiles": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/group/<string:name>/profiles/_unassign": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/network/<string:name>": {
+  "bit": "w",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/_biosgrab": {
+  "action": "biosgrab",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "node",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/_biospush": {
+  "action": "biospush",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "node",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "node",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/_firmwarepush": {
+  "action": "firmwarepush",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "node",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/_osgrab": {
+  "action": "osgrab",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "node",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/_ospush": {
+  "action": "ospush",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "node",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/interfaces": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/inventory": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/mounts": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/mounts/_remove": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/profiles": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/node/<string:name>/profiles/_unassign": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/node/inventory/_redfish": {
+  "action": "redfish",
+  "args": {},
+  "entity": "node",
+  "kind": "override",
+  "name": null
+ },
+ "POST /config/node/redfishaccounts/_provision": {
+  "action": "provision",
+  "args": {},
+  "entity": "node",
+  "kind": "override",
+  "name": null
+ },
+ "POST /config/osgroup/<string:name>": {
+  "entity": "osgroup",
+  "kind": "rootus"
+ },
+ "POST /config/osimage/<string:name>": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/osimage/<string:name>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "osimage",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/osimage/<string:name>/kernel": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/osimage/<string:name>/tag": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/osuser/<string:name>": {
+  "entity": "osuser",
+  "kind": "rootus"
+ },
+ "POST /config/otherdev/<string:name>": {
+  "bit": "w",
+  "entity": "otherdevices",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/otherdev/<string:name>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "otherdevices",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/profiles/<string:name>": {
+  "bit": "w",
+  "entity": "profile",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/profiles/<string:name>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "profile",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/rack/<string:name>": {
+  "bit": "w",
+  "entity": "rack",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/rack/inventory": {
+  "bit": "w",
+  "entity": "rack",
+  "kind": "object",
+  "name": null
+ },
+ "POST /config/redfishsetup/<string:name>": {
+  "bit": "w",
+  "entity": "redfishsetup",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/redfishsetup/<string:name>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "redfishsetup",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/route/<string:name>": {
+  "bit": "w",
+  "entity": "route",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/secrets/cluster": {
+  "bit": "w",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "POST /config/secrets/cluster/<string:secret>": {
+  "bit": "w",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "POST /config/secrets/cluster/<string:secret>/_clone": {
+  "action": "clone",
+  "args": {
+   "secret": "<secret>"
+  },
+  "entity": "cluster",
+  "kind": "override",
+  "name": "cluster"
+ },
+ "POST /config/secrets/group/<string:name>": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/secrets/group/<string:name>/<string:secret>": {
+  "bit": "w",
+  "entity": "group",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/secrets/group/<string:name>/<string:secret>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>",
+   "secret": "<secret>"
+  },
+  "entity": "group",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/secrets/node/<string:name>": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/secrets/node/<string:name>/<string:secret>": {
+  "bit": "w",
+  "entity": "node",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/secrets/node/<string:name>/<string:secret>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>",
+   "secret": "<secret>"
+  },
+  "entity": "node",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/switch/<string:name>": {
+  "bit": "w",
+  "entity": "switch",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/switch/<string:name>/_clone": {
+  "action": "clone",
+  "args": {
+   "name": "<name>"
+  },
+  "entity": "switch",
+  "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/switch/<string:name>/interfaces": {
+  "bit": "w",
+  "entity": "switch",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "POST /config/user/<string:name>": {
+  "entity": "user",
+  "kind": "rootus"
+ },
+ "POST /config/usergroup/<string:name>": {
+  "entity": "usergroup",
+  "kind": "rootus"
+ },
+ "POST /config/usergroup/<string:name>/members": {
+  "bit": "w",
+  "entity": "usergroup",
+  "kind": "membership",
+  "name": "<name>"
+ },
+ "POST /config/usergroup/<string:name>/members/_remove": {
+  "bit": "w",
+  "entity": "usergroup",
+  "kind": "membership",
+  "name": "<name>"
+ },
+ "POST /config/usergroupmap": {
+  "entity": "usergroupmap",
+  "kind": "rootus"
+ },
+ "POST /config/usergroupmap/_remove": {
+  "entity": "usergroupmap",
+  "kind": "rootus"
+ },
+ "POST /control/action/<string:subsystem>/_<string:action>": {
+  "action": "<action>",
+  "entity": "node",
+  "kind": "dynamic",
+  "name": null
+ },
+ "POST /import/<string:name>": {
+  "entity": "import",
+  "kind": "rootus"
+ },
+ "POST /journal": {
+  "entity": "journal",
+  "kind": "rootus"
+ },
+ "POST /monitor/node/<string:node>": {
+  "entity": "monitor",
+  "kind": "rootus"
+ },
+ "POST /monitor/status": {
+  "entity": "monitor",
+  "kind": "rootus"
+ },
+ "POST /token": {
+  "kind": "no-token"
+ },
+ "POST /tpm/<string:nodename>": {
+  "kind": "no-token"
+ }
+}

@@ -89,16 +89,27 @@ SUFFIX_OVERRIDES = {'_clone', '_osgrab', '_ospush', '_biosgrab', '_biospush', '_
 KINDS = ('open', 'self', 'rootus', 'provision', 'dynamic', 'membership', 'object', 'override')
 
 
-def requirement(rule=None, method=None, args=None):
+def requirement(rule=None, method=None, args=None, declared=None):
     """
-    Input - a Flask rule, the method, and the path arguments of the request
+    Input - a Flask rule, the method, the path arguments of the request, and what the
+            route declared on its decorator, if anything: a kind such as 'rootus', or an
+            (entity, bit) pair. A declaration wins; the grammar answers the rest.
     Output - a dict with kind, and for objects entity, name and bit
     """
     args = args or {}
-    if (rule, method) in OPEN:
-        return {'kind': 'open'}
     parts = rule.strip('/').split('/')
     head = parts[0]
+    if declared is not None:
+        if isinstance(declared, str):
+            if declared not in KINDS:
+                raise GrammarError(f'{method} {rule} declares an unknown kind {declared}')
+            return {'kind': declared, 'entity': head}
+        entity, bit = declared
+        if bit not in ('r', 'w', 'x'):
+            raise GrammarError(f'{method} {rule} declares an unknown bit {bit}')
+        return {'kind': 'object', 'entity': entity, 'name': args.get('name'), 'bit': bit}
+    if (rule, method) in OPEN:
+        return {'kind': 'open'}
     if head == 'whoami':
         return {'kind': 'self'}
     if head == 'control':

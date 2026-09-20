@@ -52,7 +52,7 @@ class Tables():
     def __init__(self):
         self.logger = Log.get_logger()
         self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup',
-              'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
+              'ipaddress', 'groupinterface', 'group', 'network', 'user', 'switch',
               'switchinterface',
               'otherdevices', 'groupsecrets', 'clustersecrets', 'profile', 'profilefile',
               'node', 'cluster', 'dns','controller','cloud',

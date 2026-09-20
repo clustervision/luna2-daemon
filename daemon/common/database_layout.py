@@ -235,11 +235,6 @@ DATABASE_LAYOUT_groupinterface = [
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"},
 {"column": "options",              "datatype": "TEXT"}]
 
-DATABASE_LAYOUT_roles = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "50"},
-{"column": "modules",              "datatype": "VARCHAR", "length": "200"}]
-
 DATABASE_LAYOUT_group = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},

@@ -102,6 +102,7 @@ def config_cluster_mounts():
 
 @cluster_blueprint.route("/config/cluster/mounts", methods=['POST'])
 @token_required
+@input_filter(checks=['config:cluster'], skip=None)
 def config_cluster_mounts_add():
     """
     Add one entry to the cluster's mounts document, or replace the one at its path.
@@ -116,6 +117,7 @@ def config_cluster_mounts_add():
 
 @cluster_blueprint.route("/config/cluster/mounts/_remove", methods=['POST'])
 @token_required
+@input_filter(checks=['config:cluster'], skip=None)
 def config_cluster_mounts_remove():
     """
     Remove the entry at a path from the cluster's mounts document. The body carries the path.

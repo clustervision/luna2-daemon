@@ -32,7 +32,7 @@ __status__      = 'Development'
 
 from base64 import b64decode, b64encode
 from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
-from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64
 from utils.mountsrender import MountsRender
 from utils.database import Database
 from utils.log import Log
@@ -705,14 +705,24 @@ class Node():
         effective = detail.get('mounts') or ''
         return effective, (detail.get('_mounts_source') if effective else None), None
 
+    def _envelope(self, name=None, request_data=None):
+        """What the caller sent for this node, out of the config envelope."""
+        try:
+            return request_data['config']['node'][name]
+        except (KeyError, TypeError):
+            return None
+
     def update_mount(self, name=None, request_data=None):
         """Add one entry to the node's mounts document, or replace the one at its
         path. Validation, the clash check and the render come from update_node."""
+        data = self._envelope(name, request_data)
+        if not data or not data.get('mount'):
+            return False, 'Invalid request: a mount entry is needed'
         own, copied_from, error = self._own_or_effective_mounts(name)
         if error:
             return False, error
         try:
-            value = upsert_entry(own, request_data)
+            value = upsert_entry(own, document_from_b64(data['mount']))
         except MountsInvalid as exp:
             return False, f'Invalid request: {exp}'
         if value == own:
@@ -724,7 +734,8 @@ class Node():
 
     def remove_mount(self, name=None, request_data=None):
         """Remove the entry at a path from the node's mounts document."""
-        path = (request_data or {}).get('path') if isinstance(request_data, dict) else None
+        data = self._envelope(name, request_data)
+        path = data.get('path') if data else None
         if not path:
             return False, 'Invalid request: a path is needed'
         own, copied_from, error = self._own_or_effective_mounts(name)
@@ -748,7 +759,8 @@ class Node():
         return self._change_profiles(name, request_data, assign=False)
 
     def _change_profiles(self, name=None, request_data=None, assign=True):
-        profile = (request_data or {}).get('profile') if isinstance(request_data, dict) else None
+        data = self._envelope(name, request_data)
+        profile = data.get('profile') if data else None
         if not profile:
             return False, 'Invalid request: a profile name is needed'
         nodes = Database().get_record(table='node', where=f"name = '{name}'")

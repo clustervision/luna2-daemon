@@ -131,6 +131,7 @@ def config_node_mounts(name=None):
 @node_blueprint.route('/config/node/<string:name>/mounts', methods=['POST'])
 @token_required
 @validate_name
+@input_filter(checks=['config:node'], skip=None)
 def config_node_mounts_add(name=None):
     """
     Add one entry to the node's mounts document, or replace the one at its path. The
@@ -147,6 +148,7 @@ def config_node_mounts_add(name=None):
 @node_blueprint.route('/config/node/<string:name>/mounts/_remove', methods=['POST'])
 @token_required
 @validate_name
+@input_filter(checks=['config:node'], skip=None)
 def config_node_mounts_remove(name=None):
     """
     Remove the entry at a path from the node's mounts document. The body carries the path.
@@ -161,6 +163,7 @@ def config_node_mounts_remove(name=None):
 @node_blueprint.route('/config/node/<string:name>/profiles', methods=['POST'])
 @token_required
 @validate_name
+@input_filter(checks=['config:node'], skip=None)
 def config_node_profile_assign(name=None):
     """
     Assign one profile to the node, beside the ones it has. The body carries the profile name.
@@ -175,6 +178,7 @@ def config_node_profile_assign(name=None):
 @node_blueprint.route('/config/node/<string:name>/profiles/_unassign', methods=['POST'])
 @token_required
 @validate_name
+@input_filter(checks=['config:node'], skip=None)
 def config_node_profile_unassign(name=None):
     """
     Take one profile away from the node. The body carries the profile name.

@@ -1,0 +1,463 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
+"""
+Which tables are governed, and what a caller may do with a row.
+
+Every governed table carries owners (user ids), usergroups (usergroup ids) and access
+(an octal mode stored the way the mode columns store one, rwx at the edge). A row with
+NULL in those columns is rootus-owned with the table's default mode. Resolution is the
+POSIX one with plural classes: rootus or the admin flag allows; in owners, the owner bits;
+else any usergroup of the caller listed on the row, its bits AND the caller's highest
+role cap among them; else other. Missing r answers 404, so nothing outside a caller's
+scope exists; a missing bit with r present answers 403 and names the bit.
+"""
+
+__author__      = 'Antoine Schonewille'
+__copyright__   = 'Copyright 2025, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.2'
+__maintainer__  = 'Antoine Schonewille'
+__email__       = 'antoine.schonewille@clustervision.com'
+__status__      = 'Development'
+
+from flask import g, has_request_context
+from utils.database import Database
+from utils.log import Log
+from utils.helper import Helper
+from base.usergroup import ROLE_CAPS
+
+# Governed tables and their default mode when the row says nothing (design section 5).
+GOVERNED = {
+    'node': '770', 'group': '770', 'bmcsetup': '770', 'redfishsetup': '770', 'profile': '770',
+    'osimage': '774', 'biosconfig': '774', 'firmwarecatalog': '774',
+    'cluster': '644', 'network': '644', 'route': '644', 'cloud': '644', 'switch': '644',
+    'rack': '644', 'otherdevices': '644',
+}
+
+# Children carry nothing of their own and follow the parent named here: the parent table
+# and the column holding its id. Named, not guessed from column names: biosconfig.nodeid
+# and bmcsetup.userid look like parents and are not.
+CHILDREN = {
+    'nodeinterface': ('node', 'nodeid'), 'nodesecrets': ('node', 'nodeid'),
+    'nodeinventory': ('node', 'nodeid'), 'nodeinventorydisk': ('node', 'nodeid'),
+    'nodeinventorygpu': ('node', 'nodeid'), 'nodeinventorynic': ('node', 'nodeid'),
+    'nodeinventoryfirmware': ('node', 'nodeid'), 'firmwarerequest': ('node', 'nodeid'),
+    'groupinterface': ('group', 'groupid'), 'groupsecrets': ('group', 'groupid'),
+    'osimagetag': ('osimage', 'osimageid'), 'redfishaccount': ('redfishsetup', 'redfishsetupid'),
+    'profilefile': ('profile', 'profileid'), 'rackinventory': ('rack', 'rackid'),
+    'switchinterface': ('switch', 'switchid'), 'routemap': ('route', 'routeid'),
+    'dns': ('network', 'networkid'),
+    'ipaddress': ('tableref', 'tablerefid'), 'monitor': ('tableref', 'tablerefid'),
+}
+
+# Rootus only, by name: runtime state, controller-to-controller tables, the identity
+# tables, and clustersecrets, which carries a cluster id but is not a child of cluster
+# because cluster is readable by everyone and its secrets must not be.
+ROOTUS = {
+    'clustersecrets', 'controller', 'ha', 'journal', 'hash', 'queue', 'status', 'tracker',
+    'reference', 'reservedipaddress', 'ownercache', 'ping',
+    'user', 'usergroup', 'usergroupmember', 'usergroupmap',
+}
+
+BITS = {'r': 4, 'w': 2, 'x': 1}
+
+
+class AccessRefused(Exception):
+    """
+    A check that failed, carrying the code to answer with and the message.
+    """
+
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+class Access():
+    """
+    This class answers what a caller may do with a governed row, and changes who may.
+    """
+
+    def __init__(self):
+        self.logger = Log.get_logger()
+
+
+    # ── modes ──────────────────────────────────────────────────────────────
+
+    def mode_text(self, octal=None, table=None):
+        """
+        Input - an octal mode as stored ('750'), or None for the table's default
+        Output - the nine characters ls shows ('rwxr-x---')
+        """
+        value = int(str(octal or GOVERNED.get(table, '000')), 8)
+        text = ''
+        for shift in (6, 3, 0):
+            triplet = (value >> shift) & 7
+            text += ('r' if triplet & 4 else '-') + ('w' if triplet & 2 else '-') + ('x' if triplet & 1 else '-')
+        return text
+
+    def mode_octal(self, text=None):
+        """
+        Input - nine characters as ls shows them
+        Output - the octal text stored in the table
+        """
+        value = 0
+        for index, char in enumerate(text):
+            if char != '-':
+                value |= BITS[char] << (6 - 3 * (index // 3))
+        return format(value, 'o').rjust(3, '0')
+
+    def mask(self, text=None):
+        """
+        Input - three characters such as 'r-x'
+        Output - their value 0 to 7
+        """
+        return sum(BITS[char] for char in text if char != '-')
+
+
+    # ── the caller ─────────────────────────────────────────────────────────
+
+    def caller(self, userid=None):
+        """
+        Output - {'id', 'admin', 'usergroups': {usergroupid: role}} for a user id; id 0 is
+                 rootus and admin. Cached on the request, so a request reads it once.
+        """
+        if has_request_context() and getattr(g, 'caller', None) and g.caller['id'] == userid:
+            return g.caller
+        if userid in (0, '0', None):
+            caller = {'id': 0, 'admin': True, 'usergroups': {}}
+        else:
+            rows = Database().get_record(table='user', where=f"id = '{userid}'")
+            admin = bool(rows) and Helper().make_bool(rows[0]['admin']) is True
+            usergroups = {}
+            for row in Database().get_record(table='usergroupmember', where=f"userid = '{userid}'") or []:
+                usergroups[int(row['usergroupid'])] = row['role']
+            caller = {'id': int(userid), 'admin': admin, 'usergroups': usergroups}
+        if has_request_context():
+            g.caller = caller
+        return caller
+
+
+    # ── rows and bits ──────────────────────────────────────────────────────
+
+    def row(self, table=None, name=None):
+        """
+        Output - the governed row, or None. cluster is one row and needs no name.
+        """
+        if table not in GOVERNED:
+            return None
+        if table == 'cluster':
+            rows = Database().get_record(table='cluster')
+        else:
+            rows = Database().get_record(table=table, where=f"name = '{name}'")
+        return rows[0] if rows else None
+
+    def ids(self, value=None):
+        """
+        Input - a csv of ids as stored, or None
+        Output - a list of ints
+        """
+        return [int(item) for item in str(value or '').split(',') if item.strip()]
+
+    def bits(self, caller=None, table=None, row=None):
+        """
+        Output - the three characters the caller effectively holds on the row.
+        """
+        if caller['admin']:
+            return 'rwx'
+        mode = int(str(row.get('access') or GOVERNED[table]), 8)
+        if caller['id'] in self.ids(row.get('owners')):
+            return self._text((mode >> 6) & 7)
+        shared = [gid for gid in self.ids(row.get('usergroups')) if gid in caller['usergroups']]
+        if shared:
+            cap = max(self.mask(ROLE_CAPS[caller['usergroups'][gid]]) for gid in shared)
+            return self._text(((mode >> 3) & 7) & cap)
+        return self._text(mode & 7)
+
+    def _text(self, triplet):
+        return ('r' if triplet & 4 else '-') + ('w' if triplet & 2 else '-') + ('x' if triplet & 1 else '-')
+
+    def class_of(self, caller=None, row=None):
+        """
+        Output - which class applied, for a refusal message.
+        """
+        if caller['admin']:
+            return 'admin'
+        if caller['id'] in self.ids(row.get('owners')):
+            return 'owner'
+        shared = [gid for gid in self.ids(row.get('usergroups')) if gid in caller['usergroups']]
+        if shared:
+            names = Database().get_record(table='usergroup', where=f"id IN ({','.join(str(g) for g in shared)})") or []
+            return ', '.join(f"{caller['usergroups'][int(n['id'])]} in {n['name']}" for n in names)
+        return 'other'
+
+    def allowed(self, userid=None, table=None, name=None, bit=None):
+        """
+        Process - the bit check on one row. Raises AccessRefused with 404 when the caller
+                  may not even see the object, 403 when it may but lacks the bit.
+        Output - the row, so the caller need not read it again.
+        """
+        caller = self.caller(userid)
+        row = self.row(table, name)
+        if caller['admin']:
+            return row
+        if row is None:
+            raise AccessRefused(404, f'{table} {name} is not available')
+        held = self.bits(caller, table, row)
+        if 'r' not in held:
+            raise AccessRefused(404, f'{table} {name} is not available')
+        if bit not in held:
+            raise AccessRefused(403, f'{table} {name} requires {bit}; you hold {held} ({self.class_of(caller, row)})')
+        return row
+
+    def pushed_object(self, object_type=None, name=None, request_data=None, key=None, column=None, table=None):
+        """
+        Output - the catalogue object a push or grab aims at: the one the body names under
+                 key, else the node's or group's own through column; None when neither.
+        """
+        try:
+            named = request_data['config'][object_type][name].get(key)
+        except (KeyError, TypeError, AttributeError):
+            named = None
+        if named:
+            return named
+        row = self.row(object_type, name)
+        if row and row.get(column):
+            return Database().name_by_id(table, row[column])
+        return None
+
+    def require_create(self, table=None):
+        """
+        Creating a governed object stays with rootus and admin until the create rules land.
+        Output - (True, None) or (False, message, code)
+        """
+        if not has_request_context() or getattr(g, 'userid', None) is None:
+            return True, None
+        if self.caller(g.userid)['admin']:
+            return True, None
+        return False, f'creating a {table} is for rootus and admin users', 403
+
+    def require(self, table=None, name=None, bit=None):
+        """
+        The same check from inside a route or a base class, for a second object the body
+        names. Outside a request, as when the journal replays, there is nobody to refuse.
+        Output - (True, row) or (False, message, code)
+        """
+        if not has_request_context() or getattr(g, 'userid', None) is None:
+            return True, None
+        if name is None:
+            return False, f'Invalid request: no {table} named', 400
+        try:
+            return True, self.allowed(g.userid, table, name, bit)
+        except AccessRefused as exp:
+            return False, exp.message, exp.code
+
+
+    # ── the check the decorators run ───────────────────────────────────────
+
+    def check(self, userid=None, requirement=None):
+        """
+        Input - the caller's id and what the route requires, from the grammar
+        Output - (True, None, None) or (False, code, message)
+        """
+        if requirement is None:
+            return False, 403, 'This route declares no requirement'
+        kind = requirement['kind']
+        try:
+            if kind in ('open', 'self', 'provision'):
+                return True, None, None
+            caller = self.caller(userid)
+            if kind in ('rootus', 'membership'):
+                if not caller['admin']:
+                    raise AccessRefused(403, f"{requirement.get('entity')} is for rootus and admin users")
+                return True, None, None
+            if kind == 'object':
+                if requirement.get('name') is None:
+                    return True, None, None
+                self.allowed(userid, requirement['entity'], requirement['name'], requirement['bit'])
+                return True, None, None
+            if kind == 'dynamic':
+                if requirement.get('name') is None:
+                    return True, None, None
+                bit = 'r' if 'status' in str(requirement.get('action')) else 'x'
+                self.allowed(userid, 'node', requirement['name'], bit)
+                return True, None, None
+            if kind == 'override':
+                self._override(userid, caller, requirement)
+                return True, None, None
+        except AccessRefused as exp:
+            return False, exp.code, exp.message
+        return False, 403, f'unknown requirement kind {kind}'
+
+    def _override(self, userid, caller, requirement):
+        """
+        The primary object of a two-object action; the second is checked where the body
+        is known. clone and create stay with rootus and admin until the create rules land.
+        """
+        action = requirement['action']
+        entity, name, args = requirement['entity'], requirement.get('name'), requirement.get('args', {})
+        if action == 'clone':
+            self.allowed(userid, entity, name, 'r')
+            if not caller['admin']:
+                raise AccessRefused(403, f'creating a {entity} is for rootus and admin users')
+        elif action in ('ospush', 'osgrab', 'biospush', 'biosgrab', 'firmwarepush', 'redfish', 'provision'):
+            if name is not None:
+                self.allowed(userid, entity, name, 'x')
+        elif action in ('couple', 'decouple'):
+            self.allowed(userid, entity, name, 'r')
+            self.allowed(userid, args.get('tableref'), args.get('target'), 'w')
+        elif action in ('chmod', 'chgrp', 'chown'):
+            self.allowed(userid, args.get('entity', entity), name, 'r')
+        else:
+            raise AccessRefused(403, f'{action} has no rule')
+
+
+    # ── who may change who may ─────────────────────────────────────────────
+
+    def annotate(self, table=None, row=None):
+        """
+        Output - owners and usergroups as names, access as rwx, for a response.
+        """
+        owners = self.ids(row.get('owners'))
+        usergroups = self.ids(row.get('usergroups'))
+        names_o = {int(r['id']): r['username'] for r in (Database().get_record(table='user', where=f"id IN ({','.join(map(str, owners))})") if owners else [])}
+        names_g = {int(r['id']): r['name'] for r in (Database().get_record(table='usergroup', where=f"id IN ({','.join(map(str, usergroups))})") if usergroups else [])}
+        return {'owners': [names_o.get(i, str(i)) for i in owners] or ['rootus'],
+                'usergroups': [names_g.get(i, str(i)) for i in usergroups],
+                'access': self.mode_text(row.get('access'), table)}
+
+    def _edit_list(self, current, wanted, lookup):
+        """
+        Input - the stored ids, the request's names (a list or csv, +name adds, -name removes,
+                a bare name replaces the whole list), and a name-to-id resolver
+        Output - the new id list, or raises AccessRefused 400 for an unknown name
+        """
+        names = wanted if isinstance(wanted, list) else [n.strip() for n in str(wanted or '').split(',') if n.strip()]
+        result = list(current)
+        replace = [n for n in names if not n.startswith(('+', '-'))]
+        if replace:
+            result = []
+        for entry in names:
+            name = entry.lstrip('+-')
+            ident = lookup(name)
+            if ident is None:
+                raise AccessRefused(400, f'Invalid request: {name} is not known')
+            if entry.startswith('-'):
+                result = [i for i in result if i != ident]
+            elif ident not in result:
+                result.append(ident)
+        return result
+
+    def _userid(self, name):
+        if name == 'rootus':
+            return 0
+        rows = Database().get_record(table='user', where=f"username = '{name}'")
+        return int(rows[0]['id']) if rows else None
+
+    def _usergroupid(self, name):
+        rows = Database().get_record(table='usergroup', where=f"name = '{name}'")
+        return int(rows[0]['id']) if rows else None
+
+    def _admin_of_listed(self, caller, row):
+        return any(caller['usergroups'].get(gid) == 'admin' for gid in self.ids(row.get('usergroups')))
+
+    def _store(self, table, row, column, value):
+        Database().update(table, Helper().make_rows({column: value}), [{'column': 'id', 'value': row['id']}])
+
+    def chmod(self, table=None, name=None, request_data=None, userid=None, dry=False):
+        """
+        owners, usergroup admins on objects their usergroup is listed on, rootus and admin.
+        """
+        try:
+            body = request_data['config'][table][name]
+            text = body['access']
+        except (KeyError, TypeError):
+            return False, 'Invalid request: access is needed'
+        caller = self.caller(userid)
+        row = self.row(table, name)
+        if row is None:
+            return False, f'{table} {name} is not available'
+        may = caller['admin'] or caller['id'] in self.ids(row.get('owners')) or self._admin_of_listed(caller, row)
+        if not may:
+            raise AccessRefused(403, f'{table} {name}: chmod is for owners, usergroup admins, rootus and admin users')
+        if not dry:
+            self._store(table, row, 'access', self.mode_octal(text))
+        return True, f'{table} {name} access updated to {text}.'
+
+    def chgrp(self, table=None, name=None, request_data=None, userid=None, dry=False):
+        """
+        A member may add a usergroup they belong to, in any role. Owners and usergroup
+        admins on listed objects may add or remove. rootus and admin anywhere.
+        """
+        try:
+            wanted = request_data['config'][table][name]['usergroups']
+        except (KeyError, TypeError):
+            return False, 'Invalid request: usergroups is needed'
+        caller = self.caller(userid)
+        row = self.row(table, name)
+        if row is None:
+            return False, f'{table} {name} is not available'
+        current = self.ids(row.get('usergroups'))
+        new = self._edit_list(current, wanted, self._usergroupid)
+        if not caller['admin']:
+            full = caller['id'] in self.ids(row.get('owners')) or self._admin_of_listed(caller, row)
+            removed = [gid for gid in current if gid not in new]
+            added = [gid for gid in new if gid not in current]
+            if removed and not full:
+                raise AccessRefused(403, f'{table} {name}: removing a usergroup is for owners, usergroup admins, rootus and admin users')
+            foreign = [gid for gid in added if gid not in caller['usergroups']]
+            if foreign and not full:
+                raise AccessRefused(403, f'{table} {name}: you may only add usergroups you are a member of')
+        if not dry:
+            self._store(table, row, 'usergroups', ','.join(str(i) for i in new))
+        return True, f'{table} {name} usergroups updated.'
+
+    def chown(self, table=None, name=None, request_data=None, userid=None, dry=False):
+        """
+        rootus and admin anywhere; usergroup admins on listed objects, only to members of
+        that usergroup, so ownership cannot leave the organisation without a superuser.
+        """
+        try:
+            wanted = request_data['config'][table][name]['owners']
+        except (KeyError, TypeError):
+            return False, 'Invalid request: owners is needed'
+        caller = self.caller(userid)
+        row = self.row(table, name)
+        if row is None:
+            return False, f'{table} {name} is not available'
+        current = self.ids(row.get('owners'))
+        new = [i for i in self._edit_list(current, wanted, self._userid) if i != 0]
+        if not caller['admin']:
+            if not self._admin_of_listed(caller, row):
+                raise AccessRefused(403, f'{table} {name}: chown is for usergroup admins on listed objects, rootus and admin users')
+            listed = [gid for gid in self.ids(row.get('usergroups')) if caller['usergroups'].get(gid) == 'admin']
+            for owner in new:
+                if owner not in current and not self._member_of_any(owner, listed):
+                    raise AccessRefused(403, f'{table} {name}: a usergroup admin may only chown to members of that usergroup')
+        if not dry:
+            self._store(table, row, 'owners', ','.join(str(i) for i in new))
+        return True, f'{table} {name} owners updated.'
+
+    def _member_of_any(self, userid, usergroupids):
+        if not usergroupids:
+            return False
+        rows = Database().get_record(table='usergroupmember',
+                                     where=f"userid = '{userid}' AND usergroupid IN ({','.join(map(str, usergroupids))})")
+        return bool(rows)

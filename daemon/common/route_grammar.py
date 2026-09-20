@@ -84,7 +84,7 @@ SUFFIX_BITS = {'_delete': 'w', '_remove': 'w', '_unassign': 'w', '_pack': 'w', '
 # or group and w on the catalogue object. redfish and provision: x on the node.
 # couple and decouple: w on the target and r on the route.
 SUFFIX_OVERRIDES = {'_clone', '_osgrab', '_ospush', '_biosgrab', '_biospush', '_firmwarepush',
-                    '_redfish', '_provision', '_couple', '_decouple'}
+                    '_redfish', '_provision', '_couple', '_decouple', '_chmod', '_chgrp', '_chown'}
 
 KINDS = ('open', 'self', 'rootus', 'provision', 'dynamic', 'membership', 'object', 'override')
 
@@ -121,6 +121,10 @@ def requirement(rule=None, method=None, args=None, declared=None):
     if head != 'config' or len(parts) < 2:
         raise GrammarError(f'{method} {rule} is not a route the grammar knows')
     entity = parts[1]
+    generic = entity.startswith('<')
+    if generic:
+        # the generic chmod, chgrp and chown routes name the entity and the object in the path
+        entity = args.get('entity') or entity
     if entity in ROOTUS_ENTITIES:
         return {'kind': 'rootus', 'entity': entity}
     if entity == 'usergroup':
@@ -130,8 +134,11 @@ def requirement(rule=None, method=None, args=None, declared=None):
         return {'kind': 'rootus', 'entity': entity}
     if entity in ('secrets', 'profiles') and len(parts) > 2 and parts[2] in ('node', 'group', 'cluster'):
         entity = parts[2]
+    elif entity == 'secrets':
+        # the listing across node, group and cluster secrets; the rows are filtered per parent
+        return {'kind': 'object', 'entity': 'cluster', 'name': None, 'bit': 'r' if method == 'GET' else 'w'}
     entity = ALIAS.get(entity, entity)
-    name = 'cluster' if entity == 'cluster' else args.get('name')
+    name = 'cluster' if entity == 'cluster' else (args.get('object') if generic else args.get('name'))
     last = parts[-1]
     if last.startswith('_'):
         if last in SUFFIX_OVERRIDES:

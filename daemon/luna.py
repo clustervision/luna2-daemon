@@ -74,6 +74,7 @@ from routes.config_hash import hash_blueprint
 from routes.config_osuser import osuser_blueprint
 from routes.config_user import user_blueprint
 from routes.config_usergroup import usergroup_blueprint
+from routes.config_access import access_blueprint
 from routes.config_otherdev import otherdev_blueprint
 from routes.config_secrets import secrets_blueprint
 from routes.config_profiles import profiles_blueprint
@@ -383,6 +384,7 @@ daemon.register_blueprint(osimage_blueprint)
 daemon.register_blueprint(osuser_blueprint)
 daemon.register_blueprint(user_blueprint)
 daemon.register_blueprint(usergroup_blueprint)
+daemon.register_blueprint(access_blueprint)
 daemon.register_blueprint(otherdev_blueprint)
 daemon.register_blueprint(secrets_blueprint)
 daemon.register_blueprint(profiles_blueprint)

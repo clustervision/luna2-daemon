@@ -50,6 +50,7 @@ from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED, RESTORE_PEN
 from utils.firmware_push import FirmwarePush
 from utils.status import Status
 from common.constant import CONSTANT
+from common.access import Access
 from base.authentication import TOKEN_GATED_EXTENSIONS
 
 
@@ -281,6 +282,12 @@ class Firmware():
         if not wanted:
             return False, ('Nothing to update: '
                            + '; '.join(answer['summary']))
+        # applying firmware is the act of whoever controls the catalogue entry, not of
+        # whoever may read it: w on every entry this push would apply
+        for entry in sorted({item['entry'] for plan in wanted.values() for item in plan['differs']}):
+            verdict = Access().require('firmwarecatalog', entry, 'w')
+            if verdict[0] is not True:
+                return False, verdict[1]
         names = "', '".join(sorted(wanted))
         nodeids = [record['id'] for record in Database().get_record(
             table='node', where=f"name IN ('{names}')") or []]

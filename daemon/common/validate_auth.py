@@ -38,6 +38,7 @@ import jwt
 from utils.log import Log
 from common.constant import CONSTANT
 from common.route_grammar import requirement, GrammarError
+from common.access import Access
 
 LOGGER = Log.get_logger()
 
@@ -79,10 +80,26 @@ def token_required(function=None, *, requires=None):
                 return json.dumps(response), 403
             g.userid = claims.get('id')
             g.requirement = _requirement(kwargs, requires)
+            refused = _refused()
+            if refused:
+                return refused
             return function(**kwargs)
         decorator.requires = requires
         return decorator
     return wrap(function) if function is not None else wrap
+
+
+def _refused():
+    """
+    The bit check on what the route requires. None when the caller may proceed, else the
+    response to answer with: 404 for an object the caller may not see, 403 for a bit it
+    lacks, both with the reason.
+    """
+    allowed, code, message = Access().check(g.userid, g.requirement)
+    if allowed:
+        return None
+    LOGGER.warning(f'refused: user {g.userid} {request.method} {request.path}: {message}')
+    return json.dumps({'message': message}), code
 
 
 def _requirement(kwargs, requires=None):
@@ -153,6 +170,10 @@ def provision_token_required(function=None, *, node_in_payload=None, only=None, 
                         return json.dumps(response), 403
             g.userid = claims.get('id')
             g.requirement = _requirement(kwargs, requires)
+            if claims.get('scope') != 'provision':
+                refused = _refused()
+                if refused:
+                    return refused
             return function(**kwargs)
         decorator.requires = requires
         return decorator

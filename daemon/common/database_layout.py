@@ -71,7 +71,10 @@ DATABASE_LAYOUT_osimage = [
 {"column": "osrelease",            "datatype": "VARCHAR", "length": "20"},
 {"column": "tagid",                "datatype": "INTEGER", "length": "10"},
 {"column": "changed",              "datatype": "INTEGER", "length": "10"},
-{"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
+{"column": "comment",              "datatype": "VARCHAR", "length": "20"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 # Local artefact checksums. Deliberately NOT in Tables().tables: a row here is a
 # statement about a file on THIS controller, so it legitimately differs between
@@ -135,7 +138,10 @@ DATABASE_LAYOUT_bmcsetup = [
 # because it is the value the tool wants and because lconsole already speaks
 # in suite numbers - one vocabulary, and a board wanting some other suite
 # needs no code.
-{"column": "cipher",               "datatype": "INTEGER", "length": "10"}]
+{"column": "cipher",               "datatype": "INTEGER", "length": "10"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_redfishsetup = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -143,7 +149,10 @@ DATABASE_LAYOUT_redfishsetup = [
 {"column": "scheme",               "datatype": "VARCHAR", "length": "10"},
 {"column": "port",                 "datatype": "INTEGER", "length": "10"},
 {"column": "verify",               "datatype": "INTEGER", "length": "10"},
-{"column": "comment",              "datatype": "TEXT"}]
+{"column": "comment",              "datatype": "TEXT"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_redfishaccount = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -171,7 +180,10 @@ DATABASE_LAYOUT_biosconfig = [
 {"column": "attributes",           "datatype": "TEXT"},
 {"column": "grab_exclude",         "datatype": "TEXT"},
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"},
-{"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
+{"column": "comment",              "datatype": "VARCHAR", "length": "20"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_firmwarecatalog = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -182,7 +194,10 @@ DATABASE_LAYOUT_firmwarecatalog = [
 {"column": "version",              "datatype": "VARCHAR", "length": "128"},
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "255"},
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"},
-{"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
+{"column": "comment",              "datatype": "VARCHAR", "length": "20"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_firmwarerequest = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -264,7 +279,10 @@ DATABASE_LAYOUT_group = [
 {"column": "provision_interface",  "datatype": "VARCHAR", "length": "20"},
 {"column": "provision_method",     "datatype": "VARCHAR", "length": "20"},
 {"column": "provision_fallback",   "datatype": "VARCHAR", "length": "20"},
-{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}]
+{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_network = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -292,7 +310,10 @@ DATABASE_LAYOUT_network = [
 {"column": "shared",               "datatype": "VARCHAR", "length": "60"},
 {"column": "type",                 "datatype": "VARCHAR", "length": "100"},
 {"column": "non_authoritative",    "datatype": "INTEGER", "length": "10"},
-{"column": "comment",              "datatype": "VARCHAR", "length": "200"}]
+{"column": "comment",              "datatype": "VARCHAR", "length": "200"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_dns = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -352,7 +373,10 @@ DATABASE_LAYOUT_switch = [
 {"column": "url_server",           "datatype": "VARCHAR", "length": "255"},
 {"column": "tftp_enable",          "datatype": "INTEGER", "length": "10"},
 {"column": "ostype",               "datatype": "VARCHAR", "length": "20"},
-{"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
+{"column": "comment",              "datatype": "VARCHAR", "length": "60"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_switchinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -366,13 +390,19 @@ DATABASE_LAYOUT_otherdevices = [
 {"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "macaddress",           "datatype": "VARCHAR", "length": "60"},
 {"column": "vendor",               "datatype": "VARCHAR", "length": "60"},
-{"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
+{"column": "comment",              "datatype": "VARCHAR", "length": "60"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_cloud = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "type",                 "datatype": "VARCHAR", "length": "60"},
-{"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
+{"column": "comment",              "datatype": "VARCHAR", "length": "60"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_controller = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -408,7 +438,10 @@ DATABASE_LAYOUT_profile = [
 {"column": "scope",                "datatype": "VARCHAR", "length": "20"},
 {"column": "service",              "datatype": "VARCHAR", "length": "100"},
 {"column": "action",               "datatype": "VARCHAR", "length": "20"},
-{"column": "enabled",              "datatype": "INTEGER", "length": "10"}]
+{"column": "enabled",              "datatype": "INTEGER", "length": "10"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_profilefile = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -465,7 +498,10 @@ DATABASE_LAYOUT_node = [
 {"column": "tpm_uuid",             "datatype": "VARCHAR", "length": "60"},
 {"column": "tpm_pubkey",           "datatype": "VARCHAR", "length": "1024"},
 {"column": "tpm_sha256",           "datatype": "VARCHAR", "length": "256"},
-{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}]
+{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_cluster = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -488,7 +524,10 @@ DATABASE_LAYOUT_cluster = [
 {"column": "nextnode_discover",    "datatype": "INTEGER", "length": "10"},
 {"column": "bind_legacy",          "datatype": "INTEGER", "length": "10"},
 {"column": "dnssec_enable",        "datatype": "INTEGER", "length": "10"},
-{"column": "dnssec_validation",    "datatype": "INTEGER", "length": "10"}]
+{"column": "dnssec_validation",    "datatype": "INTEGER", "length": "10"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_tracker = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -535,7 +574,10 @@ DATABASE_LAYOUT_rack = [
 {"column": "room",                 "datatype": "VARCHAR", "length": "100"},
 {"column": "site",                 "datatype": "VARCHAR", "length": "100"},
 {"column": "order",                "datatype": "VARCHAR", "length": "20"},
-{"column": "size",                 "datatype": "INTEGER", "length": "10"}]
+{"column": "size",                 "datatype": "INTEGER", "length": "10"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_rackinventory = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -553,7 +595,10 @@ DATABASE_LAYOUT_route = [
 {"column": "gateway",              "datatype": "VARCHAR", "length": "60"},
 {"column": "metric",               "datatype": "INTEGER", "length": "10"},
 {"column": "device",               "datatype": "VARCHAR", "length": "60"},
-{"column": "comment",              "datatype": "VARCHAR", "length": "200"}]
+{"column": "comment",              "datatype": "VARCHAR", "length": "200"},
+{"column": "owners",               "datatype": "TEXT"},
+{"column": "usergroups",           "datatype": "TEXT"},
+{"column": "access",               "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_routemap = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

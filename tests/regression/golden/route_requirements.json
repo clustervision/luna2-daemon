@@ -619,7 +619,7 @@
  },
  "GET /config/secrets": {
   "bit": "r",
-  "entity": "secrets",
+  "entity": "cluster",
   "kind": "object",
   "name": null
  },
@@ -886,6 +886,36 @@
  },
  "GET /whoami": {
   "kind": "self"
+ },
+ "POST /config/<string:entity>/<string:object>/_chgrp": {
+  "action": "chgrp",
+  "args": {
+   "entity": "<entity>",
+   "object": "<object>"
+  },
+  "entity": "<entity>",
+  "kind": "override",
+  "name": "<object>"
+ },
+ "POST /config/<string:entity>/<string:object>/_chmod": {
+  "action": "chmod",
+  "args": {
+   "entity": "<entity>",
+   "object": "<object>"
+  },
+  "entity": "<entity>",
+  "kind": "override",
+  "name": "<object>"
+ },
+ "POST /config/<string:entity>/<string:object>/_chown": {
+  "action": "chown",
+  "args": {
+   "entity": "<entity>",
+   "object": "<object>"
+  },
+  "entity": "<entity>",
+  "kind": "override",
+  "name": "<object>"
  },
  "POST /config/biosconfig/<string:name>": {
   "bit": "w",

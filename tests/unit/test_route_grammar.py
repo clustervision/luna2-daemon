@@ -22,11 +22,13 @@ def test_the_daemon_registers_every_blueprint_the_route_modules_define():
 
 def test_every_route_is_deliberately_open_or_classified():
     from common.route_grammar import OPEN, KINDS, requirement
+    from common.access import GOVERNED
 
     app = _app()
     seen_open = set()
     unlisted_open = []
     unclassified = []
+    ungoverned = []
     for rule in app.url_map.iter_rules():
         if rule.endpoint == 'static':
             continue
@@ -44,9 +46,14 @@ def test_every_route_is_deliberately_open_or_classified():
                 unclassified.append(f'{method} {rule.rule}: {exp}')
                 continue
             assert answer['kind'] in KINDS, (rule.rule, method, answer)
+            if answer['kind'] in ('object', 'override') and not answer.get('entity', '').startswith('<'):
+                if answer['entity'] not in GOVERNED:
+                    ungoverned.append(f"{method} {rule.rule} reads as entity {answer['entity']}")
     assert not unlisted_open, ('routes without a token that are not on the deliberately-open list:\n  '
                                + '\n  '.join(unlisted_open))
     assert not unclassified, 'routes the grammar cannot place:\n  ' + '\n  '.join(unclassified)
+    assert not ungoverned, ('object routes whose entity is not a governed table (alias it in the grammar):\n  '
+                            + '\n  '.join(ungoverned))
     assert seen_open == OPEN, (
         f"open-list drift; listed but no such open route: {sorted(OPEN - seen_open)}")
 

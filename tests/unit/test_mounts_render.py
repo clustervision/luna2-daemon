@@ -253,6 +253,32 @@ def test_render_controller_exports_from_every_document_and_mounts_from_the_clust
     assert fstab_lines[0][:3] == ['ctrl:/srv/archive', '/trinity/archive', 'nfs']
     assert written['mount'] == ['/trinity/archive', '/trinity/scratch', '/home/corp', '/lustre/work', '/beegfs', '/local/tmp']
     assert ('/local/tmp', '-', '-', '1777') in written['dirs']
+    # the served directories are made too: the mountpoint's attributes where the export
+    # is the mountpoint, plain where it is the directory behind a cross-mount
+    assert ('/trinity/home', '-', '-', '-') in written['dirs'] and ('/srv/archive', '-', '-', '-') in written['dirs']
+
+
+def test_the_served_directories_exist_before_the_exports_are_written(db, monkeypatch, tmp_path):
+    _stored_corpus_and_group(monkeypatch, tmp_path)
+    order = []
+    render = MountsRender()
+    monkeypatch.setattr(render, 'my_names', lambda: CONTROLLER)
+    monkeypatch.setattr(render, 'my_addresses', lambda: {'controller': 'ctrl', 'self': 'ctrl1'})
+    monkeypatch.setattr(render, 'make_dirs', lambda dirs, root='/': order.append(('dirs', [d[0] for d in dirs])))
+    monkeypatch.setattr(render, 'write_exports', lambda text: order.append(('exports', None)) or (True, 'ok'))
+    monkeypatch.setattr(render, 'write_fstab', lambda block, root='/': order.append(('fstab', None)) or (True, 'ok'))
+    monkeypatch.setattr(render, 'mount', lambda entries: order.append(('mount', None)) or (True, 'ok'))
+    assert render.render_controller()[0] is True
+    assert [step for step, _ in order] == ['dirs', 'exports', 'fstab', 'mount']
+    made = order[0][1]
+    assert {'/trinity/home', '/trinity/shared', '/srv/archive', '/trinity/group'} <= set(made)
+
+
+def test_export_dirs_take_the_mountpoint_attributes_only_when_they_are_the_mountpoint():
+    served = {'path': '/trinity/scratch', 'owner': 'root', 'group': 'users', 'mode': '1777', 'export': {}}
+    behind = {'path': '/trinity/archive', 'source': '/srv/archive', 'owner': 'root', 'mode': '0750', 'export': {}}
+    assert mountsrender.export_dirs([served, behind]) == [
+        ('/trinity/scratch', 'root', 'users', '1777'), ('/srv/archive', '-', '-', '-')]
 
 
 def test_a_directory_on_a_network_mount_is_never_exported_and_the_render_says_so(db, monkeypatch, tmp_path):

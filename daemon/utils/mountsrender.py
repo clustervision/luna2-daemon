@@ -114,6 +114,21 @@ def fstab_rows(entries, addresses):
     return rows, dirs
 
 
+def export_dirs(entries):
+    """The directories a machine serves, as make_dirs rows. An export that is the
+    mountpoint itself takes the entry's owner, group and mode; a directory behind
+    a cross-mount is created as it is and left alone."""
+    rows = []
+    for entry in entries:
+        directory = exported_path(entry)
+        if directory == entry['path']:
+            rows.append((directory, entry.get('owner') or '-', entry.get('group') or '-',
+                         entry.get('mode') or '-'))
+        else:
+            rows.append((directory, '-', '-', '-'))
+    return rows
+
+
 def export_rows(entries, networks, logger=None):
     """The rows the exports template lays out: the directory and one client
     specification per client, each carrying the export's default options followed
@@ -347,13 +362,15 @@ class MountsRender():
             self.logger.error(f"mounts: {directory} is a network mount on this controller and "
                               "is not exported; name the directory behind it as source")
         serving = [entry for entry in serving if exported_path(entry) not in refused]
-        estatus, emessage = self.write_exports(self.render_exports(serving, self.networks()))
-        if refused:
-            estatus, emessage = False, f"{emessage}, not exported: {', '.join(refused)}"
         cluster_entries = next((entries for name, entries in documents if name == 'cluster'), [])
         mine = [entry for entry in cluster_entries if mounts(entry, names)]
         rows, dirs = fstab_rows(mine, self.my_addresses())
-        self.make_dirs(dirs)
+        # the served directories first: exportfs refuses a directory that is not there
+        # yet, and the roles that make the shares may run after this render
+        self.make_dirs(export_dirs(serving) + dirs)
+        estatus, emessage = self.write_exports(self.render_exports(serving, self.networks()))
+        if refused:
+            estatus, emessage = False, f"{emessage}, not exported: {', '.join(refused)}"
         fstatus, fmessage = self.write_fstab(self.render_fstab(rows))
         mstatus, mmessage = self.mount(mine)
         summary = f"{len(serving)} exports, {len(rows)} mounts: {emessage}; {fmessage}; {mmessage}"

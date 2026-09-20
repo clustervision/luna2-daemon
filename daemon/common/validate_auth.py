@@ -37,6 +37,7 @@ from flask import request, json, g
 import jwt
 from utils.log import Log
 from common.constant import CONSTANT
+from common.route_grammar import requirement, GrammarError
 
 LOGGER = Log.get_logger()
 
@@ -75,8 +76,22 @@ def token_required(function):
             response = {'message': 'Token is not permitted for this endpoint'}
             return json.dumps(response), 403
         g.userid = claims.get('id')
+        g.requirement = _requirement(kwargs)
         return function(**kwargs)
     return decorator
+
+
+def _requirement(kwargs):
+    """
+    What this route asks of which object, from the grammar. A route the grammar cannot
+    place is logged and carries no requirement; the derived test keeps that from
+    reaching a shipped route.
+    """
+    try:
+        return requirement(request.url_rule.rule, request.method, kwargs)
+    except GrammarError as exp:
+        LOGGER.error(f'route without a requirement: {exp}')
+        return None
 
 
 def provision_token_required(function=None, *, node_in_payload=None, only=None):
@@ -132,6 +147,8 @@ def provision_token_required(function=None, *, node_in_payload=None, only=None):
                         LOGGER.error(f"Provision token for {claims.get('node')} used on {target}")
                         response = {'message': 'Token is not valid for this node'}
                         return json.dumps(response), 403
+            g.userid = claims.get('id')
+            g.requirement = _requirement(kwargs)
             return function(**kwargs)
         return decorator
     return wrap(function) if function is not None else wrap

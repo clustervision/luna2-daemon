@@ -37,7 +37,7 @@ takes the known names as an argument rather than reading them here.
 """
 
 import json
-from base64 import b64decode
+from base64 import b64decode, b64encode
 
 _ALLOWED_TOP = {"version", "comment", "mounts"}
 _ALLOWED_MOUNT = {
@@ -214,6 +214,55 @@ def validate_b64(value, node_names=None):
 # the addresses its reserved servers resolve to and the networks a client may name,
 # and answer which entries it mounts and which it exports. Reading those from the
 # database and writing the files is the render module's business.
+
+def document_from_b64(value):
+    """The stored document as a dict, or None when nothing is stored."""
+    if not value:
+        return None
+    try:
+        document = json.loads(b64decode(value).decode('utf-8'))
+    except (ValueError, TypeError):
+        return None
+    return document if isinstance(document, dict) else None
+
+
+def to_b64(document):
+    return b64encode(json.dumps(document).encode('utf-8')).decode('ascii')
+
+
+def upsert_entry(value, entry):
+    """The document with one entry added at its path, or the entry there updated
+    with the fields given: the others stay, so a mount can be described in parts
+    and grown as you go (removing it starts over). An absent document starts
+    empty. The result is not validated here: the store path does that, once, as
+    for a whole document."""
+    if not isinstance(entry, dict) or not isinstance(entry.get('path'), str) or not entry['path']:
+        raise MountsInvalid('config_validation: a mount entry needs a path')
+    document = document_from_b64(value) or {'version': SCHEMA_VERSION, 'mounts': []}
+    mounts = list(document.get('mounts') or [])
+    for index, known in enumerate(mounts):
+        if isinstance(known, dict) and known.get('path') == entry['path']:
+            mounts[index] = {**known, **entry}
+            break
+    else:
+        mounts.append(entry)
+    document['mounts'] = mounts
+    return to_b64(document)
+
+
+def remove_entry(value, path):
+    """The document without the entry at path, and whether there was one. An
+    emptied document stays a document: at group or node level it still overrides."""
+    document = document_from_b64(value)
+    if document is None:
+        return value, False
+    mounts = list(document.get('mounts') or [])
+    kept = [known for known in mounts if not (isinstance(known, dict) and known.get('path') == path)]
+    if len(kept) == len(mounts):
+        return value, False
+    document['mounts'] = kept
+    return to_b64(document), True
+
 
 def entries_from_b64(value):
     """The entries of a stored document. Nothing stored is no entries; a stored

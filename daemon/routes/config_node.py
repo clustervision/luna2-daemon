@@ -128,6 +128,64 @@ def config_node_mounts(name=None):
     return dumps(payload), 200
 
 
+@node_blueprint.route('/config/node/<string:name>/mounts', methods=['POST'])
+@token_required
+@validate_name
+def config_node_mounts_add(name=None):
+    """
+    Add one entry to the node's mounts document, or replace the one at its path. The
+    body is the entry itself. A node without a document of its own starts from what
+    it resolves to and owns that copy from then on.
+    """
+    status, response = Journal().add_request(function="Node.update_mount", object=name, payload=request.data)
+    if status is True:
+        status, response = Node().update_mount(name, request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@node_blueprint.route('/config/node/<string:name>/mounts/_remove', methods=['POST'])
+@token_required
+@validate_name
+def config_node_mounts_remove(name=None):
+    """
+    Remove the entry at a path from the node's mounts document. The body carries the path.
+    """
+    status, response = Journal().add_request(function="Node.remove_mount", object=name, payload=request.data)
+    if status is True:
+        status, response = Node().remove_mount(name, request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@node_blueprint.route('/config/node/<string:name>/profiles', methods=['POST'])
+@token_required
+@validate_name
+def config_node_profile_assign(name=None):
+    """
+    Assign one profile to the node, beside the ones it has. The body carries the profile name.
+    """
+    status, response = Journal().add_request(function="Node.assign_profile", object=name, payload=request.data)
+    if status is True:
+        status, response = Node().assign_profile(name, request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@node_blueprint.route('/config/node/<string:name>/profiles/_unassign', methods=['POST'])
+@token_required
+@validate_name
+def config_node_profile_unassign(name=None):
+    """
+    Take one profile away from the node. The body carries the profile name.
+    """
+    status, response = Journal().add_request(function="Node.unassign_profile", object=name, payload=request.data)
+    if status is True:
+        status, response = Node().unassign_profile(name, request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
 @node_blueprint.route('/config/node/<string:name>', methods=['POST'])
 @provision_token_required
 @validate_name

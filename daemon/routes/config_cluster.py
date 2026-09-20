@@ -100,6 +100,33 @@ def config_cluster_mounts():
     return dumps(payload), 200
 
 
+@cluster_blueprint.route("/config/cluster/mounts", methods=['POST'])
+@token_required
+def config_cluster_mounts_add():
+    """
+    Add one entry to the cluster's mounts document, or replace the one at its path.
+    The body is the entry itself.
+    """
+    status, response = Journal().add_request(function="Cluster.update_mount", payload=request.data)
+    if status is True:
+        status, response = Cluster().update_mount(request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@cluster_blueprint.route("/config/cluster/mounts/_remove", methods=['POST'])
+@token_required
+def config_cluster_mounts_remove():
+    """
+    Remove the entry at a path from the cluster's mounts document. The body carries the path.
+    """
+    status, response = Journal().add_request(function="Cluster.remove_mount", payload=request.data)
+    if status is True:
+        status, response = Cluster().remove_mount(request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
 @cluster_blueprint.route("/config/cluster/export", methods=['GET'])
 @token_required
 def config_cluster_export():

@@ -32,7 +32,7 @@ __status__      = 'Development'
 
 from base64 import b64decode, b64encode
 from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
-from utils.mounts import validate_b64 as validate_mounts, MountsInvalid
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry
 from utils.mountsrender import MountsRender
 from utils.database import Database
 from utils.log import Log
@@ -687,6 +687,80 @@ class Node():
             response = f'Node {name} is not available'
         return status, response
 
+
+
+    def _own_or_effective_mounts(self, name=None):
+        """The node's own document, or, when it has none, what it resolves to and
+        where that came from: an add on a node without a document starts from the
+        entries it currently sees, so it keeps them, and owns the copy from then on."""
+        nodes = Database().get_record(table='node', where=f"name = '{name}'")
+        if not nodes:
+            return None, None, f'Node {name} is not present in database'
+        own = nodes[0].get('mounts') or ''
+        if own:
+            return own, None, None
+        status, response = self.get_node(name)
+        detail = ((response or {}).get('config', {}).get('node', {}) if status is True else {})
+        detail = detail.get(name) or (next(iter(detail.values()), {}) if detail else {})
+        effective = detail.get('mounts') or ''
+        return effective, (detail.get('_mounts_source') if effective else None), None
+
+    def update_mount(self, name=None, request_data=None):
+        """Add one entry to the node's mounts document, or replace the one at its
+        path. Validation, the clash check and the render come from update_node."""
+        own, copied_from, error = self._own_or_effective_mounts(name)
+        if error:
+            return False, error
+        try:
+            value = upsert_entry(own, request_data)
+        except MountsInvalid as exp:
+            return False, f'Invalid request: {exp}'
+        if value == own:
+            return True, 'Mounts document unchanged.'
+        status, message = self.update_node(name, {'config': {'node': {name: {'mounts': value}}}})
+        if status is True and copied_from:
+            message = f"{message} The {copied_from} mounts document was copied to node {name} first; it now deviates from it."
+        return status, message
+
+    def remove_mount(self, name=None, request_data=None):
+        """Remove the entry at a path from the node's mounts document."""
+        path = (request_data or {}).get('path') if isinstance(request_data, dict) else None
+        if not path:
+            return False, 'Invalid request: a path is needed'
+        own, copied_from, error = self._own_or_effective_mounts(name)
+        if error:
+            return False, error
+        value, found = remove_entry(own, path)
+        if not found:
+            return False, f'Invalid request: no mount at {path} in the mounts document node {name} sees'
+        status, message = self.update_node(name, {'config': {'node': {name: {'mounts': value}}}})
+        if status is True and copied_from:
+            message = f"{message} The {copied_from} mounts document was copied to node {name} first; it now deviates from it."
+        return status, message
+
+    def assign_profile(self, name=None, request_data=None):
+        """Add one profile to the node's own assignments. Profiles stack, so this
+        never touches the group's."""
+        return self._change_profiles(name, request_data, assign=True)
+
+    def unassign_profile(self, name=None, request_data=None):
+        """Take one profile out of the node's own assignments."""
+        return self._change_profiles(name, request_data, assign=False)
+
+    def _change_profiles(self, name=None, request_data=None, assign=True):
+        profile = (request_data or {}).get('profile') if isinstance(request_data, dict) else None
+        if not profile:
+            return False, 'Invalid request: a profile name is needed'
+        nodes = Database().get_record(table='node', where=f"name = '{name}'")
+        if not nodes:
+            return False, f'Node {name} is not present in database'
+        names = Profile().profile_names(nodes[0].get('profiles'))
+        if assign and profile in names:
+            return True, f'Profile {profile} is already assigned to node {name}.'
+        if not assign and profile not in names:
+            return False, f'Invalid request: profile {profile} is not assigned to node {name}'
+        names = names + [profile] if assign else [known for known in names if known != profile]
+        return self.update_node(name, {'config': {'node': {name: {'profiles': ','.join(names)}}}})
 
     def update_node(self, name=None, request_data=None):
         """

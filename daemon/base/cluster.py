@@ -38,7 +38,7 @@ from utils.service import Service
 from utils.helper import Helper
 from utils.tables import Tables
 from utils.controller import Controller
-from utils.mounts import validate_b64 as validate_mounts, MountsInvalid
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry
 from utils.mountsrender import MountsRender
 from common.constant import CONSTANT
 
@@ -147,6 +147,32 @@ class Cluster():
                 self.logger.error(f"Error during config import: {exp}")
         return status, response
 
+
+
+    def update_mount(self, request_data=None):
+        """Add one entry to the cluster's mounts document, or replace the one at its
+        path. Validation, the clash check and the render come from update_cluster."""
+        cluster = Database().get_record(table='cluster')
+        own = (cluster[0].get('mounts') or '') if cluster else ''
+        try:
+            value = upsert_entry(own, request_data)
+        except MountsInvalid as exp:
+            return False, f'Invalid request: {exp}'
+        if value == own:
+            return True, 'Mounts document unchanged.'
+        return self.update_cluster({'config': {'cluster': {'mounts': value}}})
+
+    def remove_mount(self, request_data=None):
+        """Remove the entry at a path from the cluster's mounts document."""
+        path = (request_data or {}).get('path') if isinstance(request_data, dict) else None
+        if not path:
+            return False, 'Invalid request: a path is needed'
+        cluster = Database().get_record(table='cluster')
+        own = (cluster[0].get('mounts') or '') if cluster else ''
+        value, found = remove_entry(own, path)
+        if not found:
+            return False, f'Invalid request: no mount at {path} in the cluster mounts document'
+        return self.update_cluster({'config': {'cluster': {'mounts': value}}})
 
     def update_cluster(self, request_data=None):
         """

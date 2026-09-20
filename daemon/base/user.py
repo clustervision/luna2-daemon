@@ -148,25 +148,74 @@ class User():
         return True, f'User {name} removed.'
 
 
-    def authenticate(self, username=None, password=None):
+    def login_identity(self, source=None, identity=None):
         """
-        This method verifies a password against the user's stored digest.
+        This method turns what an authentication source answered into a Luna user: the row
+        is found by the source's stable id, else by a name rootus created ahead for that
+        source, else created. The source's group names become memberships through the map
+        for that source, replacing what that source wrote before; local memberships stay.
         Output - the user's id and a message, or None and the reason.
         """
-        users = Database().get_record(table='user', where=f"username = '{username}'")
-        if not users:
-            return None, f'User {username} does not exist'
-        user = users[0]
-        if not user['password']:
-            return None, f'User {username} has no password in Luna'
-        if not self.verify(password, user['password']):
-            return None, f'Incorrect password for user {username}'
+        if not identity or not identity.get('name'):
+            return None, 'Invalid request: an identity is needed'
+        name = identity['name']
+        external_id = identity.get('external_id') or name
+        rows = Database().get_record(table='user', where=f"username = '{name}'")
+        if source == 'local':
+            if not rows:
+                return None, f'User {name} does not exist'
+            user = rows[0]
+        else:
+            claimed = Database().get_record(table='user', where=f"source = '{source}' AND external_id = '{external_id}'")
+            if claimed:
+                user = claimed[0]
+            elif rows and rows[0]['source'] == source:
+                user = rows[0]
+                Database().update('user', Helper().make_rows({'external_id': external_id}),
+                                  [{'column': 'id', 'value': user['id']}])
+            elif rows:
+                return None, (f"User {name} exists with source {rows[0]['source']} and cannot log in "
+                              f"through {source}; remove it or give it a Luna password")
+            else:
+                data = dict(self.user_items, username=name, source=source, external_id=external_id,
+                            created='NOW', createdby=0)
+                for flag in self.flags:
+                    data[flag] = Helper().bool_to_string(data[flag])
+                userid = Database().insert('user', Helper().make_rows(data))
+                if not userid:
+                    return None, f'Could not create user {name} from source {source}'
+                self.logger.info(f"user {name} created on first login through {source}, id {external_id}")
+                user = Database().get_record(table='user', where=f"id = '{userid}'")[0]
         if not Helper().make_bool(user['enabled']):
-            return None, f'User {username} is disabled'
+            return None, f'User {name} is disabled'
+        if source != 'local':
+            self.write_memberships(user['id'], source, identity.get('groups') or [])
         stamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         Database().update('user', Helper().make_rows({'lastlogin': stamp}),
                           [{'column': 'id', 'value': user['id']}])
-        return user['id'], f'User {username} authenticated'
+        return user['id'], f'User {name} authenticated through {source}'
+
+
+    def write_memberships(self, userid=None, source=None, groups=None):
+        """
+        This method replaces the memberships a source gave a user with what it says now,
+        through the map rows for that source. Memberships from other sources are untouched.
+        """
+        mapped = {}
+        for row in Database().get_record(table='usergroupmap', where=f"source = '{source}'") or []:
+            mapped[row['external_group']] = (row['usergroupid'], row['role'])
+        wanted = {}
+        for group in groups:
+            if group in mapped:
+                usergroupid, role = mapped[group]
+                wanted[usergroupid] = role
+            else:
+                self.logger.info(f"group {group} of source {source} is not mapped; it grants nothing")
+        Database().delete_row('usergroupmember', [{'column': 'userid', 'value': userid},
+                                                  {'column': 'source', 'value': source}])
+        for usergroupid, role in wanted.items():
+            Database().insert('usergroupmember', Helper().make_rows(
+                {'userid': userid, 'usergroupid': usergroupid, 'role': role, 'source': source}))
 
 
     def digest(self, password=None):

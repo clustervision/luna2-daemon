@@ -5,16 +5,18 @@ Every write goes through the real routes, the journal (a no-op outside HA), the 
 classes and the SQLite data layer. Nothing is enforced yet: an admin token does all of it.
 """
 import json
+import os
 
 import pytest
 from flask import Flask
 from jwt import decode, encode
 
+DAEMON = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'daemon'))
 TABLES = ['user', 'usergroup', 'usergroupmember', 'usergroupmap']
 
 
 @pytest.fixture
-def db(tmp_path):
+def db(tmp_path, monkeypatch):
     import common.constant as constant
     from utils import database
     from utils.database import Database
@@ -25,6 +27,8 @@ def db(tmp_path):
     database.local_thread.connection = None
     for table in TABLES:
         Database().create(table, DBStructure().get_database_table_structure(table))
+    # a login walks the authentication chain, whose sources are plugin files
+    monkeypatch.setitem(constant.CONSTANT['PLUGINS'], 'PLUGINS_DIRECTORY', os.path.join(DAEMON, 'plugins'))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
     database.local_thread.connection = None
@@ -157,12 +161,14 @@ def test_a_wrong_password_a_disabled_user_and_a_stranger_are_refused(client, mon
     assert 'Incorrect password' in _login(monkeypatch, 'alice', 'wrong')
     client.user('alice', enabled=False)
     assert 'disabled' in _login(monkeypatch, 'alice', 'right')
-    assert 'does not exist' in _login(monkeypatch, 'nobody', 'x')
+    assert 'not known to any authentication source' in _login(monkeypatch, 'nobody', 'x')
 
 
 def test_a_user_without_a_digest_cannot_log_in_locally(client, monkeypatch):
+    """local answers not-known for a row without a digest, so the chain moves on; with no
+    other source claiming the name, the login is refused."""
     client.user('bob')
-    assert 'no password in Luna' in _login(monkeypatch, 'bob', 'anything')
+    assert 'not known to any authentication source' in _login(monkeypatch, 'bob', 'anything')
 
 
 def test_the_configuration_file_account_still_mints_id_zero(db, monkeypatch):
@@ -172,7 +178,7 @@ def test_the_configuration_file_account_still_mints_id_zero(db, monkeypatch):
 def test_an_empty_password_removes_the_digest(client, monkeypatch):
     client.user('alice', password='x')
     client.user('alice', password='')
-    assert 'no password in Luna' in _login(monkeypatch, 'alice', 'x')
+    assert 'not known to any authentication source' in _login(monkeypatch, 'alice', 'x')
 
 
 # ── usergroups and members ──────────────────────────────────────────────────

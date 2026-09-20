@@ -36,6 +36,7 @@ from jwt import encode, decode, exceptions
 from utils.log import Log
 from utils.database import Database
 from base.user import User
+from utils.helper import Helper
 from common.constant import CONSTANT
 
 # Files with these extensions are handed out by the file server only with a token;
@@ -75,7 +76,7 @@ class Authentication():
                     if username and password:
                         if CONSTANT['API']['USERNAME'] != username:
                             self.logger.info(f'Username {username} does not belong to INI.')
-                            user_id, message = User().authenticate(username, password)
+                            user_id, message = self.login(username, password)
                             if user_id is not None:
                                 jwt_token = encode({'id': user_id, 'exp': expiry_time}, api_key, 'HS256')
                                 message = f'Authentication token generated, Token {jwt_token}'
@@ -109,6 +110,48 @@ class Authentication():
             self.logger.error(message)
         response = {'token' : jwt_token} if jwt_token else {'message' : message}
         return status, response
+
+
+    def chain(self):
+        """
+        Output - the authentication sources in the order they are asked, from [AUTH] CHAIN;
+        local then pam when the ini says nothing.
+        """
+        named = CONSTANT.get('AUTH', {}).get('CHAIN') or 'local, pam'
+        return [source.strip().lower() for source in named.split(',') if source.strip()]
+
+
+    def login(self, username=None, password=None):
+        """
+        This method walks the chain. The first source that knows the name decides: verified
+        becomes a Luna user through login_identity, refused stops the chain. A source that
+        cannot work is logged and skipped, so a local user still gets in.
+        Output - the user's id and a message, or None and the reason.
+        """
+        # the journal imports every base class, and one of them imports this module
+        from utils.journal import Journal
+        plugins_path = CONSTANT['PLUGINS']['PLUGINS_DIRECTORY']
+        auth_plugins = Helper().plugin_finder(f'{plugins_path}/auth')
+        for source in self.chain():
+            try:
+                plugin_class = Helper().plugin_load(auth_plugins, 'auth', [source])
+                if not plugin_class:
+                    self.logger.error(f"authentication source {source} has no plugin; skipped")
+                    continue
+                status, result = plugin_class().authenticate(username, password)
+            except Exception as exp:
+                self.logger.error(f"authentication source {source} is unavailable: {exp}")
+                continue
+            if status is None:
+                self.logger.debug(f"authentication source {source} does not know {username}: {result}")
+                continue
+            if status is False:
+                return None, result
+            journaled, message = Journal().add_request(function="User.login_identity", object=source, payload=result)
+            if not journaled:
+                self.logger.warning(f"login of {username} not journaled: {message}; the table sync repairs the peer")
+            return User().login_identity(source, result)
+        return None, f'User {username} is not known to any authentication source'
 
 
     def node_token(self, request_data=None, nodename=None):

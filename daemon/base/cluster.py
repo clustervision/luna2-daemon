@@ -38,7 +38,7 @@ from utils.service import Service
 from utils.helper import Helper
 from utils.tables import Tables
 from utils.controller import Controller
-from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64, request_entry_path
 from utils.mountsrender import MountsRender
 from common.constant import CONSTANT
 
@@ -166,7 +166,10 @@ class Cluster():
             return False, f'Invalid request: {exp}'
         if value == own:
             return True, 'Mounts document unchanged.'
-        return self.update_cluster({'config': {'cluster': {'mounts': value}}})
+        status, message = self.update_cluster({'config': {'cluster': {'mounts': value}}})
+        if status is True:
+            message = f"Mount {request_entry_path(data['mount'])} added to the cluster."
+        return status, message
 
     def remove_mount(self, request_data=None):
         """Remove the entry at a path from the cluster's mounts document."""
@@ -181,7 +184,10 @@ class Cluster():
         value, found = remove_entry(own, path)
         if not found:
             return False, f'Invalid request: no mount at {path} in the cluster mounts document'
-        return self.update_cluster({'config': {'cluster': {'mounts': value}}})
+        status, message = self.update_cluster({'config': {'cluster': {'mounts': value}}})
+        if status is True:
+            message = f"Mount {path} removed from the cluster."
+        return status, message
 
     def update_cluster(self, request_data=None):
         """

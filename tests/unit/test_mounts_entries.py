@@ -120,6 +120,7 @@ def test_node_add_copies_the_effective_document_down_first_and_says_so(db):
     with patch('base.node.Service'):
         status, message = Node().update_mount('node001', _mount(ARCHIVE, 'node', 'node001'))
     assert status is True, message
+    assert message.startswith('Mount /trinity/archive2 added to node node001.')
     assert 'copied to node node001 first' in message and 'cluster mounts document' in message
     # every cluster entry survived, and the new one sits at the end
     assert _paths(_stored('node', 'node001')) == [m['path'] for m in CORPUS['mounts']] + ['/trinity/archive2']
@@ -191,7 +192,7 @@ def _route_app():
     def add():
         from utils.helper import Helper
         status, message = Cluster().update_mount(request.data)
-        return {'message': message}, 201 if status is True else Helper().get_access_code(status, message)
+        return {'message': message}, Helper().get_access_code(status, message)
     return app.test_client()
 
 
@@ -201,7 +202,7 @@ def test_the_add_route_takes_the_envelope_with_a_base64_entry_and_refuses_a_bare
     with patch('base.cluster.Service'):
         answer = client.post('/config/cluster/mounts', json=_mount(ARCHIVE, 'cluster'))
     assert answer.status_code == 201, answer.get_data(as_text=True)
-    assert 'updated' in answer.get_json()['message'], 'the message travels with the 201'
+    assert answer.get_json()['message'] == 'Mount /trinity/archive2 added to the cluster.', 'an add is a creation: 201 with its message'
     assert _paths(_stored('cluster'))[-1] == '/trinity/archive2'
     stored = [m for m in _doc(_stored('cluster'))['mounts'] if m['path'] == '/trinity/archive2'][0]
     assert stored == ARCHIVE, 'the entry arrives intact through the filter, quotes and all'

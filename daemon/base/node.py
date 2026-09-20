@@ -32,7 +32,7 @@ __status__      = 'Development'
 
 from base64 import b64decode, b64encode
 from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
-from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64, request_entry_path
 from utils.mountsrender import MountsRender
 from utils.database import Database
 from utils.log import Log
@@ -728,8 +728,12 @@ class Node():
         if value == own:
             return True, 'Mounts document unchanged.'
         status, message = self.update_node(name, {'config': {'node': {name: {'mounts': value}}}})
-        if status is True and copied_from:
-            message = f"{message} The {copied_from} mounts document was copied to node {name} first; it now deviates from it."
+        if status is True:
+            # an add is a creation and answers with its message; a copied document is
+            # the one thing the caller cannot see and is worth telling
+            message = f"Mount {request_entry_path(data['mount'])} added to node {name}."
+            if copied_from:
+                message = f"{message} The {copied_from} mounts document was copied to node {name} first; it now deviates from it."
         return status, message
 
     def remove_mount(self, name=None, request_data=None):
@@ -745,8 +749,10 @@ class Node():
         if not found:
             return False, f'Invalid request: no mount at {path} in the mounts document node {name} sees'
         status, message = self.update_node(name, {'config': {'node': {name: {'mounts': value}}}})
-        if status is True and copied_from:
-            message = f"{message} The {copied_from} mounts document was copied to node {name} first; it now deviates from it."
+        if status is True:
+            message = f"Mount {path} removed from node {name}."
+            if copied_from:
+                message = f"{message} The {copied_from} mounts document was copied to node {name} first; it now deviates from it."
         return status, message
 
     def assign_profile(self, name=None, request_data=None):
@@ -772,7 +778,10 @@ class Node():
         if not assign and profile not in names:
             return False, f'Invalid request: profile {profile} is not assigned to node {name}'
         names = names + [profile] if assign else [known for known in names if known != profile]
-        return self.update_node(name, {'config': {'node': {name: {'profiles': ','.join(names)}}}})
+        status, message = self.update_node(name, {'config': {'node': {name: {'profiles': ','.join(names)}}}})
+        if status is True:
+            message = f"Profile {profile} assigned to node {name}." if assign else f"Profile {profile} removed from node {name}."
+        return status, message
 
     def update_node(self, name=None, request_data=None):
         """

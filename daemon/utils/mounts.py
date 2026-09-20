@@ -250,6 +250,12 @@ def upsert_entry(value, entry):
     return to_b64(document)
 
 
+def request_entry_path(value):
+    """The path of an entry that arrived base64, for a message; '?' when it has none."""
+    entry = document_from_b64(value)
+    return entry.get('path', '?') if isinstance(entry, dict) else '?'
+
+
 def remove_entry(value, path):
     """The document without the entry at path, and whether there was one. An
     emptied document stays a document: at group or node level it still overrides."""

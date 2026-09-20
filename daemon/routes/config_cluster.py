@@ -111,9 +111,7 @@ def config_cluster_mounts_add():
     status, response = Journal().add_request(function="Cluster.update_mount", payload=request.data)
     if status is True:
         status, response = Cluster().update_mount(request.data)
-    # a 201 with the message: what the daemon did with the entry (a copied document,
-    # an unchanged one) is worth telling, and an update's 204 would carry no body
-    access_code = 201 if status is True else Helper().get_access_code(status, response)
+    access_code = Helper().get_access_code(status, response)
     return {'message': response}, access_code
 
 
@@ -127,9 +125,7 @@ def config_cluster_mounts_remove():
     status, response = Journal().add_request(function="Cluster.remove_mount", payload=request.data)
     if status is True:
         status, response = Cluster().remove_mount(request.data)
-    # a 201 with the message: what the daemon did with the entry (a copied document,
-    # an unchanged one) is worth telling, and an update's 204 would carry no body
-    access_code = 201 if status is True else Helper().get_access_code(status, response)
+    access_code = Helper().get_access_code(status, response)
     return {'message': response}, access_code
 
 

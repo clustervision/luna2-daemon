@@ -50,9 +50,11 @@ def jwt_token():
     """
     access_code = 401
     status, response = Authentication().get_token(request.data)
-    response = dumps(response)
     if status is True:
         access_code = 201
+    elif isinstance(response, dict) and 'code' in response:
+        access_code = response.pop('code')
+    response = dumps(response)
     return response, access_code
 
 

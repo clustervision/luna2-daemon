@@ -201,6 +201,10 @@ class Access():
                 raise AccessRefused(401, f'User {userid} no longer exists')
             if not Helper().make_bool(rows[0]['enabled']):
                 raise AccessRefused(401, f"User {rows[0]['username']} is disabled")
+            if Helper().make_bool(rows[0]['delegate']) is True:
+                # a program that vouches for people never acts as itself: the flag is the whole
+                # of what it may do, and that happens at the token exchange, not here
+                raise AccessRefused(403, f"User {rows[0]['username']} is a delegate and may only obtain tokens for others")
             admin = Helper().make_bool(rows[0]['admin']) is True
             usergroups, hardware = {}, set()
             for row in Database().get_record(table='usergroupmember', where=f"userid = '{userid}'") or []:

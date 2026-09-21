@@ -75,20 +75,31 @@ class Authentication():
                     expiry_time = datetime.utcnow() + api_expiry
                     api_key = CONSTANT['API']['SECRET_KEY']
                     if username and password:
+                        on_behalf_of = request_data.get('on_behalf_of')
                         if CONSTANT['API']['USERNAME'] != username:
                             self.logger.info(f'Username {username} does not belong to INI.')
                             user_id, message = self.login(username, password)
+                            if user_id is not None and on_behalf_of:
+                                # the delegate vouched for somebody: the token is that person's
+                                user_id, message = self.delegate(user_id, username, on_behalf_of)
                             if user_id is not None:
                                 jwt_token = encode({'id': user_id, 'exp': expiry_time}, api_key, 'HS256')
                                 message = f'Authentication token generated, Token {jwt_token}'
                                 self.logger.debug(message)
                                 status = True
-                                Audit().record(userid=user_id, username=username, method='POST', path='/token',
-                                               outcome='login', code=201)
+                                Audit().record(userid=user_id, username=on_behalf_of or username, method='POST', path='/token',
+                                               outcome='delegated' if on_behalf_of else 'login', code=201,
+                                               detail=f'by {username}' if on_behalf_of else None)
                             else:
                                 self.logger.warning(message)
                                 Audit().record(username=username, method='POST', path='/token',
-                                               outcome='refused', code=401, detail=message)
+                                               outcome='refused', code=403 if on_behalf_of else 401,
+                                               detail=f'on behalf of {on_behalf_of}: {message}' if on_behalf_of else message)
+                        elif on_behalf_of:
+                            message = 'The configuration-file account is not a delegate'
+                            self.logger.warning(message)
+                            Audit().record(username=username, method='POST', path='/token', outcome='refused', code=403,
+                                           detail=f'on behalf of {on_behalf_of}: {message}')
                         else:
                             if CONSTANT['API']['PASSWORD'] != password:
                                 shown = password if self.logger.isEnabledFor(logging.DEBUG) else '******'
@@ -114,7 +125,51 @@ class Authentication():
             message = 'Login Required'
             self.logger.error(message)
         response = {'token' : jwt_token} if jwt_token else {'message' : message}
+        if not jwt_token and request_data and request_data.get('on_behalf_of'):
+            # a delegation refused is a forbidden act by an authenticated caller, not a bad login
+            response['code'] = 403
         return status, response
+
+
+    def delegate(self, delegate_id=None, delegate_name=None, person=None):
+        """
+        A user carrying the delegate flag vouches for a person: the person is resolved through
+        the chain without a credential, the way a login would have found them, and becomes a
+        Luna user by the same path. A program that vouches never acts as itself.
+        Output - the person's id and a message, or None and the reason.
+        """
+        rows = Database().get_record(table='user', where=f"id = '{delegate_id}'")
+        if not rows or not Helper().make_bool(rows[0]['delegate']):
+            return None, f'User {delegate_name} may not obtain a token on behalf of others'
+        if person == CONSTANT['API']['USERNAME']:
+            return None, 'The configuration-file account cannot be delegated to'
+        from utils.journal import Journal
+        plugins_path = CONSTANT['PLUGINS']['PLUGINS_DIRECTORY']
+        auth_plugins = Helper().plugin_finder(f'{plugins_path}/auth')
+        for source in self.chain():
+            try:
+                plugin_class = Helper().plugin_load(auth_plugins, 'auth', [source])
+                if not plugin_class:
+                    continue
+                known, result = plugin_class().resolve(person)
+            except Exception as exp:
+                self.logger.error(f"authentication source {source} is unavailable: {exp}")
+                continue
+            if not known:
+                continue
+            journaled, message = Journal().add_request(function="User.login_identity", object=source, payload=result)
+            if not journaled:
+                self.logger.warning(f"delegated login of {person} not journaled: {message}; the table sync repairs the peer")
+            user_id, message = User().login_identity(source, result)
+            if user_id is not None and self._is_delegate(user_id):
+                return None, f'User {person} is a delegate and cannot be delegated to'
+            return user_id, message
+        return None, f'User {person} is not known to any authentication source'
+
+
+    def _is_delegate(self, userid=None):
+        rows = Database().get_record(table='user', where=f"id = '{userid}'")
+        return bool(rows) and Helper().make_bool(rows[0]['delegate']) is True
 
 
     def chain(self):

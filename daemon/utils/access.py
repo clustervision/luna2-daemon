@@ -472,8 +472,9 @@ class Access():
             table='usergroup', where=f"id IN ({','.join(map(str, group_ids))})") if group_ids else [])}
         for row in rows:
             row['access'] = self.mode_text(row.get('access'), table)
-            row['owners'] = [owners.get(i, str(i)) for i in self.ids(row.get('owners'))] or ['rootus']
-            row['usergroups'] = [groups.get(i, str(i)) for i in self.ids(row.get('usergroups'))]
+            # csv, the way profiles, roles and scripts travel: a CLI of any age shows text
+            row['owners'] = ','.join(owners.get(i, str(i)) for i in self.ids(row.get('owners'))) or 'rootus'
+            row['usergroups'] = ','.join(groups.get(i, str(i)) for i in self.ids(row.get('usergroups')))
 
 
     # ── the check the decorators run ───────────────────────────────────────
@@ -674,8 +675,8 @@ class Access():
         usergroups = self.ids(row.get('usergroups'))
         names_o = {int(r['id']): r['username'] for r in (Database().get_record(table='user', where=f"id IN ({','.join(map(str, owners))})") if owners else [])}
         names_g = {int(r['id']): r['name'] for r in (Database().get_record(table='usergroup', where=f"id IN ({','.join(map(str, usergroups))})") if usergroups else [])}
-        return {'owners': [names_o.get(i, str(i)) for i in owners] or ['rootus'],
-                'usergroups': [names_g.get(i, str(i)) for i in usergroups],
+        return {'owners': ','.join(names_o.get(i, str(i)) for i in owners) or 'rootus',
+                'usergroups': ','.join(names_g.get(i, str(i)) for i in usergroups),
                 'access': self.mode_text(row.get('access'), table)}
 
     def _edit_list(self, current, wanted, lookup):

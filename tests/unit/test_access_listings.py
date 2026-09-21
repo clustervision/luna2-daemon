@@ -222,14 +222,14 @@ def test_every_entry_carries_owners_usergroups_and_access_as_names(seeded):
     try:
         status, response = OSImage().get_all_osimages()
         shared = response['config']['osimage']['shared']
-        assert shared['owners'] == ['rootus'] and shared['usergroups'] == [] and shared['access'] == 'rwxrwxr--'
+        assert shared['owners'] == 'rootus' and shared['usergroups'] == '' and shared['access'] == 'rwxrwxr--'
     finally:
         context.pop()
     context = _as(seeded.alice)
     try:
         status, response = OSImage().get_osimage('mine')
         mine = response['config']['osimage']['mine']
-        assert mine['owners'] == ['alice'] and mine['access'] == 'rwx------'
+        assert mine['owners'] == 'alice' and mine['access'] == 'rwx------'
     finally:
         context.pop()
 

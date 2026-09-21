@@ -64,7 +64,7 @@ def test_deleting_a_user_removes_it_from_every_owners_list(world, db):
     image = db.get_record(table='osimage', where="name = 'rocky9'")[0]
     assert Access().ids(node['owners']) == [alice]
     assert not image['owners'], 'an emptied list reads as rootus-owned, not as a dangling id'
-    assert Access().annotate('osimage', image)['owners'] == ['rootus']
+    assert Access().annotate('osimage', image)['owners'] == 'rootus'
 
 
 # TRIX-2139
@@ -174,7 +174,7 @@ def test_every_show_renders_owners_usergroups_and_access(full_db):
             status, response = show(name)
             assert status is True, (table, response)
             row = response['config'][table][name]
-            assert (row.get('owners'), row.get('usergroups'), row.get('access')) == (['owner'], ['dept'], 'rwxr-x---'), (table, row)
+            assert (row.get('owners'), row.get('usergroups'), row.get('access')) == ('owner', 'dept', 'rwxr-x---'), (table, row)
     finally:
         context.pop()
 

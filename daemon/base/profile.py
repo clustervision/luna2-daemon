@@ -272,6 +272,8 @@ class Profile():
                         newprofile = dict(profile[0])
                         del newprofile['id']
                         newprofile['name'] = newname
+                        # a department's clone carries the creator's columns in the body; the source's otherwise
+                        newprofile.update({key: data[key] for key in ('owners', 'usergroups', 'access') if key in data})
                         row = Helper().make_rows(newprofile)
                         new_profileid = Database().insert('profile', Access().created_row('profile', row))
                         where = f"profileid = '{profileid}'"

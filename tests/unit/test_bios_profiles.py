@@ -423,3 +423,16 @@ def test_record_match_keeps_what_the_configuration_said(cluster):
     row = Database().get_record(table='nodeinventory', where='nodeid = "1"')[0]
     assert row['bios_config_content'] == Bios().content_digest(config('golden')[0])
     assert row['bios_config_content'] == digest_of(cluster['attributes'])
+
+
+def test_a_clone_keeps_the_columns_its_body_carries(cluster):
+    """The access check writes a department creator's owner and usergroups into a clone body
+    before the route journals it. A clone that copies the source row and takes only chosen keys
+    from the body would drop them and hand the department a rootus-owned copy."""
+    Bios().clone_bios('golden', {'config': {'biosconfig': {'golden': {
+        'newbiosname': 'team-copy', 'owners': '7', 'usergroups': '3'}}}})
+    clone = config('team-copy')[0]
+    assert clone['owners'] == '7' and clone['usergroups'] == '3'
+    assert clone['attributes'] == config('golden')[0]['attributes'], 'the rest is the source, as before'
+    Bios().clone_bios('golden', {'config': {'biosconfig': {'golden': {'newbiosname': 'plain-copy'}}}})
+    assert config('plain-copy')[0]['owners'] == config('golden')[0]['owners'], 'without them, the source decides'

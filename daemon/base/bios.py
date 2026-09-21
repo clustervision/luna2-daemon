@@ -322,6 +322,8 @@ class Bios():
         row['updated'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         if 'comment' in data:
             row['comment'] = data['comment']
+        # a department's clone carries the creator's columns in the body; the source's otherwise
+        row.update({key: data[key] for key in ('owners', 'usergroups', 'access') if key in data})
         Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(row)))
         return True, f'BIOS configuration {name} cloned to {newname}'
 

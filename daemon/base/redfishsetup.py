@@ -288,6 +288,8 @@ class RedfishSetup():
         newsetup = dict(setup[0])
         del newsetup['id']
         newsetup['name'] = newname
+        # a department's clone carries the creator's columns in the body; the source's otherwise
+        newsetup.update({key: data[key] for key in ('owners', 'usergroups', 'access') if key in data})
         new_setupid = Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(newsetup)))
         where = f"redfishsetupid = '{setupid}'"
         for record in Database().get_record(table='redfishaccount', where=where) or []:

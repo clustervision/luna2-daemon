@@ -105,6 +105,16 @@ CONFIG_FIELDS = {
               'prescript', 'partscript', 'postscript', 'install_mode', 'disklayout', 'osimage_filter',
               'netboot', 'bootmenu', 'provision_method', 'provision_fallback', 'mounts', 'comment'},
 }
+# Body keys that name another governed object, and the table each names: a write that sets
+# one needs r on what it names (design: referencing needs r on the target, w on the holder).
+# A derived test holds this to the *id columns of node and group.
+REFERENCES = {
+    'node': {'group': 'group', 'osimage': 'osimage', 'bmcsetup': 'bmcsetup', 'redfishsetup': 'redfishsetup',
+             'biosconfig': 'biosconfig', 'switch': 'switch', 'cloud': 'cloud', 'profiles': 'profile'},
+    'group': {'osimage': 'osimage', 'bmcsetup': 'bmcsetup', 'redfishsetup': 'redfishsetup',
+              'biosconfig': 'biosconfig', 'profiles': 'profile'},
+}
+
 # the same fields as the API names them, for the request body
 HARDWARE_KEYS = {
     'node': {'newnodename', 'switch', 'switchport', 'cloud', 'bmcsetup', 'redfishsetup',
@@ -182,7 +192,11 @@ class Access():
             caller = {'id': 0, 'admin': True, 'usergroups': {}, 'hardware': set()}
         else:
             rows = Database().get_record(table='user', where=f"id = '{userid}'")
-            admin = bool(rows) and Helper().make_bool(rows[0]['admin']) is True
+            if not rows:
+                raise AccessRefused(401, f'User {userid} no longer exists')
+            if not Helper().make_bool(rows[0]['enabled']):
+                raise AccessRefused(401, f"User {rows[0]['username']} is disabled")
+            admin = Helper().make_bool(rows[0]['admin']) is True
             usergroups, hardware = {}, set()
             for row in Database().get_record(table='usergroupmember', where=f"userid = '{userid}'") or []:
                 usergroups[int(row['usergroupid'])] = row['role']
@@ -483,10 +497,14 @@ class Access():
                 entity, name, bit = requirement['entity'], requirement['name'], requirement['bit']
                 if not caller['admin'] and bit == 'w' and self.row(entity, name) is None:
                     self.may_create(caller, entity, self._body_of(entity, name))
+                    self._references(caller, entity, self._body_of(entity, name))
                     return True, None, None
                 row = self.allowed(userid, entity, name, bit)
-                if bit == 'w' and entity in HARDWARE_FIELDS and row is not None:
-                    self._hardware(caller, entity, name, row)
+                if bit == 'w' and row is not None:
+                    self._deletes(caller, entity, name, row)
+                    if entity in HARDWARE_FIELDS:
+                        self._hardware(caller, entity, name, row)
+                    self._references(caller, entity, self._body_of(entity, name))
                 return True, None, None
             if kind == 'dynamic':
                 bit = 'r' if 'status' in str(requirement.get('action')) else 'x'
@@ -549,6 +567,32 @@ class Access():
         named = sorted(set(self._body_of(entity, name)) & HARDWARE_KEYS[entity])
         if named:
             raise AccessRefused(403, f"{entity} {name}: {', '.join(named)} is hardware, for rootus, admin or a usergroup with the hardware flag")
+
+    def _deletes(self, caller, entity, name, row):
+        """
+        Removing hardware follows creating it: a delete of a node or a hardware catalogue
+        object needs the hardware axis, not only w. A group, osimage or profile goes with w.
+        """
+        rule = request.url_rule.rule if request.url_rule else ''
+        if not rule.endswith('/_delete') or entity not in HARDWARE_CREATES:
+            return
+        if not self.hardware_allowed(caller, row):
+            raise AccessRefused(403, f'removing a {entity} needs the admin or manager role in a usergroup with the hardware flag')
+
+    def _references(self, caller, entity, body):
+        """
+        Every governed object the body names must be readable by the caller: a node goes
+        into a group one may see, a group takes an osimage one may see. Unreadable answers
+        as not available, the same as a show would.
+        """
+        if caller['admin']:
+            return
+        for key, table in REFERENCES.get(entity, {}).items():
+            # profiles travel comma or space separated, the way the node base reads them
+            for name in str(body.get(key) or '').replace(' ', ',').split(','):
+                name = name.strip().lstrip('+-')
+                if name:
+                    self.allowed(caller['id'], table, name, 'r')
 
     def _membership(self, caller, usergroup):
         """
@@ -645,6 +689,19 @@ class Access():
     def _usergroupid(self, name):
         rows = Database().get_record(table='usergroup', where=f"name = '{name}'")
         return int(rows[0]['id']) if rows else None
+
+    def forget_user(self, userid=None):
+        """
+        A deleted user leaves no ownership behind: its id goes out of the owners of every
+        governed row, so nothing answers to that id later.
+        """
+        for table in GOVERNED:
+            for row in Database().get_record(select=['id', 'owners'], table=table,
+                                             where="owners IS NOT NULL AND owners != ''") or []:
+                owners = self.ids(row['owners'])
+                if int(userid) in owners:
+                    remaining = ','.join(str(i) for i in owners if i != int(userid))
+                    self._store(table, row, 'owners', remaining or None)
 
     def _admin_of_listed(self, caller, row):
         return any(caller['usergroups'].get(gid) == 'admin' for gid in self.ids(row.get('usergroups')))

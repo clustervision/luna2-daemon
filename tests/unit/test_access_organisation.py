@@ -15,7 +15,7 @@ from flask import Blueprint, Flask, g
 from jwt import encode
 
 DAEMON = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'daemon'))
-TABLES = ['node', 'group', 'osimage', 'network', 'user', 'usergroup', 'usergroupmember', 'usergroupmap']
+TABLES = ['node', 'group', 'osimage', 'bmcsetup', 'network', 'user', 'usergroup', 'usergroupmember', 'usergroupmap']
 
 
 # ── the derived half ────────────────────────────────────────────────────────
@@ -150,6 +150,8 @@ def client(db):
             return view
         stub.add_url_rule(f'/config/{entity}/<string:name>', endpoint=f'{entity}_post',
                           view_func=token_required(make(entity)), methods=['POST'])
+        stub.add_url_rule(f'/config/{entity}/<string:name>/_delete', endpoint=f'{entity}_delete',
+                          view_func=token_required(make(entity)), methods=['GET'])
 
     @stub.route('/config/node/<string:name>/interfaces', methods=['POST'])
     @token_required
@@ -306,7 +308,9 @@ def test_a_department_changes_config_fields_and_not_hardware_fields(client, worl
     assert alice.post('/config/group/compute-intel', _body('group', 'compute-intel', domain='x'))[0] == 403
 
 
-def test_the_hardware_flag_opens_the_hardware_fields(client, world):
+def test_the_hardware_flag_opens_the_hardware_fields(client, world, db):
+    from utils.helper import Helper
+    db.insert('bmcsetup', Helper().make_rows({'name': 'ipmi', 'usergroups': str(world.amd), 'access': '770'}))
     hans = client.as_(world.ids['hans'])
     assert hans.post('/config/node/node002', _body('node', 'node002', bmcsetup='ipmi'))[0] == 200
     assert hans.post('/config/node/node002/interfaces', _body('node', 'node002', interfaces=[]))[0] == 200

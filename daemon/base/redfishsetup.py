@@ -70,6 +70,9 @@ class RedfishSetup():
             'port': setup['port'],
             'verify': Helper().make_bool(setup['verify']),
             'comment': setup['comment'],
+            'owners': setup['owners'],
+            'usergroups': setup['usergroups'],
+            'access': setup['access'],
             'accounts': []
         }
         where = f"redfishsetupid = '{setup['id']}'"

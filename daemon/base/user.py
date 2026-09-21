@@ -38,6 +38,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 from common.constant import CONSTANT
+from utils.access import Access, AccessRefused
 
 
 class User():
@@ -144,6 +145,7 @@ class User():
         if not existing:
             return False, f'User {name} is not available'
         Database().delete_row('usergroupmember', [{'column': 'userid', 'value': existing[0]['id']}])
+        Access().forget_user(existing[0]['id'])
         Database().delete_row('user', [{'column': 'id', 'value': existing[0]['id']}])
         return True, f'User {name} removed.'
 
@@ -227,12 +229,11 @@ class User():
         if userid in (0, '0'):
             return True, {'user': CONSTANT['API']['USERNAME'], 'id': 0, 'source': 'ini',
                           'admin': True, 'usergroups': {}, 'hardware': []}
-        users = Database().get_record(table='user', where=f"id = '{userid}'")
-        if not users:
-            return False, f'User {userid} no longer exists'
-        user = users[0]
-        if not Helper().make_bool(user['enabled']):
-            return False, f"User {user['username']} is disabled"
+        try:
+            Access().caller(userid)
+        except AccessRefused as exp:
+            return False, exp.message
+        user = Database().get_record(table='user', where=f"id = '{userid}'")[0]
         usergroups = self.memberships().get(user['id'], {})
         hardware = [row['name'] for row in Database().get_record(table='usergroup', where="hardware = '1'") or []
                     if row['name'] in usergroups]

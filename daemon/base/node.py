@@ -358,7 +358,10 @@ class Node():
             f"node.name='{name}'"
         )
         if all_nodes and nodes:
+            # the join carries the stored ids; keep what visible() rendered
+            rendered = {key: nodes[0][key] for key in ('owners', 'usergroups', 'access')}
             nodes[0].update(all_nodes[0])
+            nodes[0].update(rendered)
         if nodes:
             node = nodes[0]
             response = {'config': {'node': {} }}

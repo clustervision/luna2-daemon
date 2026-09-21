@@ -68,7 +68,9 @@ def whoami():
     status, response = User().whoami(g.userid)
     if status is True:
         return dumps(response), 200
-    return dumps({'message': response}), 401
+    # the refusal's own words carry the code, as the token decorators answer them:
+    # a delegate's own token is refused, a gone or disabled user is no longer authenticated
+    return dumps({'message': response}), 403 if 'is a delegate' in response else 401
 
 
 @auth_blueprint.route('/tpm/<string:nodename>', methods=['POST'])

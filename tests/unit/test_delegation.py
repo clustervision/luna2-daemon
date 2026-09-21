@@ -190,7 +190,7 @@ def test_a_delegates_own_token_is_refused_on_every_route(app, world):
     token = body['token']
     for path in ('/whoami', '/config/node', '/config/node/node001', '/config/user'):
         response = app.get(path, headers={'x-access-tokens': token})
-        assert response.status_code in (401, 403), (path, response.status_code)
+        assert response.status_code == 403, (path, response.status_code)
         assert 'is a delegate and may only obtain tokens for others' in json.loads(response.data)['message'], path
     response = app.post('/config/node/node001', headers={'x-access-tokens': token},
                         data=json.dumps({'config': {'node': {'node001': {'comment': 'x'}}}}), content_type='application/json')

@@ -88,6 +88,7 @@ def test_a_user_is_created_and_shown_without_its_password(client, db):
     assert shown['enabled'] is True and shown['admin'] is False and shown['delegate'] is False
     assert shown['source'] == 'local'
     assert shown['createdby'] == 'luna', 'the creator is the INI account behind token id 0'
+    assert shown['name'] == 'alice' and shown['username'] == 'alice', 'the name travels inside the record, as every entity does'
     assert shown['usergroups'] == {}
     stored = db.get_record(table='user', where="username = 'alice'")[0]['password']
     assert stored.startswith('pbkdf2_sha256$') and 's3cret' not in stored
@@ -186,7 +187,7 @@ def test_an_empty_password_removes_the_digest(client, monkeypatch):
 def test_a_usergroup_is_created_renamed_and_deleted(client):
     assert client.usergroup('intel', comment='Intel Corporation').status_code == 201
     shown = _body(client.get('/config/usergroup/intel'))['config']['usergroup']['intel']
-    assert shown == {'comment': 'Intel Corporation', 'hardware': False, 'members': {}}
+    assert shown == {'name': 'intel', 'comment': 'Intel Corporation', 'hardware': False, 'members': {}}
     assert client.usergroup('intel', newusergroupname='intel-nl').status_code == 204
     assert client.get('/config/usergroup/intel').status_code == 404
     assert client.get('/config/usergroup/intel-nl/_delete').status_code == 204

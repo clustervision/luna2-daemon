@@ -65,7 +65,7 @@ class UserGroup():
             members = self.members()
             config = {}
             for usergroup in usergroups:
-                config[usergroup['name']] = {'comment': usergroup['comment'],
+                config[usergroup['name']] = {'name': usergroup['name'], 'comment': usergroup['comment'],
                                              'hardware': Helper().make_bool(usergroup['hardware']) is True,
                                              'members': members.get(usergroup['id'], {})}
             response = {'config': {'usergroup': dict(sorted(config.items()))}}

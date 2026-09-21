@@ -77,7 +77,10 @@ class User():
             memberships = self.memberships()
             config = {}
             for user in users:
-                entry = {'source': user['source'], 'external_id': user['external_id'],
+                # name inside the record as well as on the key: every other entity does, and
+                # the CLI's list and show read it from the record
+                entry = {'name': user['username'], 'username': user['username'],
+                         'source': user['source'], 'external_id': user['external_id'],
                          'password_set': bool(user['password']), 'lastlogin': user['lastlogin'],
                          'created': user['created'], 'createdby': self.username_by_id(user['createdby'])}
                 for flag in self.flags:

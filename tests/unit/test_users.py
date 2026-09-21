@@ -126,6 +126,14 @@ def test_a_user_without_a_password_is_recorded_as_such(client):
     assert _body(client.get('/config/user/bob'))['config']['user']['bob']['password_set'] is False
 
 
+def test_the_records_own_name_in_the_body_is_accepted_as_for_every_entity(client, db):
+    """The CLI's generic add puts the name inside the body as well as in the URL; the URL
+    decides which record is meant. Found live: luna usergroup add was refused for it."""
+    assert client.post('/config/user/alice', {'config': {'user': {'alice': {'name': 'alice', 'password': 's3cret'}}}}).status_code == 201
+    assert client.post('/config/usergroup/intel', {'config': {'usergroup': {'intel': {'name': 'intel', 'hardware': True}}}}).status_code == 201
+    assert db.get_record(table='usergroup', where="name = 'intel'")[0]['hardware'] in (1, '1', True)
+
+
 def test_unknown_fields_are_refused_not_ignored(client):
     response = client.user('alice', colour='blue')
     assert response.status_code == 400

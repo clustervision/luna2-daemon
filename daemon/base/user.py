@@ -103,6 +103,9 @@ class User():
             data = dict(request_data['config']['user'][name])
         except (KeyError, TypeError):
             return False, 'Invalid request: user data is needed'
+        # the CLI puts the record's own name in the body as well as in the URL, as it does
+        # for every entity; the URL says which record is meant, so it is accepted and ignored
+        data.pop('name', None)
         unknown = [key for key in data if key not in self.fields]
         if unknown:
             return False, f"Invalid request: unknown field {', '.join(sorted(unknown))}"

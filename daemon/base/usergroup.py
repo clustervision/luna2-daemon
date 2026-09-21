@@ -83,6 +83,9 @@ class UserGroup():
             data = dict(request_data['config']['usergroup'][name])
         except (KeyError, TypeError):
             return False, 'Invalid request: usergroup data is needed'
+        # the CLI puts the record's own name in the body as well as in the URL, as it does
+        # for every entity; the URL says which record is meant, so it is accepted and ignored
+        data.pop('name', None)
         unknown = [key for key in data if key not in self.fields]
         if unknown:
             return False, f"Invalid request: unknown field {', '.join(sorted(unknown))}"

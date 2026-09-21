@@ -79,6 +79,7 @@ ROOTUS = {
 }
 
 BITS = {'r': 4, 'w': 2, 'x': 1}
+COLUMNS = ('owners', 'usergroups', 'access')
 
 # Departments that create their own objects, and what they may create: with a role of
 # admin or manager in a usergroup, these; with the usergroup's hardware flag as well,
@@ -363,29 +364,22 @@ class Access():
     def created_row(self, table=None, row=None):
         """
         Input - the row about to be inserted, as make_rows builds it
-        Output - the same row carrying the three columns: a node copies its group's; any
-                 other object created by a department lists every usergroup in which the
-                 creator is admin or manager and names the creator as owner; a rootus or
-                 admin create leaves them NULL. Called at every insert into a governed table;
-                 the derived test checks that.
+        Output - the same row: a node copies its group's three columns unless it already
+                 carries them. Every other object arrives with its columns in the body,
+                 written by the access check before the route journaled the request, or
+                 with none, which reads as rootus-owned. Only replicated data may decide a
+                 column here: the peer inserts the same row with no caller. Called at every
+                 insert into a governed table; the derived test checks that.
         """
-        if table not in GOVERNED:
+        if table != 'node':
             return row
         columns = {entry['column']: entry['value'] for entry in row}
-        if any(columns.get(key) for key in ('owners', 'usergroups', 'access')):
+        if any(columns.get(key) for key in COLUMNS) or not columns.get('groupid'):
             return row
-        caller = self.request_caller()
-        values = {}
-        if table == 'node' and columns.get('groupid'):
-            groups = Database().get_record(table='group', where=f"id = '{columns['groupid']}'")
-            if groups:
-                values = {key: groups[0].get(key) for key in ('owners', 'usergroups', 'access')}
-        elif caller is not None and not caller['admin']:
-            leading = [gid for gid, role in caller['usergroups'].items() if role in ('admin', 'manager')]
-            values = {'owners': str(caller['id']), 'usergroups': ','.join(str(gid) for gid in leading)}
-        for key, value in values.items():
-            if value:
-                row = [entry for entry in row if entry['column'] != key] + [{'column': key, 'value': value}]
+        groups = Database().get_record(table='group', where=f"id = '{columns['groupid']}'")
+        for key in COLUMNS:
+            if groups and groups[0].get(key):
+                row = [entry for entry in row if entry['column'] != key] + [{'column': key, 'value': groups[0][key]}]
         return row
 
     def hardware_allowed(self, caller=None, row=None):
@@ -515,9 +509,12 @@ class Access():
                 if requirement.get('name') is None:
                     return True, None, None
                 entity, name, bit = requirement['entity'], requirement['name'], requirement['bit']
+                if not caller['admin'] and bit == 'w':
+                    self._no_columns_in_body(entity, name)
                 if not caller['admin'] and bit == 'w' and self.row(entity, name) is None:
                     self.may_create(caller, entity, self._body_of(entity, name))
                     self._references(caller, entity, self._body_of(entity, name))
+                    self._created_by(caller, entity, name)
                     return True, None, None
                 row = self.allowed(userid, entity, name, bit)
                 if bit == 'w' and row is not None:
@@ -549,7 +546,11 @@ class Access():
         entity, name, args = requirement['entity'], requirement.get('name'), requirement.get('args', {})
         if action == 'clone':
             self.allowed(userid, entity, name, 'r')
+            if not caller['admin']:
+                self._no_columns_in_body(entity, name)
             self.may_create(caller, entity, self._body_of(entity, name))
+            if not caller['admin']:
+                self._created_by(caller, entity, name)
         elif action in ('ospush', 'osgrab', 'biospush', 'biosgrab', 'firmwarepush', 'redfish', 'provision'):
             if name is None:
                 self._hostlist(userid, caller, 'x')
@@ -573,6 +574,35 @@ class Access():
             return body['config'][entity][name] or {}
         except (KeyError, TypeError, AttributeError):
             return {}
+
+    def _no_columns_in_body(self, entity, name):
+        """
+        owners, usergroups and access are changed with chown, chgrp and chmod, which have
+        their own rules; a create or update body naming them would walk past those rules.
+        """
+        named = [key for key in COLUMNS if key in self._body_of(entity, name)]
+        if named:
+            raise AccessRefused(403, f"{entity} {name}: {', '.join(named)} are changed with chown, chgrp and chmod")
+
+    def _created_by(self, caller, entity, name):
+        """
+        A department create names the creator as owner and lists every usergroup the
+        creator leads. Written into the request body here, before the route journals it,
+        so the peer stores the same values instead of deriving its own with no caller. A
+        node is left alone: it copies its group at insert time, on both controllers alike.
+        """
+        if entity == 'node':
+            return
+        try:
+            body = request.get_json(force=True, silent=True)['config'][entity][name]
+        except (KeyError, TypeError):
+            return
+        if not isinstance(body, dict):
+            return
+        leading = [gid for gid, role in caller['usergroups'].items() if role in ('admin', 'manager')]
+        body['owners'] = str(caller['id'])
+        if leading:
+            body['usergroups'] = ','.join(str(gid) for gid in leading)
 
     def _hardware(self, caller, entity, name, row):
         """

@@ -11,7 +11,7 @@ import re
 import types
 
 import pytest
-from flask import Blueprint, Flask, g
+from flask import request, Blueprint, Flask, g
 from jwt import encode
 
 DAEMON = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'daemon'))
@@ -146,7 +146,8 @@ def client(db):
     for entity in ('node', 'group', 'osimage', 'profile', 'bmcsetup', 'network', 'switch'):
         def make(entity):
             def view(name=None, **_):
-                return json.dumps({'reached': f'{entity} {name}'}), 200
+                # the body as the route would journal it, after the decorator ran
+                return json.dumps({'reached': f'{entity} {name}', 'body': request.get_json(force=True, silent=True)}), 200
             return view
         stub.add_url_rule(f'/config/{entity}/<string:name>', endpoint=f'{entity}_post',
                           view_func=token_required(make(entity)), methods=['POST'])
@@ -262,18 +263,34 @@ def test_clone_is_a_create_with_r_on_the_source(client, world):
 
 # inheritance
 
-def test_a_new_object_lists_the_creators_leading_usergroups_and_names_the_creator(world):
-    from utils.access import Access
-    from utils.helper import Helper
-    context = _as(world.ids['alice'])
-    try:
-        row = Access().created_row('osimage', Helper().make_rows({'name': 'mine'}))
-    finally:
-        context.pop()
-    columns = {e['column']: e['value'] for e in row}
-    assert columns['owners'] == str(world.ids['alice'])
-    assert columns['usergroups'] == str(world.intel)
-    assert 'access' not in columns, 'the default mode of the table applies until a chmod'
+def test_a_department_create_carries_the_creators_columns_in_the_body_it_journals(client, world):
+    """The owner and the usergroups the creator leads are written into the request body by
+    the access check, before the route journals it: the peer replays that body as user 0 and
+    must store the same columns. The default mode stays unset until a chmod."""
+    alice = client.as_(world.ids['alice'])
+    code, body = alice.post('/config/osimage/mine', _body('osimage', 'mine', path='/trinity/images/mine'))
+    assert code == 200, body
+    sent = body['body']['config']['osimage']['mine']
+    assert sent['owners'] == str(world.ids['alice']) and sent['usergroups'] == str(world.intel)
+    assert 'access' not in sent
+    assert sent['path'] == '/trinity/images/mine', 'the rest of the body is untouched'
+    hans = client.as_(world.ids['hans'])
+    code, body = hans.post('/config/node/node013', _body('node', 'node013', group='compute-amd'))
+    assert code == 200 and 'owners' not in body['body']['config']['node']['node013'], \
+        'a node is left to copy its group at insert time, which both controllers can do alike'
+
+
+def test_the_three_columns_cannot_be_set_through_a_create_or_update_body(client, world):
+    """A w-holder could otherwise walk past chown, chgrp and chmod by naming the columns
+    in an ordinary write; rootus and admin users keep the right, which the import needs."""
+    alice = client.as_(world.ids['alice'])
+    for payload in ({'access': '777'}, {'usergroups': str(world.amd)}, {'owners': '0'}):
+        code, body = alice.post('/config/group/compute-intel', _body('group', 'compute-intel', **payload))
+        assert code == 403 and 'changed with chown, chgrp and chmod' in body['message'], payload
+        code, body = alice.post('/config/osimage/mine2', _body('osimage', 'mine2', **payload))
+        assert code == 403 and 'changed with chown, chgrp and chmod' in body['message'], payload
+    for userid in (0, world.ids['zed']):
+        assert client.as_(userid).post('/config/group/compute-intel', _body('group', 'compute-intel', access='777'))[0] == 200
 
 
 def test_a_node_created_into_a_group_copies_the_groups_columns(world):
@@ -300,6 +317,9 @@ def test_rootus_and_admin_creates_leave_the_columns_alone(world):
         assert {e['column'] for e in row} == {'name'}
     assert {e['column'] for e in Access().created_row('osimage', Helper().make_rows({'name': 'x'}))} == {'name'}, \
         'outside a request, as when the journal replays, nothing is added'
+    row = Access().created_row('node', Helper().make_rows({'name': 'node012', 'groupid': world.g_amd}))
+    assert {e['column']: e['value'] for e in row}['usergroups'] == str(world.amd), \
+        'a node copies its group outside a request too: the peer inserts the same row'
 
 
 # the hardware axis

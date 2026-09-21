@@ -249,7 +249,7 @@ def test_chgrp_adds_only_a_usergroup_you_belong_to_even_as_owner(client, world, 
     from utils.helper import Helper
     dave, erin, alice = client.as_(world.ids['dave']), client.as_(world.ids['erin']), client.as_(world.ids['alice'])
     code, body = dave.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))
-    assert code == 403 and 'only add usergroups you are a member of' in body['message']
+    assert code == 403 and 'changing usergroups is for owners' in body['message'], 'a reader neither owns nor administers'
     assert erin.get('/config/node/node001')[0] == 404, 'other is not listed yet'
     code, body = alice.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))
     assert code == 403 and 'only add usergroups you are a member of' in body['message'], \
@@ -260,20 +260,30 @@ def test_chgrp_adds_only_a_usergroup_you_belong_to_even_as_owner(client, world, 
         'an owner who is a reader in the target team can'
     assert erin.get('/config/node/node001')[0] == 200, 'listed now: other gets the usergroup bits'
     code, body = dave.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='-other'))
-    assert code == 403 and 'removing a usergroup is for owners' in body['message']
+    assert code == 403 and 'changing usergroups is for owners' in body['message']
     assert alice.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups=['intel']))[0] == 204
     assert erin.get('/config/node/node001')[0] == 404
 
 
-def test_a_member_may_add_their_own_usergroup_to_an_object_they_can_read(client, world):
-    """erin reads rocky9 through the other bits; as an operator in other she may list other on
-    it, and not third, of which she is no member. A usergroup admin of a listed usergroup could."""
+def test_a_reader_of_a_shared_object_cannot_pull_their_own_team_onto_it(client, world, db):
+    """erin reads rocky9 through the other bits and is an operator in other. Listing other
+    on the image would hand other's admins rwx on it, so adding is for owners and admins of
+    a listed usergroup, like removing; membership of the usergroup added is still required."""
+    from utils.helper import Helper
     erin = client.as_(world.ids['erin'])
-    assert erin.post('/config/osimage/rocky9/_chgrp', _body('osimage', 'rocky9', usergroups='+other'))[0] == 204
-    code, body = erin.post('/config/osimage/rocky9/_chgrp', _body('osimage', 'rocky9', usergroups='+third'))
-    assert code == 403 and 'only add usergroups you are a member of' in body['message']
-    assert erin.post('/config/osimage/rocky9/_chgrp', _body('osimage', 'rocky9', usergroups='+intel'))[0] == 204, \
-        'intel is listed already: adding it again changes nothing and is not a foreign add'
+    code, body = erin.post('/config/osimage/rocky9/_chgrp', _body('osimage', 'rocky9', usergroups='+other'))
+    assert code == 403 and 'changing usergroups is for owners' in body['message']
+    db.insert('usergroupmember', Helper().make_rows({'userid': world.ids['bob'], 'usergroupid': world.intel,
+                                                     'role': 'admin', 'source': 'local'}))
+    bob = client.as_(world.ids['bob'])
+    code, body = bob.post('/config/osimage/rocky9/_chgrp', _body('osimage', 'rocky9', usergroups='+other'))
+    assert code == 403 and 'only add usergroups you are a member of' in body['message'], \
+        'an admin of a listed usergroup still cannot hand the object to a team they are not in'
+    db.insert('usergroupmember', Helper().make_rows({'userid': world.ids['bob'], 'usergroupid': world.other,
+                                                     'role': 'reader', 'source': 'local'}))
+    assert bob.post('/config/osimage/rocky9/_chgrp', _body('osimage', 'rocky9', usergroups='+other'))[0] == 204, \
+        'an admin of a listed usergroup who is a member of the target team can'
+    assert erin.post('/config/osimage/rocky9')[0] == 403, 'other holds rwx now, erin stays capped at r-x'
 
 
 def test_chown_stays_inside_the_organisation(client, world, db):

@@ -756,9 +756,10 @@ class Access():
 
     def chgrp(self, table=None, name=None, request_data=None, userid=None, dry=False):
         """
-        Adding a usergroup needs membership of it, in any role, whoever asks: an object
-        does not leave the organisation without a superuser. Owners and usergroup admins
-        on listed objects may remove. rootus and admin anywhere.
+        Owners and usergroup admins on listed objects add and remove; rootus and admin
+        anywhere. Adding also needs membership of the usergroup added, in any role: an
+        object does not leave the organisation without a superuser, and a reader of a
+        shared object cannot pull their own team onto it.
         """
         try:
             wanted = request_data['config'][table][name]['usergroups']
@@ -774,8 +775,8 @@ class Access():
             full = caller['id'] in self.ids(row.get('owners')) or self._admin_of_listed(caller, row)
             removed = [gid for gid in current if gid not in new]
             added = [gid for gid in new if gid not in current]
-            if removed and not full:
-                raise AccessRefused(403, f'{table} {name}: removing a usergroup is for owners, usergroup admins, rootus and admin users')
+            if (removed or added) and not full:
+                raise AccessRefused(403, f'{table} {name}: changing usergroups is for owners, usergroup admins, rootus and admin users')
             foreign = [gid for gid in added if gid not in caller['usergroups']]
             if foreign:
                 raise AccessRefused(403, f'{table} {name}: you may only add usergroups you are a member of')

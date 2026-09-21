@@ -545,10 +545,16 @@ class Access():
         action = requirement['action']
         entity, name, args = requirement['entity'], requirement.get('name'), requirement.get('args', {})
         if action == 'clone':
-            self.allowed(userid, entity, name, 'r')
+            source = self.allowed(userid, entity, name, 'r')
             if not caller['admin']:
                 self._no_columns_in_body(entity, name)
-            self.may_create(caller, entity, self._body_of(entity, name))
+            body = dict(self._body_of(entity, name))
+            if entity == 'node' and 'group' not in body and source and source.get('groupid'):
+                # a clone body names only the new node; the group comes from the source
+                groups = Database().get_record(table='group', where=f"id = '{source['groupid']}'")
+                if groups:
+                    body['group'] = groups[0]['name']
+            self.may_create(caller, entity, body)
             if not caller['admin']:
                 self._created_by(caller, entity, name)
         elif action in ('ospush', 'osgrab', 'biospush', 'biosgrab', 'firmwarepush', 'redfish', 'provision'):

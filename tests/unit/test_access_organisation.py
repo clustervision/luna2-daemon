@@ -171,6 +171,11 @@ def client(db):
     def clone(name=None):
         return json.dumps({'reached': 'clone'}), 200
 
+    @stub.route('/config/node/<string:name>/_clone', methods=['POST'])
+    @token_required
+    def clone_node(name=None):
+        return json.dumps({'reached': 'clone'}), 200
+
     @stub.route('/control/action/<string:subsystem>/<string:hostname>/_<string:action>', methods=['GET'])
     @token_required
     def control(subsystem=None, hostname=None, action=None):
@@ -259,6 +264,18 @@ def test_clone_is_a_create_with_r_on_the_source(client, world):
     carol, alice = client.as_(world.ids['carol']), client.as_(world.ids['alice'])
     assert carol.post('/config/osimage/rocky9/_clone', _body('osimage', 'rocky9', newosimage='mine'))[0] == 403
     assert alice.post('/config/osimage/rocky9/_clone', _body('osimage', 'rocky9', newosimage='mine'))[0] == 200
+
+
+def test_a_node_clone_is_fenced_by_the_source_nodes_group_when_the_body_names_none(client, world):
+    """A clone body names only the new node; the group comes from the source. The create
+    fence must read it from there, or a department could never clone its own nodes."""
+    hans, alice = client.as_(world.ids['hans']), client.as_(world.ids['alice'])
+    assert hans.post('/config/node/node002/_clone', _body('node', 'node002', newnodename='node022'))[0] == 200, \
+        'hans leads amd with the hardware flag; node002 sits in compute-amd, which lists amd'
+    code, body = hans.post('/config/node/node001/_clone', _body('node', 'node001', newnodename='node023'))
+    assert code == 404, 'node001 is intel\'s: not readable, so not a source'
+    code, body = alice.post('/config/node/node001/_clone', _body('node', 'node001', newnodename='node024'))
+    assert code == 403 and 'hardware flag' in body['message'], 'intel has no hardware flag: no node creates'
 
 
 # inheritance

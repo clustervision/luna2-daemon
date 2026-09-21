@@ -94,6 +94,25 @@ def test_a_user_is_created_and_shown_without_its_password(client, db):
     assert stored.startswith('pbkdf2_sha256$') and 's3cret' not in stored
 
 
+def test_the_journaled_request_carries_the_digest_the_master_stored_not_the_password(client, db, monkeypatch):
+    """The peer replays the journaled body as user 0. A plaintext password there would be
+    salted again on the peer, leaving two digests for one account and a table hash that
+    never agrees; and the password itself would travel. The route digests before it
+    journals, and the base keeps a digest it is handed."""
+    from utils import journal
+    from base.user import User
+    seen = {}
+    monkeypatch.setattr(journal.Journal, 'add_request', lambda self, **kw: seen.update(kw) or (True, 'Not in H/A mode'))
+    assert client.user('alice', password='s3cret').status_code == 201
+    journaled = seen['payload']['config']['user']['alice']['password']
+    assert journaled.startswith('pbkdf2_sha256$') and 's3cret' not in journaled
+    stored = db.get_record(table='user', where="username = 'alice'")[0]['password']
+    assert stored == journaled, 'what the master stored is what the peer will store'
+    assert User().verify('s3cret', stored)
+    assert client.user('alice', password='').status_code == 204
+    assert db.get_record(table='user', where="username = 'alice'")[0]['password'] is None, 'an empty password still clears the digest'
+
+
 def test_the_user_list_and_a_missing_user(client):
     assert client.get('/config/user').status_code == 404
     client.user('alice', password='x')

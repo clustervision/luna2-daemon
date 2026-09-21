@@ -82,10 +82,15 @@ def config_user_get(name=None):
 @input_filter(checks=['config:user'], skip=['password'])
 def config_user_post(name=None):
     """
-    This route will create or update a user. The caller is recorded as the creator, so
-    the value travels with the journaled request and the peer stores the same one.
+    This route will create or update a user. The caller is recorded as the creator and a
+    password is digested here, so both values travel with the journaled request and the
+    peer stores the same ones: a second salting on the peer would leave two digests for
+    one account, and the password itself never travels.
     """
-    request.data['config']['user'][name]['createdby'] = g.userid
+    body = request.data['config']['user'][name]
+    body['createdby'] = g.userid
+    if body.get('password'):
+        body['password'] = User().digest(body['password'])
     status, response = Journal().add_request(function="User.update_user", object=name, payload=request.data)
     if status is True:
         status, response = User().update_user(name, request.data)

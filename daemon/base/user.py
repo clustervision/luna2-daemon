@@ -126,7 +126,11 @@ class User():
             if clash:
                 return False, f"Invalid request: user {data['username']} already exists"
         if 'password' in data:
-            data['password'] = self.digest(data['password']) if data['password'] else None
+            # the route digests before it journals; a digest handed in is kept as it is
+            if not data['password']:
+                data['password'] = None
+            elif not str(data['password']).startswith(f'{self.DIGEST}$'):
+                data['password'] = self.digest(data['password'])
         for flag in self.flags:
             if flag in data:
                 data[flag] = Helper().bool_to_string(data[flag])

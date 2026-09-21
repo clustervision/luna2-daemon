@@ -37,6 +37,7 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+import re
 from flask import g, has_request_context, request
 from utils.database import Database
 from utils.log import Log
@@ -162,9 +163,11 @@ class Access():
 
     def mode_octal(self, text=None):
         """
-        Input - nine characters as ls shows them
+        Input - nine characters as ls shows them, or three octal digits as chmod takes them
         Output - the octal text stored in the table
         """
+        if re.fullmatch(r'[0-7]{3}', str(text or '')):
+            return str(text)
         value = 0
         for index, char in enumerate(text):
             if char != '-':
@@ -745,8 +748,9 @@ class Access():
 
     def chgrp(self, table=None, name=None, request_data=None, userid=None, dry=False):
         """
-        A member may add a usergroup they belong to, in any role. Owners and usergroup
-        admins on listed objects may add or remove. rootus and admin anywhere.
+        Adding a usergroup needs membership of it, in any role, whoever asks: an object
+        does not leave the organisation without a superuser. Owners and usergroup admins
+        on listed objects may remove. rootus and admin anywhere.
         """
         try:
             wanted = request_data['config'][table][name]['usergroups']
@@ -765,7 +769,7 @@ class Access():
             if removed and not full:
                 raise AccessRefused(403, f'{table} {name}: removing a usergroup is for owners, usergroup admins, rootus and admin users')
             foreign = [gid for gid in added if gid not in caller['usergroups']]
-            if foreign and not full:
+            if foreign:
                 raise AccessRefused(403, f'{table} {name}: you may only add usergroups you are a member of')
         if not dry:
             self._store(table, row, 'usergroups', ','.join(str(i) for i in new))

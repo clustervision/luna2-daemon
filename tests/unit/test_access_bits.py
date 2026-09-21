@@ -230,6 +230,9 @@ def test_chmod_by_the_owner_changes_what_the_team_gets(client, world):
     code, body = alice.post('/config/node/node001/_chmod', _body('node', 'node001', access='rwxrwx---'))
     assert code == 204, body
     assert bob.post('/config/node/node001')[0] == 200
+    assert alice.post('/config/node/node001/_chmod', _body('node', 'node001', access='750'))[0] == 204, 'octal as chmod takes it'
+    assert bob.post('/config/node/node001')[0] == 403
+    assert alice.post('/config/node/node001/_chmod', _body('node', 'node001', access='770'))[0] == 204
     dave = client.as_(world.ids['dave'])
     code, body = dave.post('/config/node/node001/_chmod', _body('node', 'node001', access='rwxrwxrwx'))
     assert code == 403 and 'chmod is for owners' in body['message']
@@ -242,12 +245,19 @@ def test_a_bad_mode_or_an_ungoverned_entity_is_refused(client, world):
     assert client.as_(0).post('/config/user/alice/_chmod', _body('user', 'alice', access='rwxrwxrwx'))[0] == 400
 
 
-def test_chgrp_adds_only_a_usergroup_you_belong_to_unless_you_own_it(client, world):
+def test_chgrp_adds_only_a_usergroup_you_belong_to_even_as_owner(client, world, db):
+    from utils.helper import Helper
     dave, erin, alice = client.as_(world.ids['dave']), client.as_(world.ids['erin']), client.as_(world.ids['alice'])
     code, body = dave.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))
     assert code == 403 and 'only add usergroups you are a member of' in body['message']
     assert erin.get('/config/node/node001')[0] == 404, 'other is not listed yet'
-    assert alice.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))[0] == 204
+    code, body = alice.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))
+    assert code == 403 and 'only add usergroups you are a member of' in body['message'], \
+        'an owner outside the target team cannot hand the object to it: nothing leaves an organisation without a superuser'
+    db.insert('usergroupmember', Helper().make_rows({'userid': world.ids['alice'], 'usergroupid': world.other,
+                                                     'role': 'reader', 'source': 'local'}))
+    assert alice.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))[0] == 204, \
+        'an owner who is a reader in the target team can'
     assert erin.get('/config/node/node001')[0] == 200, 'listed now: other gets the usergroup bits'
     code, body = dave.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='-other'))
     assert code == 403 and 'removing a usergroup is for owners' in body['message']

@@ -77,7 +77,7 @@ REG_EXP = {
     'serviceaction': { 'regexp': r'^(restart|stop|reload|start|none|)$', 'error': 'restart, stop, reload, start or none' },
     'profilescope': { 'regexp': r'^(static|dynamic|)$', 'error': 'static or dynamic' },
     'redfishscheme': { 'regexp': r'^(https|http|)$', 'error': 'https or http' },
-    'accessmode': { 'regexp': r'^([r-][w-][x-]){3}$', 'error': 'nine characters rwxrwxrwx with - for an absent bit, as ls shows a mode' },
+    'accessmode': { 'regexp': r'^(([r-][w-][x-]){3}|[0-7]{3})$', 'error': 'a mode as ls shows it, nine characters rwxrwxrwx with - for an absent bit, or three octal digits' },
     'namelist': { 'regexp': r'^([+-]?[a-zA-Z0-9\-\.\_]+(,\s*[+-]?[a-zA-Z0-9\-\.\_]+)*)?$', 'error': 'comma-separated names, each optionally prefixed with + to add or - to remove' },
     'redfishrole': { 'regexp': r'^[a-zA-Z0-9\-\_\.]*$', 'error': 'combination of characters a-z A-Z, numbers 0-9, \'-\', \'_\' and \'.\'' },
     'anything': { 'regexp': r'', 'error': 'anything' }

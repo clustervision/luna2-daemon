@@ -253,3 +253,14 @@ def test_cancel_leaves_no_artifacts_across_subsystems_and_statuses(db):
     assert ok is True
     assert not db.get_record(table='queue', where="request_id='C1'"), \
         "no leftover tasks of any subsystem or status (queued/in progress/parked)"
+
+
+def test_pack_of_an_unknown_image_queues_nothing(db):
+    """A pack request names an image that does not exist: refuse it at the API rather than
+    queue a worker that fails and leaves a parked sync row behind on an HA pair."""
+    from utils.dbstructure import DBStructure
+    db.create('osimage', DBStructure().get_database_table_structure('osimage'))
+    ok, message = _base_osimage().pack('nope')[:2]
+    assert ok is False
+    assert 'does not exist' in str(message)
+    assert not db.get_record(table='queue'), "nothing was queued for an image that does not exist"

@@ -822,6 +822,8 @@ class OSImage():
         response = {"message": f'Internal error: OS image {name} packing failed. No sign of life of spawned thread'}
         # Antoine
         image = Database().get_record(table='osimage', where=f"name = '{name}'")
+        if not image:
+            return False, f"OS image {name} does not exist"
         force = False
         # force lets a genuinely-changed image rebuild despite a recent identical request (staleness),
         # but it must never create a second concurrent chain: if this image is already being packed,

@@ -72,6 +72,7 @@ def client(db):
     from common.constant import CONSTANT
     from common.validate_auth import token_required
     from routes.config_access import access_blueprint
+    from routes.config_rack import rack_blueprint
 
     stub = Blueprint('stub', __name__)
 
@@ -114,6 +115,7 @@ def client(db):
     app.testing = True
     app.register_blueprint(stub)
     app.register_blueprint(access_blueprint)
+    app.register_blueprint(rack_blueprint)
     key = CONSTANT['API']['SECRET_KEY']
 
     class Client:
@@ -216,6 +218,17 @@ def test_listings_pass_the_gate_and_rootus_routes_do_not(client, world):
     assert me.post('/config/usergroup/intel/members')[0] == 403, 'membership delegation is a later ticket'
     code, body = me.post('/config/node/newnode')
     assert code == 403 and 'creating a node needs' in body['message'], 'a reader creates nothing'
+
+
+def test_the_rack_inventory_writes_name_no_rack_and_are_rootus(client, world):
+    """The bulk height and orientation route and the single-device delete name a device, not
+    a rack, so no rack's mode can decide them: they are declared rootus on the route."""
+    me = client.as_(world.ids['dave'])
+    code, body = me.post('/config/rack/inventory', {'config': {'rack': {'inventory': [{'name': 'node001', 'height': 2}]}}})
+    assert code == 403 and 'rootus and admin' in body['message'], body
+    code, body = me.get('/config/rack/inventory/node001/type/node/_delete')
+    assert code == 403 and 'rootus and admin' in body['message'], body
+    assert client.as_(0).post('/config/rack/inventory', {'config': {'rack': {'inventory': []}}})[0] != 403
 
 
 # ── chmod, chgrp, chown ─────────────────────────────────────────────────────

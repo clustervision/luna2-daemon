@@ -128,7 +128,7 @@ def config_inventory_get_subset(subset=None):
 
 
 @rack_blueprint.route("/config/rack/inventory", methods=['POST'])
-@token_required
+@token_required(requires='rootus')
 @validate_name
 @input_filter(checks=['config:rack:inventory'], skip=None)
 def config_inventory_post(name=None):
@@ -159,7 +159,7 @@ def config_rack_delete(name=None):
 
 
 @rack_blueprint.route("/config/rack/inventory/<string:name>/type/<string:device_type>/_delete", methods=['GET'])
-@token_required
+@token_required(requires='rootus')
 @validate_name
 def config_inventory_delete(name=None,device_type=None):
     """

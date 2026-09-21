@@ -534,10 +534,8 @@
   "name": null
  },
  "GET /config/rack/inventory/<string:name>/type/<string:device_type>/_delete": {
-  "bit": "w",
-  "entity": "rack",
-  "kind": "object",
-  "name": "<name>"
+  "entity": "config",
+  "kind": "rootus"
  },
  "GET /config/rack/inventory/<string:subset>": {
   "bit": "r",
@@ -1239,10 +1237,8 @@
   "name": "<name>"
  },
  "POST /config/rack/inventory": {
-  "bit": "w",
-  "entity": "rack",
-  "kind": "object",
-  "name": null
+  "entity": "config",
+  "kind": "rootus"
  },
  "POST /config/redfishsetup/<string:name>": {
   "bit": "w",

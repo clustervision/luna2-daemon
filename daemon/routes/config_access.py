@@ -46,8 +46,9 @@ access_blueprint = Blueprint('config_access', __name__)
 def _change(verb, entity, name):
     """
     The three verbs differ only in the method they call and the field they take. The
-    object is a path argument called object rather than name: the input filter would
-    otherwise look for it under a fixed entity it cannot know here.
+    object is a path argument called objectname rather than name: the input filter would
+    otherwise look for it under a fixed entity it cannot know here. Its rule is keyed on
+    that word alone; a journal payload carries a free-form field called object.
     """
     if entity not in GOVERNED:
         return {'message': f'Invalid request: {entity} is not a governed object'}, 400
@@ -65,34 +66,34 @@ def _change(verb, entity, name):
     return {'message': response}, Helper().get_access_code(status, response)
 
 
-@access_blueprint.route("/config/<string:entity>/<string:object>/_chmod", methods=['POST'])
+@access_blueprint.route("/config/<string:entity>/<string:objectname>/_chmod", methods=['POST'])
 @token_required
 @validate_name
 @input_filter(checks=['config'], skip=None)
-def config_chmod(entity=None, object=None):
+def config_chmod(entity=None, objectname=None):
     """
     Body: access as ls shows it, nine characters.
     """
-    return _change('chmod', entity, object)
+    return _change('chmod', entity, objectname)
 
 
-@access_blueprint.route("/config/<string:entity>/<string:object>/_chgrp", methods=['POST'])
+@access_blueprint.route("/config/<string:entity>/<string:objectname>/_chgrp", methods=['POST'])
 @token_required
 @validate_name
 @input_filter(checks=['config'], skip=None)
-def config_chgrp(entity=None, object=None):
+def config_chgrp(entity=None, objectname=None):
     """
     Body: usergroups as names; a bare list replaces, +name adds, -name removes.
     """
-    return _change('chgrp', entity, object)
+    return _change('chgrp', entity, objectname)
 
 
-@access_blueprint.route("/config/<string:entity>/<string:object>/_chown", methods=['POST'])
+@access_blueprint.route("/config/<string:entity>/<string:objectname>/_chown", methods=['POST'])
 @token_required
 @validate_name
 @input_filter(checks=['config'], skip=None)
-def config_chown(entity=None, object=None):
+def config_chown(entity=None, objectname=None):
     """
     Body: owners as usernames; a bare list replaces, +name adds, -name removes.
     """
-    return _change('chown', entity, object)
+    return _change('chown', entity, objectname)

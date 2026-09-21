@@ -879,35 +879,35 @@
  "GET /whoami": {
   "kind": "self"
  },
- "POST /config/<string:entity>/<string:object>/_chgrp": {
+ "POST /config/<string:entity>/<string:objectname>/_chgrp": {
   "action": "chgrp",
   "args": {
    "entity": "<entity>",
-   "object": "<object>"
+   "objectname": "<objectname>"
   },
   "entity": "<entity>",
   "kind": "override",
-  "name": "<object>"
+  "name": "<objectname>"
  },
- "POST /config/<string:entity>/<string:object>/_chmod": {
+ "POST /config/<string:entity>/<string:objectname>/_chmod": {
   "action": "chmod",
   "args": {
    "entity": "<entity>",
-   "object": "<object>"
+   "objectname": "<objectname>"
   },
   "entity": "<entity>",
   "kind": "override",
-  "name": "<object>"
+  "name": "<objectname>"
  },
- "POST /config/<string:entity>/<string:object>/_chown": {
+ "POST /config/<string:entity>/<string:objectname>/_chown": {
   "action": "chown",
   "args": {
    "entity": "<entity>",
-   "object": "<object>"
+   "objectname": "<objectname>"
   },
   "entity": "<entity>",
   "kind": "override",
-  "name": "<object>"
+  "name": "<objectname>"
  },
  "POST /config/biosconfig/<string:name>": {
   "bit": "w",

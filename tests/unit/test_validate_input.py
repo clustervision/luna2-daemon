@@ -396,3 +396,21 @@ def test_reserved_words_are_the_rules_own_not_the_name_rules():
     finally:
         del validate_input.MATCH['freeform']
         validate_input._st().error = None
+
+
+def test_a_journal_object_with_a_colon_still_replicates():
+    """The journal's `object` field is free-form: an image sync entry carries
+    `unpack_osimage:<image>`. A name rule keyed on that field name would make the
+    receiving controller answer 400 and wedge replication, and it has happened.
+    The chmod family's URL segment is validated under its own key instead."""
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+
+    validate_input._st().error = None
+    assert filter_data('unpack_osimage:compute-image', 'object') == 'unpack_osimage:compute-image'
+    assert not validate_input._st().error, "a journal object must not be held to a name rule"
+
+    validate_input._st().error = None
+    filter_data("node001'--", 'objectname')
+    assert validate_input._st().error, "the chmod family's object segment keeps the name rule"
+    validate_input._st().error = None

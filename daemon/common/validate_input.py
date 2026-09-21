@@ -119,7 +119,7 @@ MATCH = {
     'newusergroupname': 'name',
     'access': 'accessmode',
     'entity': 'strictname',
-    'object': 'name',
+    'objectname': 'name',
     'owners': 'namelist',
     'usergroups': 'namelist',
     'newcloudname': 'name',

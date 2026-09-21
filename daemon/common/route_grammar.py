@@ -141,7 +141,7 @@ def requirement(rule=None, method=None, args=None, declared=None):
         # the listing across node, group and cluster secrets; the rows are filtered per parent
         return {'kind': 'object', 'entity': 'cluster', 'name': None, 'bit': 'r' if method == 'GET' else 'w'}
     entity = ALIAS.get(entity, entity)
-    name = 'cluster' if entity == 'cluster' else (args.get('object') if generic else args.get('name'))
+    name = 'cluster' if entity == 'cluster' else (args.get('objectname') if generic else args.get('name'))
     last = parts[-1]
     if last.startswith('_'):
         if last in SUFFIX_OVERRIDES:

@@ -62,6 +62,9 @@ class Audit():
             return cls._logger
         logger = logging.getLogger('luna2-daemon.audit')
         logger.setLevel(logging.INFO)
+        # its own file only: what the daemon log gets is the debug copy record() writes
+        # there itself, not every line propagated through the parent's handlers
+        logger.propagate = False
         path = CONSTANT.get('AUDIT', {}).get('LOGFILE') or cls.default_path()
         if path:
             try:

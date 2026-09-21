@@ -248,6 +248,27 @@ def test_no_password_and_no_secret_content_reaches_the_trail(trail, db, world):
         assert forbidden not in text, f'{forbidden} reached the audit trail'
 
 
+def test_the_trail_does_not_reach_the_daemon_log_at_info(trail, db, world, caplog):
+    """Found live: a child logger propagates to the parent's handlers whatever its level, so
+    every audit line landed in the daemon log at info as well. The daemon log gets the
+    debug copy only."""
+    import logging
+    from common.validate_auth import token_required
+    stub = Blueprint('stub', __name__)
+
+    @stub.route('/config/node/<string:name>', methods=['POST'])
+    @token_required
+    def node(name=None):
+        return json.dumps({}), 200
+    app = Flask(__name__)
+    app.register_blueprint(stub)
+    with caplog.at_level(logging.INFO, logger='luna2-daemon'):
+        app.test_client().post('/config/node/node001', headers={'x-access-tokens': _token(0)}, data='{}', content_type='application/json')
+    assert len(_lines(trail)) == 1
+    assert not [r for r in caplog.records if 'AUDIT ' in r.getMessage() and r.levelno >= logging.INFO], \
+        'audit lines must not propagate into the daemon log at info'
+
+
 def test_the_writer_takes_no_body():
     """The structural guarantee behind the previous test: record() has no way to be handed a body."""
     import inspect

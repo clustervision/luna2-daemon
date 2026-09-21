@@ -187,3 +187,18 @@ def test_the_backup_path_is_rootus():
     from routes.config_cluster import config_cluster_export, config_cluster_import
     assert config_cluster_export.requires == 'rootus'
     assert config_cluster_import.requires == 'rootus'
+
+
+# TRIX-2145
+
+def test_a_persons_fetch_of_a_nodes_install_script_is_reprovisioning(client, world):
+    """the script carries the node's provision token, so handing it out is the x act;
+    the role, profile and script feeds are for nodes"""
+    carol, ivan, hans, zed = (client.as_(world.ids[n]) for n in ('carol', 'ivan', 'hans', 'zed'))
+    code, body = carol.get('/boot/install/node001')
+    assert code == 403 and 'requires x' in body['message']
+    assert ivan.get('/boot/install/node001')[0] == 200
+    assert hans.get('/boot/install/node001')[0] == 404
+    code, body = ivan.get('/boot/roles/compute')
+    assert code == 403 and 'for nodes, rootus and admin users' in body['message']
+    assert zed.get('/boot/roles/compute')[0] == 200

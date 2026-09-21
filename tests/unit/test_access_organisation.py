@@ -157,6 +157,9 @@ def client(db):
         stub.add_url_rule(f'/config/{entity}/<string:name>/interfaces/<string:interface>/_delete',
                           endpoint=f'{entity}_interface_delete', view_func=token_required(make(entity)), methods=['GET'])
 
+    stub.add_url_rule('/boot/install/<string:node>', endpoint='boot_install', view_func=token_required(make('boot')), methods=['GET'])
+    stub.add_url_rule('/boot/roles/<string:role>', endpoint='boot_roles', view_func=token_required(make('boot')), methods=['GET'])
+
     @stub.route('/config/node/<string:name>/interfaces', methods=['POST'])
     @token_required
     def interfaces(name=None):

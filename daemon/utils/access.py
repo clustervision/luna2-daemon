@@ -481,9 +481,18 @@ class Access():
             return False, 403, 'This route declares no requirement'
         kind = requirement['kind']
         try:
-            if kind in ('open', 'self', 'provision'):
+            if kind in ('open', 'self'):
                 return True, None, None
             caller = self.caller(userid)
+            if kind == 'provision':
+                # a node's own token never gets here; a person asking for a node's install
+                # script is reprovisioning it and receives its token, which is x. The role,
+                # profile and script feeds are for nodes, not people.
+                if requirement.get('name') is not None:
+                    self.allowed(userid, 'node', requirement['name'], 'x')
+                elif not caller['admin']:
+                    raise AccessRefused(403, f"{requirement.get('entity')} boot content is for nodes, rootus and admin users")
+                return True, None, None
             if kind == 'rootus':
                 if not caller['admin']:
                     raise AccessRefused(403, f"{requirement.get('entity')} is for rootus and admin users")

@@ -131,10 +131,8 @@
   "name": "cluster"
  },
  "GET /config/cluster/export": {
-  "bit": "r",
-  "entity": "cluster",
-  "kind": "object",
-  "name": "cluster"
+  "entity": "config",
+  "kind": "rootus"
  },
  "GET /config/cluster/mounts": {
   "bit": "r",
@@ -954,10 +952,8 @@
   "name": "cluster"
  },
  "POST /config/cluster/import": {
-  "bit": "w",
-  "entity": "cluster",
-  "kind": "object",
-  "name": "cluster"
+  "entity": "config",
+  "kind": "rootus"
  },
  "POST /config/cluster/mounts": {
   "bit": "w",

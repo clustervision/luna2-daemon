@@ -177,3 +177,13 @@ def test_every_show_renders_owners_usergroups_and_access(full_db):
             assert (row.get('owners'), row.get('usergroups'), row.get('access')) == (['owner'], ['dept'], 'rwxr-x---'), (table, row)
     finally:
         context.pop()
+
+
+# TRIX-2144
+
+def test_the_backup_path_is_rootus():
+    """the export carries every table, secrets and user digests included, so r on the
+    cluster row, which everyone holds, cannot be enough for it; import writes them all"""
+    from routes.config_cluster import config_cluster_export, config_cluster_import
+    assert config_cluster_export.requires == 'rootus'
+    assert config_cluster_import.requires == 'rootus'

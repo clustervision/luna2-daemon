@@ -115,15 +115,17 @@ def test_a_cluster_reporting_twice_does_not_double_the_queue(cluster):
     )
 
 
-def test_the_drain_returns_even_though_every_bmc_is_dark(cluster):
+def test_the_drain_returns_even_though_every_bmc_is_dark(cluster, monkeypatch):
     """
     The property that matters. push_mother also carries the osimage syncs, so a
     drain that waited on the BMCs would hold those for as long as fifteen hundred
     connect timeouts take - which is the shape of an outage, not a slow pass.
 
-    It schedules and returns, so the whole dark cluster costs a fraction of a
-    second. The bound is generous against the measured time on purpose: this is
-    here to catch a change that makes it collect inline, not to police the clock.
+    It hands the whole storm to the sweep in one call and returns. The sweep is
+    stubbed: run for real it outlives the test on its own pool, connecting to the
+    dark addresses seeded here long after the test has returned (TRIX-2132). A
+    change that collected inline would bypass the stub and fail on the count, so
+    the property is pinned without the clock; the bound stays as a backstop.
 
     The storm is aged first because every task is deferred five minutes when it is
     queued - without that the drain finds nothing selectable and measures the empty
@@ -132,8 +134,13 @@ def test_the_drain_returns_even_though_every_bmc_is_dark(cluster):
     storm()
     Database().update('queue', Helper().make_rows({'created': 'NOW'}),
                       [{"column": "task", "value": 'collect_redfish_inventory'}])
+    sweeps = []
+    monkeypatch.setattr('base.nodeinventory.NodeInventory.bulk_collect_redfish',
+                        lambda self, request_data=None: sweeps.append(request_data) or (True, 'ok'))
     started = time.time()
     assert BiosPush().collect_queued_inventory() is True
     elapsed = time.time() - started
     assert elapsed < 10, f'the drain blocked for {elapsed:.1f}s on dark BMCs'
+    assert len(sweeps) == 1, 'one sweep for the whole storm, scheduled, not collected inline'
+    assert len(sweeps[0]['config']['node']['hostlist'].split(',')) == NODES
     assert not collections(), 'the queue is emptied by draining it'

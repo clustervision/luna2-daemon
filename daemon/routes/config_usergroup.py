@@ -61,6 +61,19 @@ def config_usergroup():
     return _answer(*UserGroup().get_usergroup())
 
 
+@usergroup_blueprint.route("/config/usergroup/<string:name>/_access", methods=['GET'])
+@token_required(requires='rootus')
+@validate_name
+def config_usergroup_access(name=None):
+    """
+    What each role in the usergroup holds on the objects it is listed on.
+    """
+    status, response = UserGroup().access(name)
+    if status is True:
+        return dumps(response), 200
+    return {'message': response}, Helper().get_access_code(status, response)
+
+
 @usergroup_blueprint.route("/config/usergroup/<string:name>", methods=['GET'])
 @token_required
 @validate_name

@@ -252,6 +252,20 @@ class User():
                       'usergroups': usergroups, 'hardware': hardware}
 
 
+    def access(self, name=None):
+        """
+        Input - a username
+        Output - what the user holds, per kind of governed object, or why not
+        """
+        rows = Database().get_record(table='user', where=f"username = '{name}'")
+        if not rows:
+            return False, f'User {name} is not available'
+        try:
+            held = Access().holdings(rows[0]['id'])
+        except AccessRefused as exp:
+            return False, exp.message
+        return True, {'config': {'user': {name: {'access': held}}}}
+
     def digest(self, password=None):
         """
         Input - a password

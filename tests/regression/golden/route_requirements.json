@@ -714,6 +714,10 @@
   "entity": "user",
   "kind": "rootus"
  },
+ "GET /config/user/<string:name>/_access": {
+  "entity": "config",
+  "kind": "self"
+ },
  "GET /config/user/<string:name>/_delete": {
   "entity": "user",
   "kind": "rootus"
@@ -724,6 +728,10 @@
  },
  "GET /config/usergroup/<string:name>": {
   "entity": "usergroup",
+  "kind": "rootus"
+ },
+ "GET /config/usergroup/<string:name>/_access": {
+  "entity": "config",
   "kind": "rootus"
  },
  "GET /config/usergroup/<string:name>/_delete": {

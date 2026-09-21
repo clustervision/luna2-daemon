@@ -451,6 +451,42 @@ class Access():
         self._render(table, kept)
         return kept
 
+    def holdings(self, userid=None):
+        """
+        Output - per governed table, every object the user reaches and the three characters
+                 held there, by the same ladder the gate uses: {'node': {'node001': 'rwx'}}.
+                 Objects the user may not read are absent, as they are from every listing.
+        """
+        caller = self.caller(userid)
+        held = {}
+        for table in GOVERNED:
+            rows = Database().get_record(table=table) or []
+            found = {}
+            for row in rows:
+                bits = 'rwx' if caller['admin'] else self.bits(caller, table, row)
+                if 'r' in bits:
+                    found[row.get('name') or table] = bits
+            if found:
+                held[table] = found
+        return held
+
+    def usergroup_holdings(self, usergroupid=None):
+        """
+        Output - per governed table, every object the usergroup is listed on, with what each
+                 role makes of the usergroups digit: {'node': {'node001': {'admin': 'rwx', ...}}}.
+        """
+        held = {}
+        for table in GOVERNED:
+            found = {}
+            for row in Database().get_record(table=table) or []:
+                if int(usergroupid) not in self.ids(row.get('usergroups')):
+                    continue
+                digit = (int(str(row.get('access') or GOVERNED[table]), 8) >> 3) & 7
+                found[row.get('name') or table] = {role: self._text(digit & self.mask(cap)) for role, cap in ROLE_CAPS.items()}
+            if found:
+                held[table] = found
+        return held
+
     def visible_names(self, table=None, names=None):
         """
         Input - names of rows of a governed table, from a join or a child listing

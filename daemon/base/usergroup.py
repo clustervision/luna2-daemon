@@ -53,6 +53,17 @@ class UserGroup():
         self.fields = ['newusergroupname', 'comment', 'hardware']
 
 
+    def access(self, name=None):
+        """
+        Input - a usergroup name
+        Output - what each role in the usergroup holds on the objects it is listed on, or why not
+        """
+        from utils.access import Access  # the access module reads ROLE_CAPS from here
+        rows = Database().get_record(table='usergroup', where=f"name = '{name}'")
+        if not rows:
+            return False, f'Usergroup {name} is not available'
+        return True, {'config': {'usergroup': {name: {'access': Access().usergroup_holdings(rows[0]['id'])}}}}
+
     def get_usergroup(self, name=None):
         """
         This method will return one usergroup with its members, or all of them.

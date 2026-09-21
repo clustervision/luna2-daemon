@@ -280,3 +280,58 @@ def test_a_hostlist_crossing_the_boundary_is_refused_whole_naming_the_nodes(seed
     response = app.test_client().post('/control/action/power/_status', headers={'x-access-tokens': token},
                                       data=json.dumps(status_body), content_type='application/json')
     assert response.status_code == 200, 'a reader may ask the status of the node it may read'
+
+
+def test_what_a_user_holds_equals_what_their_own_listings_give(seeded):
+    """The holdings answer is the truth only if it is the same ladder every listing applies:
+    for every governed table, the objects it names for bob are exactly the rows the filtering
+    helper keeps for him, and the mode on each is the one the gate would enforce."""
+    from utils.access import Access, GOVERNED
+    from utils.database import Database
+    held = Access().holdings(seeded.bob)
+    caller = Access().caller(seeded.bob)
+    context = _as(seeded.bob)
+    try:
+        for table in GOVERNED:
+            rows = Database().get_record(table=table) or []
+            raw = {row.get('name') or table: dict(row) for row in rows}
+            visible = {row.get('name') or table for row in Access().visible(table, [dict(r) for r in rows])}
+            assert sorted(held.get(table, {})) == sorted(visible), table
+            for name in visible:
+                assert held[table][name] == Access().bits(caller, table, raw[name]), (table, name)
+    finally:
+        context.pop()
+    assert held['node'] == {'node001': 'r--'}, 'intel is listed on node001 at 750; bob reads as a reader'
+    assert held['osimage'] == {'shared': 'r--'}, 'mine is 700 and not his; shared is 774'
+    assert held['group'] == {'compute': 'r--'}
+    assert 'cluster' in held, 'the cluster row is 644 for everyone'
+    assert Access().holdings(seeded.zed)['osimage'] == {'mine': 'rwx', 'shared': 'rwx'}, 'the admin flag holds everything'
+
+
+def test_what_a_usergroup_holds_is_the_usergroups_digit_under_each_role(seeded):
+    from utils.access import Access
+    held = Access().usergroup_holdings(seeded.intel)
+    assert held['node'] == {'node001': {'admin': 'r-x', 'manager': 'r-x', 'operator': 'r-x', 'reader': 'r--'}}, '750: the digit is 5'
+    assert held['bmcsetup'] == {'ipmi': {'admin': 'rwx', 'manager': 'rwx', 'operator': 'r-x', 'reader': 'r--'}}, '770'
+    assert 'osimage' not in held, 'intel is listed on no image'
+
+
+def test_the_access_routes_answer_the_user_rootus_and_admin_only(seeded):
+    """A person asks for themselves; rootus and admin users for anyone; the usergroup route is rootus."""
+    from common.constant import CONSTANT
+    from routes.config_user import user_blueprint
+    from routes.config_usergroup import usergroup_blueprint
+    app = Flask(__name__); app.register_blueprint(user_blueprint); app.register_blueprint(usergroup_blueprint)
+    def get(path, userid):
+        response = app.test_client().get(path, headers={'x-access-tokens': encode({'id': userid}, CONSTANT['API']['SECRET_KEY'], 'HS256')})
+        return response.status_code, json.loads(response.data)
+    code, body = get('/config/user/bob/_access', seeded.bob)
+    assert code == 200 and body['config']['user']['bob']['access']['node'] == {'node001': 'r--'}
+    code, body = get('/config/user/alice/_access', seeded.bob)
+    assert code == 403 and 'not permitted' in body['message']
+    assert get('/config/user/bob/_access', 0)[0] == 200 and get('/config/user/bob/_access', seeded.zed)[0] == 200
+    assert get('/config/user/nobody/_access', 0)[0] == 404
+    code, body = get('/config/usergroup/intel/_access', seeded.bob)
+    assert code == 403 and 'rootus and admin' in body['message']
+    code, body = get('/config/usergroup/intel/_access', 0)
+    assert code == 200 and body['config']['usergroup']['intel']['access']['node']['node001']['reader'] == 'r--'

@@ -38,6 +38,7 @@ from common.validate_input import input_filter, validate_name
 from base.user import User
 from utils.journal import Journal
 from utils.helper import Helper
+from utils.access import Access, AccessRefused
 
 LOGGER = Log.get_logger()
 user_blueprint = Blueprint('config_user', __name__)
@@ -74,6 +75,26 @@ def config_user_get(name=None):
     else:
         response = {'message': response}
     return response, access_code
+
+
+@user_blueprint.route("/config/user/<string:name>/_access", methods=['GET'])
+@token_required(requires='self')
+@validate_name
+def config_user_access(name=None):
+    """
+    What the user holds, per kind of governed object: rootus and admin users ask it for
+    anyone, a person for themselves.
+    """
+    try:
+        caller = Access().caller(g.userid)
+    except AccessRefused as exp:
+        return {'message': exp.message}, exp.code
+    if not caller['admin'] and caller['username'] != name:
+        return {'message': f'reading what {name} holds is not permitted: that is for the user, rootus and admin users'}, 403
+    status, response = User().access(name)
+    if status is True:
+        return dumps(response), 200
+    return {'message': response}, Helper().get_access_code(status, response)
 
 
 @user_blueprint.route("/config/user/<string:name>", methods=['POST'])

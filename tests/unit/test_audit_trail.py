@@ -197,7 +197,9 @@ def test_a_call_without_a_token_or_with_a_bad_one_is_recorded_without_a_user(tra
     assert 'detail="A valid token is missing"' in lines[0] and 'detail="Token is invalid"' in lines[1]
 
 
-def test_a_failed_write_is_on_record_as_failed(trail, db):
+def test_a_failed_write_is_on_record_as_failed_and_a_views_own_403_as_refused(trail, db):
+    """Found live: the generic chmod route and the create rules say no inside the view, after
+    the gate let the call through; that is a refusal in the trail, with the view's message."""
     from common.validate_auth import token_required
     stub = Blueprint('stub', __name__)
 
@@ -205,10 +207,19 @@ def test_a_failed_write_is_on_record_as_failed(trail, db):
     @token_required
     def node(name=None):
         return json.dumps({'message': 'Invalid request'}), 400
+
+    @stub.route('/config/node/<string:name>/_chmod', methods=['POST'])
+    @token_required
+    def chmod(name=None):
+        return {'message': 'node node001: chmod is for owners, usergroup admins, rootus and admin users'}, 403
     app = Flask(__name__)
     app.register_blueprint(stub)
-    app.test_client().post('/config/node/node001', headers={'x-access-tokens': _token(0)}, data='{}', content_type='application/json')
+    admin = {'x-access-tokens': _token(0)}
+    app.test_client().post('/config/node/node001', headers=admin, data='{}', content_type='application/json')
     assert 'outcome=failed code=400' in _lines(trail)[-1]
+    app.test_client().post('/config/node/node001/_chmod', headers=admin, data='{}', content_type='application/json')
+    assert 'outcome=refused code=403' in _lines(trail)[-1]
+    assert 'detail="node node001: chmod is for owners' in _lines(trail)[-1]
 
 
 def test_logins_and_login_refusals_are_recorded(trail, db, world, monkeypatch):

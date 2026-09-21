@@ -113,9 +113,24 @@ def _audited(response):
     """
     if Audit.state_changing(request.method, request.url_rule.rule if request.url_rule else None,
                             (request.view_args or {}).get('action')):
-        code = response[1] if isinstance(response, tuple) and len(response) > 1 else 200
-        _audit('allowed' if int(code) < 400 else 'failed', code)
+        code = int(response[1] if isinstance(response, tuple) and len(response) > 1 else 200)
+        # a view or base class that says no after the gate let the call through is still a
+        # refusal: the generic access verbs and the create rules answer their own 403 and 404
+        outcome = 'allowed' if code < 400 else ('refused' if code in (401, 403, 404) else 'failed')
+        _audit(outcome, code, _message_of(response) if code >= 400 else None)
     return response
+
+
+def _message_of(response):
+    """
+    The message a view answered with, for the trail; None when there is none to read.
+    """
+    body = response[0] if isinstance(response, tuple) else response
+    try:
+        parsed = json.loads(body) if isinstance(body, (str, bytes)) else body
+        return parsed.get('message') if isinstance(parsed, dict) else None
+    except (ValueError, AttributeError):
+        return None
 
 
 def _refused():

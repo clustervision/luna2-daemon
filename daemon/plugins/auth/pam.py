@@ -65,10 +65,36 @@ class Plugin():
         return True, self._identity(entry)
 
     def resolve(self, name=None):
+        """
+        Without a credential only an account that could log in itself is known: a system
+        account has no password and never gets past a login, so it must not get past a
+        delegation either.
+        """
         entry = self._passwd(name)
         if entry is None:
             return False, f'{name} is not a user of this system'
+        if not self._can_log_in(entry):
+            return False, f'{name} is a system account and cannot be resolved without a credential'
         return True, self._identity(entry)
+
+    def _can_log_in(self, entry):
+        """
+        A login shell, and a uid at or above the system's first ordinary uid (UID_MIN in
+        login.defs, 1000 when absent); root is never resolved this way.
+        """
+        shell = os.path.basename(getattr(entry, 'pw_shell', '') or '')
+        if shell in ('nologin', 'false', ''):
+            return False
+        uid_min = 1000
+        try:
+            with open('/etc/login.defs', encoding='utf-8') as handle:
+                for line in handle:
+                    parts = line.split()
+                    if len(parts) == 2 and parts[0] == 'UID_MIN':
+                        uid_min = int(parts[1])
+        except (OSError, ValueError):
+            pass
+        return entry.pw_uid >= uid_min
 
     def _passwd(self, name):
         try:

@@ -151,7 +151,7 @@ def test_a_delegate_cannot_be_delegated_to(app, world, db):
 def test_an_os_person_with_no_row_is_created_on_delegation_with_mapped_memberships(app, world, db, monkeypatch):
     import pwd
     import grp
-    monkeypatch.setattr(pwd, 'getpwnam', lambda name: types.SimpleNamespace(pw_name=name, pw_uid=1500, pw_gid=1500) if name == 'ossam' else (_ for _ in ()).throw(KeyError(name)))
+    monkeypatch.setattr(pwd, 'getpwnam', lambda name: types.SimpleNamespace(pw_name=name, pw_uid=1500, pw_gid=1500, pw_shell='/bin/bash') if name == 'ossam' else (_ for _ in ()).throw(KeyError(name)))
     monkeypatch.setattr(os, 'getgrouplist', lambda name, gid: [1500, 2001])
     monkeypatch.setattr(grp, 'getgrgid', lambda gid: types.SimpleNamespace(gr_name={1500: 'ossam', 2001: 'hpc-intel'}[gid]))
     monkeypatch.setitem(sys.modules, 'pam', types.SimpleNamespace(pam=lambda: types.SimpleNamespace(authenticate=lambda *a, **k: False, reason='')))
@@ -163,6 +163,23 @@ def test_an_os_person_with_no_row_is_created_on_delegation_with_mapped_membershi
     code, answer = _whoami(app, body['token'])
     assert answer['user'] == 'ossam' and answer['source'] == 'pam' and answer['usergroups'] == {'intel': 'operator'}
     assert db.get_record(table='user', where="username = 'ossam'")[0]['external_id'] == '1500'
+
+
+def test_a_system_account_cannot_be_delegated_to(app, world, monkeypatch):
+    """Found live: the OS knows nobody, bin and every service account, none of which has a
+    password; a delegation skips the password, so the fence is the account's own shape:
+    a login shell and an ordinary uid."""
+    import pwd
+    accounts = {'nobody': types.SimpleNamespace(pw_name='nobody', pw_uid=65534, pw_gid=65534, pw_shell='/sbin/nologin'),
+                'svc': types.SimpleNamespace(pw_name='svc', pw_uid=400, pw_gid=400, pw_shell='/bin/bash'),
+                'oddshell': types.SimpleNamespace(pw_name='oddshell', pw_uid=1600, pw_gid=1600, pw_shell='/bin/false'),
+                'root': types.SimpleNamespace(pw_name='root', pw_uid=0, pw_gid=0, pw_shell='/bin/bash')}
+    monkeypatch.setattr(pwd, 'getpwnam', lambda name: accounts[name] if name in accounts else (_ for _ in ()).throw(KeyError(name)))
+    monkeypatch.setitem(sys.modules, 'pam', types.SimpleNamespace(pam=lambda: types.SimpleNamespace(authenticate=lambda *a, **k: False, reason='')))
+    for name in accounts:
+        code, body = _token(app, 'ood', 'ood-pw', on_behalf_of=name)
+        assert code == 403 and 'not known to any authentication source' in body['message'], (name, body)
+        assert 'token' not in body
 
 
 # ── the delegate itself ─────────────────────────────────────────────────────

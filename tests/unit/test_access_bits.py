@@ -144,7 +144,7 @@ def test_the_owner_holds_the_owner_bits(client, world):
     assert me.post('/config/node/node001')[0] == 200
     assert me.get('/control/action/power/node001/_off')[0] == 200
     code, body = me.get('/config/node/node001/_delete')
-    assert code == 403 and 'removing a node needs' in body['message'], 'w on a node does not remove hardware'
+    assert code == 403 and 'removing node node001 needs' in body['message'], 'w on a node does not remove hardware'
 
 
 def test_the_object_caps_the_team_below_a_managers_role(client, world):

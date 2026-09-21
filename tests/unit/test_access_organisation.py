@@ -145,13 +145,17 @@ def client(db):
 
     for entity in ('node', 'group', 'osimage', 'profile', 'bmcsetup', 'network', 'switch'):
         def make(entity):
-            def view(name=None):
+            def view(name=None, **_):
                 return json.dumps({'reached': f'{entity} {name}'}), 200
             return view
         stub.add_url_rule(f'/config/{entity}/<string:name>', endpoint=f'{entity}_post',
                           view_func=token_required(make(entity)), methods=['POST'])
         stub.add_url_rule(f'/config/{entity}/<string:name>/_delete', endpoint=f'{entity}_delete',
                           view_func=token_required(make(entity)), methods=['GET'])
+
+    for entity in ('node', 'group'):
+        stub.add_url_rule(f'/config/{entity}/<string:name>/interfaces/<string:interface>/_delete',
+                          endpoint=f'{entity}_interface_delete', view_func=token_required(make(entity)), methods=['GET'])
 
     @stub.route('/config/node/<string:name>/interfaces', methods=['POST'])
     @token_required

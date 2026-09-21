@@ -99,12 +99,28 @@ def test_removing_hardware_needs_what_creating_it_needs(client, world, db):
     from utils.helper import Helper
     alice, hans = client.as_(world.ids['alice']), client.as_(world.ids['hans'])
     code, body = alice.get('/config/node/node001/_delete')
-    assert code == 403 and 'removing a node needs' in body['message']
+    assert code == 403 and 'removing node node001 needs' in body['message']
     assert alice.post('/config/node/node001', _body('node', 'node001', comment='w still works'))[0] == 200
     assert alice.get('/config/group/compute-intel/_delete')[0] == 200, 'a department object goes with w'
     assert hans.get('/config/node/node002/_delete')[0] == 200
     db.insert('bmcsetup', Helper().make_rows({'name': 'ipmi', 'usergroups': str(world.intel), 'access': '770'}))
     assert alice.get('/config/bmcsetup/ipmi/_delete')[0] == 403
+    code, body = alice.get('/config/node/node001/interfaces/BOOTIF/_delete')
+    assert code == 403 and 'removing an interface of node node001 needs' in body['message']
+    assert hans.get('/config/node/node002/interfaces/BOOTIF/_delete')[0] == 200
+    code, body = alice.get('/config/group/compute-intel/interfaces/BOOTIF/_delete')
+    assert code == 403 and 'interface of group compute-intel' in body['message']
+
+
+def test_removing_infrastructure_stays_with_rootus_and_admin(client, world, db):
+    from utils.helper import Helper
+    hans, zed = client.as_(world.ids['hans']), client.as_(world.ids['zed'])
+    db.insert('network', Helper().make_rows({'name': 'mine', 'network': '10.8.0.0', 'subnet': '16',
+                                             'owners': str(world.ids['hans']), 'access': '700'}))
+    assert hans.post('/config/network/mine', _body('network', 'mine', comment='w on my own network'))[0] == 200
+    code, body = hans.get('/config/network/mine/_delete')
+    assert code == 403 and 'removing network mine is for rootus and admin users' in body['message']
+    assert zed.get('/config/network/mine/_delete')[0] == 200
 
 
 # TRIX-2140

@@ -570,14 +570,19 @@ class Access():
 
     def _deletes(self, caller, entity, name, row):
         """
-        Removing hardware follows creating it: a delete of a node or a hardware catalogue
-        object needs the hardware axis, not only w. A group, osimage or profile goes with w.
+        Removing follows creating. A node, an interface, a hardware catalogue object or one of
+        its accounts needs the hardware axis, not only w; infrastructure (network, switch, rack,
+        cloud, route, otherdevices) stays with rootus and admin; a department object goes with w.
         """
         rule = request.url_rule.rule if request.url_rule else ''
-        if not rule.endswith('/_delete') or entity not in HARDWARE_CREATES:
+        if not rule.endswith('/_delete') or caller['admin']:
             return
-        if not self.hardware_allowed(caller, row):
-            raise AccessRefused(403, f'removing a {entity} needs the admin or manager role in a usergroup with the hardware flag')
+        what = f'an interface of {entity} {name}' if '/interfaces/' in rule else f'{entity} {name}'
+        if entity in HARDWARE_CREATES or '/interfaces/' in rule:
+            if not self.hardware_allowed(caller, row):
+                raise AccessRefused(403, f'removing {what} needs the admin or manager role in a usergroup with the hardware flag')
+        elif entity not in DEPARTMENT_CREATES:
+            raise AccessRefused(403, f'removing {what} is for rootus and admin users')
 
     def _references(self, caller, entity, body):
         """

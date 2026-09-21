@@ -28,7 +28,7 @@ def test_a_disabled_users_token_is_refused_on_every_route(client, world, db):
     assert hans.post('/config/node/node002', _body('node', 'node002', comment='x'))[0] == 200
     db.update('user', Helper().make_rows({'enabled': '0'}), [{'column': 'id', 'value': world.ids['hans']}])
     code, body = hans.post('/config/node/node002', _body('node', 'node002', comment='x'))
-    assert code == 401 and 'User hans is disabled' in body['message']
+    assert code == 401 and 'user hans is disabled' in body['message']
     assert hans.get('/config/node/node002/_delete')[0] == 401
 
 
@@ -46,7 +46,7 @@ def test_whoami_gives_the_same_answer_as_the_gate(world, db):
     from base.user import User
     from utils.helper import Helper
     db.update('user', Helper().make_rows({'enabled': '0'}), [{'column': 'id', 'value': world.ids['tom']}])
-    assert User().whoami(world.ids['tom']) == (False, 'User tom is disabled')
+    assert User().whoami(world.ids['tom']) == (False, 'Authentication error: user tom is disabled')
     assert User().whoami(world.ids['alice'])[0] is True
 
 
@@ -99,14 +99,14 @@ def test_removing_hardware_needs_what_creating_it_needs(client, world, db):
     from utils.helper import Helper
     alice, hans = client.as_(world.ids['alice']), client.as_(world.ids['hans'])
     code, body = alice.get('/config/node/node001/_delete')
-    assert code == 403 and 'removing node node001 needs' in body['message']
+    assert code == 403 and 'removing node node001 is not permitted' in body['message']
     assert alice.post('/config/node/node001', _body('node', 'node001', comment='w still works'))[0] == 200
     assert alice.get('/config/group/compute-intel/_delete')[0] == 200, 'a department object goes with w'
     assert hans.get('/config/node/node002/_delete')[0] == 200
     db.insert('bmcsetup', Helper().make_rows({'name': 'ipmi', 'usergroups': str(world.intel), 'access': '770'}))
     assert alice.get('/config/bmcsetup/ipmi/_delete')[0] == 403
     code, body = alice.get('/config/node/node001/interfaces/BOOTIF/_delete')
-    assert code == 403 and 'removing an interface of node node001 needs' in body['message']
+    assert code == 403 and 'removing an interface of node node001 is not permitted' in body['message']
     assert hans.get('/config/node/node002/interfaces/BOOTIF/_delete')[0] == 200
     code, body = alice.get('/config/group/compute-intel/interfaces/BOOTIF/_delete')
     assert code == 403 and 'interface of group compute-intel' in body['message']
@@ -119,7 +119,7 @@ def test_removing_infrastructure_stays_with_rootus_and_admin(client, world, db):
                                              'owners': str(world.ids['hans']), 'access': '700'}))
     assert hans.post('/config/network/mine', _body('network', 'mine', comment='w on my own network'))[0] == 200
     code, body = hans.get('/config/network/mine/_delete')
-    assert code == 403 and 'removing network mine is for rootus and admin users' in body['message']
+    assert code == 403 and 'removing network mine is not permitted: that is for rootus and admin users' in body['message']
     assert zed.get('/config/network/mine/_delete')[0] == 200
 
 
@@ -196,7 +196,7 @@ def test_a_persons_fetch_of_a_nodes_install_script_is_reprovisioning(client, wor
     the role, profile and script feeds are for nodes"""
     carol, ivan, hans, zed = (client.as_(world.ids[n]) for n in ('carol', 'ivan', 'hans', 'zed'))
     code, body = carol.get('/boot/install/node001')
-    assert code == 403 and 'requires x' in body['message']
+    assert code == 403 and 'operating node node001 is not permitted' in body['message']
     assert ivan.get('/boot/install/node001')[0] == 200
     assert hans.get('/boot/install/node001')[0] == 404
     code, body = ivan.get('/boot/roles/compute')

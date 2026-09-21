@@ -37,6 +37,7 @@ from common.validate_auth import token_required
 from common.validate_input import validate_name, input_filter
 from base.authentication import Authentication
 from base.user import User
+from utils.helper import Helper
 
 LOGGER = Log.get_logger()
 auth_blueprint = Blueprint('auth', __name__)
@@ -68,9 +69,7 @@ def whoami():
     status, response = User().whoami(g.userid)
     if status is True:
         return dumps(response), 200
-    # the refusal's own words carry the code, as the token decorators answer them:
-    # a delegate's own token is refused, a gone or disabled user is no longer authenticated
-    return dumps({'message': response}), 403 if 'is a delegate' in response else 401
+    return dumps({'message': response}), Helper().get_access_code(status, response)
 
 
 @auth_blueprint.route('/tpm/<string:nodename>', methods=['POST'])

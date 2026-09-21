@@ -80,6 +80,9 @@ ROOTUS = {
 
 BITS = {'r': 4, 'w': 2, 'x': 1}
 COLUMNS = ('owners', 'usergroups', 'access')
+# the bits in words, for every message a person can meet: r is read, w is change, x is operate
+ACTION = {'r': 'reading', 'w': 'changing', 'x': 'operating'}
+MAY = {'r': 'read', 'w': 'change', 'x': 'operate'}
 
 # Departments that create their own objects, and what they may create: with a role of
 # admin or manager in a usergroup, these; with the usergroup's hardware flag as well,
@@ -199,13 +202,13 @@ class Access():
         else:
             rows = Database().get_record(table='user', where=f"id = '{userid}'")
             if not rows:
-                raise AccessRefused(401, f'User {userid} no longer exists')
+                raise AccessRefused(401, f'Authentication error: user {userid} no longer exists')
             if not Helper().make_bool(rows[0]['enabled']):
-                raise AccessRefused(401, f"User {rows[0]['username']} is disabled")
+                raise AccessRefused(401, f"Authentication error: user {rows[0]['username']} is disabled")
             if Helper().make_bool(rows[0]['delegate']) is True:
                 # a program that vouches for people never acts as itself: the flag is the whole
                 # of what it may do, and that happens at the token exchange, not here
-                raise AccessRefused(403, f"User {rows[0]['username']} is a delegate and may only obtain tokens for others")
+                raise AccessRefused(403, f"using the token of {rows[0]['username']} is not permitted: it is a delegate and may only obtain tokens for others")
             admin = Helper().make_bool(rows[0]['admin']) is True
             usergroups, hardware = {}, set()
             for row in Database().get_record(table='usergroupmember', where=f"userid = '{userid}'") or []:
@@ -270,9 +273,18 @@ class Access():
             return 'owner'
         shared = [gid for gid in self.ids(row.get('usergroups')) if gid in caller['usergroups']]
         if shared:
-            names = Database().get_record(table='usergroup', where=f"id IN ({','.join(str(g) for g in shared)})") or []
-            return ', '.join(f"{caller['usergroups'][int(n['id'])]} in {n['name']}" for n in names)
+            roles = sorted({caller['usergroups'][gid] for gid in shared}, key=lambda r: list(ROLE_CAPS).index(r))
+            return f'{roles[0]} role'
         return 'other'
+
+    def may_text(self, held):
+        """
+        Output - what the caller may do with the object, in words: 'read and operate it'.
+        """
+        words = [MAY[bit] for bit in 'rwx' if bit in held]
+        if not words:
+            return 'do nothing with it'
+        return (', '.join(words[:-1]) + ' and ' + words[-1] if len(words) > 1 else words[0]) + ' it'
 
     def allowed(self, userid=None, table=None, name=None, bit=None):
         """
@@ -290,7 +302,7 @@ class Access():
         if 'r' not in held:
             raise AccessRefused(404, f'{table} {name} is not available')
         if bit not in held:
-            raise AccessRefused(403, f'{table} {name} requires {bit}; you hold {held} ({self.class_of(caller, row)})')
+            raise AccessRefused(403, f'{ACTION[bit]} {table} {name} is not permitted: you may {self.may_text(held)} ({self.class_of(caller, row)})')
         return row
 
     def pushed_object(self, object_type=None, name=None, request_data=None, key=None, column=None, table=None):
@@ -326,9 +338,9 @@ class Access():
                 self._node_create_fences(caller, body or {})
             return
         if table in DEPARTMENT_CREATES or table in HARDWARE_CREATES:
-            raise AccessRefused(403, f'creating a {table} needs the admin or manager role in a usergroup'
+            raise AccessRefused(403, f'creating a {table} is not permitted: it needs the admin or manager role in a usergroup'
                                 + (' with the hardware flag' if table in HARDWARE_CREATES else ''))
-        raise AccessRefused(403, f'creating a {table} is for rootus and admin users')
+        raise AccessRefused(403, f'creating a {table} is not permitted: that is for rootus and admin users')
 
     def _node_create_fences(self, caller, body):
         """
@@ -337,11 +349,11 @@ class Access():
         """
         group = body.get('group')
         if not group:
-            raise AccessRefused(403, 'creating a node needs a group the usergroup is listed on')
+            raise AccessRefused(403, 'creating a node is not permitted: it needs a group the usergroup is listed on')
         row = self.row('group', group)
         if row is None or not (set(self.ids(row.get('usergroups'))) & caller['hardware']) \
                 or 'w' not in self.bits(caller, 'group', row):
-            raise AccessRefused(403, f'creating a node into group {group} needs w on it through a usergroup with the hardware flag')
+            raise AccessRefused(403, f'creating a node into group {group} is not permitted: it needs change on the group through a usergroup with the hardware flag')
         for interface in body.get('interfaces') or []:
             network = interface.get('network') if isinstance(interface, dict) else None
             if network:
@@ -496,11 +508,11 @@ class Access():
                 if requirement.get('name') is not None:
                     self.allowed(userid, 'node', requirement['name'], 'x')
                 elif not caller['admin']:
-                    raise AccessRefused(403, f"{requirement.get('entity')} boot content is for nodes, rootus and admin users")
+                    raise AccessRefused(403, f"reading {requirement.get('entity')} boot content is not permitted: that is for nodes, rootus and admin users")
                 return True, None, None
             if kind == 'rootus':
                 if not caller['admin']:
-                    raise AccessRefused(403, f"{requirement.get('entity')} is for rootus and admin users")
+                    raise AccessRefused(403, f"{requirement.get('entity')} is not permitted: that is for rootus and admin users")
                 return True, None, None
             if kind == 'membership':
                 self._membership(caller, requirement.get('name'))
@@ -568,7 +580,7 @@ class Access():
         elif action in ('chmod', 'chgrp', 'chown'):
             self.allowed(userid, args.get('entity', entity), name, 'r')
         else:
-            raise AccessRefused(403, f'{action} has no rule')
+            raise AccessRefused(403, f'{action} is not permitted: it has no rule')
 
 
     def _body_of(self, entity, name):
@@ -588,7 +600,7 @@ class Access():
         """
         named = [key for key in COLUMNS if key in self._body_of(entity, name)]
         if named:
-            raise AccessRefused(403, f"{entity} {name}: {', '.join(named)} are changed with chown, chgrp and chmod")
+            raise AccessRefused(403, f"setting {', '.join(named)} on {entity} {name} is not permitted: they are changed with chown, chgrp and chmod")
 
     def _created_by(self, caller, entity, name):
         """
@@ -619,10 +631,10 @@ class Access():
             return
         rule = request.url_rule.rule if request.url_rule else ''
         if '/interfaces' in rule:
-            raise AccessRefused(403, f'{entity} {name}: interfaces are hardware, for rootus, admin or a usergroup with the hardware flag')
+            raise AccessRefused(403, f'changing the interfaces of {entity} {name} is not permitted: they are hardware, for rootus, admin or a usergroup with the hardware flag')
         named = sorted(set(self._body_of(entity, name)) & HARDWARE_KEYS[entity])
         if named:
-            raise AccessRefused(403, f"{entity} {name}: {', '.join(named)} is hardware, for rootus, admin or a usergroup with the hardware flag")
+            raise AccessRefused(403, f"changing {', '.join(named)} of {entity} {name} is not permitted: that is hardware, for rootus, admin or a usergroup with the hardware flag")
 
     def _deletes(self, caller, entity, name, row):
         """
@@ -636,9 +648,9 @@ class Access():
         what = f'an interface of {entity} {name}' if '/interfaces/' in rule else f'{entity} {name}'
         if entity in HARDWARE_CREATES or '/interfaces/' in rule:
             if not self.hardware_allowed(caller, row):
-                raise AccessRefused(403, f'removing {what} needs the admin or manager role in a usergroup with the hardware flag')
+                raise AccessRefused(403, f'removing {what} is not permitted: it needs the admin or manager role in a usergroup with the hardware flag')
         elif entity not in DEPARTMENT_CREATES:
-            raise AccessRefused(403, f'removing {what} is for rootus and admin users')
+            raise AccessRefused(403, f'removing {what} is not permitted: that is for rootus and admin users')
 
     def _references(self, caller, entity, body):
         """
@@ -664,7 +676,7 @@ class Access():
         rows = Database().get_record(table='usergroup', where=f"name = '{usergroup}'")
         if rows and caller['usergroups'].get(int(rows[0]['id'])) == 'admin':
             return
-        raise AccessRefused(403, f'the members of usergroup {usergroup} are managed by its admins, rootus and admin users')
+        raise AccessRefused(403, f'changing the members of usergroup {usergroup} is not permitted: they are managed by its admins, rootus and admin users')
 
     def _hostlist(self, userid, caller, bit, control=False):
         """
@@ -702,7 +714,7 @@ class Access():
             except AccessRefused as exp:
                 refused.append(f'{name} ({exp.message})')
         if refused:
-            raise AccessRefused(403, f"refused for {len(refused)} of {len(names)} nodes: {'; '.join(refused)}")
+            raise AccessRefused(403, f"not permitted for {len(refused)} of {len(names)} nodes: {'; '.join(refused)}")
 
 
     # ── who may change who may ─────────────────────────────────────────────
@@ -785,7 +797,7 @@ class Access():
             return False, f'{table} {name} is not available'
         may = caller['admin'] or caller['id'] in self.ids(row.get('owners')) or self._admin_of_listed(caller, row)
         if not may:
-            raise AccessRefused(403, f'{table} {name}: chmod is for owners, usergroup admins, rootus and admin users')
+            raise AccessRefused(403, f'chmod on {table} {name} is not permitted: that is for owners, usergroup admins, rootus and admin users')
         if not dry:
             self._store(table, row, 'access', self.mode_octal(text))
         return True, f'{table} {name} access updated to {text}.'
@@ -812,10 +824,10 @@ class Access():
             removed = [gid for gid in current if gid not in new]
             added = [gid for gid in new if gid not in current]
             if (removed or added) and not full:
-                raise AccessRefused(403, f'{table} {name}: changing usergroups is for owners, usergroup admins, rootus and admin users')
+                raise AccessRefused(403, f'chgrp on {table} {name} is not permitted: that is for owners, usergroup admins, rootus and admin users')
             foreign = [gid for gid in added if gid not in caller['usergroups']]
             if foreign:
-                raise AccessRefused(403, f'{table} {name}: you may only add usergroups you are a member of')
+                raise AccessRefused(403, f'chgrp on {table} {name} is not permitted: you may only add usergroups you are a member of')
         if not dry:
             self._store(table, row, 'usergroups', ','.join(str(i) for i in new))
         return True, f'{table} {name} usergroups updated.'
@@ -837,11 +849,11 @@ class Access():
         new = [i for i in self._edit_list(current, wanted, self._userid) if i != 0]
         if not caller['admin']:
             if not self._admin_of_listed(caller, row):
-                raise AccessRefused(403, f'{table} {name}: chown is for usergroup admins on listed objects, rootus and admin users')
+                raise AccessRefused(403, f'chown on {table} {name} is not permitted: that is for usergroup admins on listed objects, rootus and admin users')
             listed = [gid for gid in self.ids(row.get('usergroups')) if caller['usergroups'].get(gid) == 'admin']
             for owner in new:
                 if owner not in current and not self._member_of_any(owner, listed):
-                    raise AccessRefused(403, f'{table} {name}: a usergroup admin may only chown to members of that usergroup')
+                    raise AccessRefused(403, f'chown on {table} {name} is not permitted: a usergroup admin may only chown to members of that usergroup')
         if not dry:
             self._store(table, row, 'owners', ','.join(str(i) for i in new))
         return True, f'{table} {name} owners updated.'

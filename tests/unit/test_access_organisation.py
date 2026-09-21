@@ -224,7 +224,7 @@ def _as(userid):
 def test_a_reader_creates_nothing_and_a_manager_creates_a_department_object(client, world):
     carol, alice = client.as_(world.ids['carol']), client.as_(world.ids['alice'])
     code, body = carol.post('/config/osimage/new', _body('osimage', 'new'))
-    assert code == 403 and 'creating a osimage needs the admin or manager role' in body['message']
+    assert code == 403 and 'creating a osimage is not permitted: it needs the admin or manager role' in body['message']
     assert alice.post('/config/osimage/new', _body('osimage', 'new'))[0] == 200
     assert alice.post('/config/group/newgroup', _body('group', 'newgroup'))[0] == 200
     assert alice.post('/config/profile/p1', _body('profile', 'p1'))[0] == 200
@@ -243,7 +243,7 @@ def test_the_hardware_catalogue_and_nodes_need_the_hardware_flag(client, world):
 def test_a_department_creates_nodes_only_into_its_own_groups_on_networks_it_may_read(client, world):
     hans = client.as_(world.ids['hans'])
     code, body = hans.post('/config/node/node011', _body('node', 'node011', group='compute-intel'))
-    assert code == 403 and 'into group compute-intel needs w' in body['message']
+    assert code == 403 and 'into group compute-intel is not permitted' in body['message']
     code, body = hans.post('/config/node/node011', _body('node', 'node011'))
     assert code == 403 and 'needs a group' in body['message']
     ok = _body('node', 'node011', group='compute-amd', interfaces=[{'interface': 'BOOTIF', 'network': 'cluster'}])
@@ -256,7 +256,7 @@ def test_a_department_creates_nodes_only_into_its_own_groups_on_networks_it_may_
 def test_infrastructure_stays_with_rootus_and_admin(client, world):
     hans = client.as_(world.ids['hans'])
     code, body = hans.post('/config/network/newnet', _body('network', 'newnet'))
-    assert code == 403 and 'is for rootus and admin users' in body['message']
+    assert code == 403 and 'is not permitted: that is for rootus and admin users' in body['message']
     assert client.as_(world.ids['zed']).post('/config/switch/sw1', _body('switch', 'sw1'))[0] == 200
 
 
@@ -345,9 +345,9 @@ def test_a_department_changes_config_fields_and_not_hardware_fields(client, worl
     alice = client.as_(world.ids['alice'])
     assert alice.post('/config/node/node001', _body('node', 'node001', kerneloptions='quiet'))[0] == 200
     code, body = alice.post('/config/node/node001', _body('node', 'node001', bmcsetup='ipmi', kerneloptions='quiet'))
-    assert code == 403 and 'bmcsetup is hardware' in body['message']
+    assert code == 403 and 'changing bmcsetup of node node001 is not permitted' in body['message']
     code, body = alice.post('/config/node/node001/interfaces', _body('node', 'node001', interfaces=[]))
-    assert code == 403 and 'interfaces are hardware' in body['message']
+    assert code == 403 and 'changing the interfaces of node node001 is not permitted' in body['message']
     assert alice.post('/config/group/compute-intel', _body('group', 'compute-intel', osimage='rocky9'))[0] == 200
     assert alice.post('/config/group/compute-intel', _body('group', 'compute-intel', domain='x'))[0] == 403
 
@@ -398,4 +398,4 @@ def test_the_tester_operates_two_nodes_and_cannot_reconfigure_them(client, world
     tom = client.as_(world.ids['tom'])
     assert tom.get('/control/action/power/node001/_reset')[0] == 200
     code, body = tom.post('/config/node/node001', _body('node', 'node001', kerneloptions='x'))
-    assert code == 403 and 'requires w; you hold r-x (operator in intel-a-test)' in body['message']
+    assert code == 403 and 'changing node node001 is not permitted: you may read and operate it (operator role)' in body['message']

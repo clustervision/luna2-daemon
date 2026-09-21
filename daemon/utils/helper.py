@@ -1238,6 +1238,8 @@ class Helper(object):
                 access_code=400
             elif 'uthentication error' in response:
                 access_code=401
+            elif 'not permitted' in response:
+                access_code=403
             elif 'nternal error' in response:
                 access_code=500
             elif 'ervice unavailable' in response:

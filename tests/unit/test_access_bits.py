@@ -146,7 +146,7 @@ def test_the_owner_holds_the_owner_bits(client, world):
     assert me.post('/config/node/node001')[0] == 200
     assert me.get('/control/action/power/node001/_off')[0] == 200
     code, body = me.get('/config/node/node001/_delete')
-    assert code == 403 and 'removing node node001 needs' in body['message'], 'w on a node does not remove hardware'
+    assert code == 403 and 'removing node node001 is not permitted' in body['message'], 'w on a node does not remove hardware'
 
 
 def test_the_object_caps_the_team_below_a_managers_role(client, world):
@@ -155,7 +155,7 @@ def test_the_object_caps_the_team_below_a_managers_role(client, world):
     assert me.get('/config/node/node001')[0] == 200
     code, body = me.post('/config/node/node001')
     assert code == 403
-    assert body['message'] == 'node node001 requires w; you hold r-x (manager in intel)'
+    assert body['message'] == 'changing node node001 is not permitted: you may read and operate it (manager role)'
     assert me.get('/control/action/power/node001/_off')[0] == 200
 
 
@@ -173,7 +173,7 @@ def test_a_reader_looks_and_nothing_else(client, world):
     assert me.get('/config/node/node001')[0] == 200
     assert me.get('/control/action/power/node001/_status')[0] == 200
     code, body = me.get('/control/action/power/node001/_off')
-    assert code == 403 and 'requires x; you hold r-- (reader in intel)' in body['message']
+    assert code == 403 and 'operating node node001 is not permitted: you may read it (reader role)' in body['message']
     assert me.post('/config/node/node001')[0] == 403
 
 
@@ -217,7 +217,7 @@ def test_listings_pass_the_gate_and_rootus_routes_do_not(client, world):
     assert code == 403 and 'rootus and admin' in body['message']
     assert me.post('/config/usergroup/intel/members')[0] == 403, 'membership delegation is a later ticket'
     code, body = me.post('/config/node/newnode')
-    assert code == 403 and 'creating a node needs' in body['message'], 'a reader creates nothing'
+    assert code == 403 and 'creating a node is not permitted' in body['message'], 'a reader creates nothing'
 
 
 def test_the_rack_inventory_writes_name_no_rack_and_are_rootus(client, world):
@@ -248,7 +248,7 @@ def test_chmod_by_the_owner_changes_what_the_team_gets(client, world):
     assert alice.post('/config/node/node001/_chmod', _body('node', 'node001', access='770'))[0] == 204
     dave = client.as_(world.ids['dave'])
     code, body = dave.post('/config/node/node001/_chmod', _body('node', 'node001', access='rwxrwxrwx'))
-    assert code == 403 and 'chmod is for owners' in body['message']
+    assert code == 403 and 'chmod on node node001 is not permitted: that is for owners' in body['message']
     assert client.as_(world.ids['erin']).post('/config/node/node001/_chmod', _body('node', 'node001', access='rwxrwxrwx'))[0] == 404
 
 
@@ -262,7 +262,7 @@ def test_chgrp_adds_only_a_usergroup_you_belong_to_even_as_owner(client, world, 
     from utils.helper import Helper
     dave, erin, alice = client.as_(world.ids['dave']), client.as_(world.ids['erin']), client.as_(world.ids['alice'])
     code, body = dave.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))
-    assert code == 403 and 'changing usergroups is for owners' in body['message'], 'a reader neither owns nor administers'
+    assert code == 403 and 'is not permitted: that is for owners' in body['message'], 'a reader neither owns nor administers'
     assert erin.get('/config/node/node001')[0] == 404, 'other is not listed yet'
     code, body = alice.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))
     assert code == 403 and 'only add usergroups you are a member of' in body['message'], \
@@ -273,7 +273,7 @@ def test_chgrp_adds_only_a_usergroup_you_belong_to_even_as_owner(client, world, 
         'an owner who is a reader in the target team can'
     assert erin.get('/config/node/node001')[0] == 200, 'listed now: other gets the usergroup bits'
     code, body = dave.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='-other'))
-    assert code == 403 and 'changing usergroups is for owners' in body['message']
+    assert code == 403 and 'is not permitted: that is for owners' in body['message']
     assert alice.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups=['intel']))[0] == 204
     assert erin.get('/config/node/node001')[0] == 404
 
@@ -285,7 +285,7 @@ def test_a_reader_of_a_shared_object_cannot_pull_their_own_team_onto_it(client, 
     from utils.helper import Helper
     erin = client.as_(world.ids['erin'])
     code, body = erin.post('/config/osimage/rocky9/_chgrp', _body('osimage', 'rocky9', usergroups='+other'))
-    assert code == 403 and 'changing usergroups is for owners' in body['message']
+    assert code == 403 and 'is not permitted: that is for owners' in body['message']
     db.insert('usergroupmember', Helper().make_rows({'userid': world.ids['bob'], 'usergroupid': world.intel,
                                                      'role': 'admin', 'source': 'local'}))
     bob = client.as_(world.ids['bob'])
@@ -312,7 +312,7 @@ def test_chown_stays_inside_the_organisation(client, world, db):
     dave = client.as_(world.ids['dave'])
     assert dave.post('/config/node/node001')[0] == 200, 'dave owns it now'
     code, body = dave.post('/config/node/node001/_chown', _body('node', 'node001', owners='+erin'))
-    assert code == 403 and 'chown is for usergroup admins' in body['message']
+    assert code == 403 and 'chown on node node001 is not permitted' in body['message']
     assert client.as_(0).post('/config/node/node001/_chown', _body('node', 'node001', owners=['erin']))[0] == 204
     assert client.as_(world.ids['erin']).post('/config/node/node001')[0] == 200
     assert client.as_(world.ids['alice']).get('/config/node/node001')[0] == 404, 'alice no longer owns it'
@@ -332,3 +332,23 @@ def test_modes_round_trip(octal, text):
     from utils.access import Access
     assert Access().mode_text(octal) == text
     assert Access().mode_octal(text) == octal
+
+
+def test_no_refusal_names_a_bit_by_its_letter_and_every_code_has_its_phrase():
+    """Every message a person can meet says it in words: read, change, operate. The helper
+    derives the code from the phrase, so every 403 string carries 'not permitted' and every
+    401 string 'Authentication error', or the helper and the decorators would disagree."""
+    import re
+    source = open(os.path.join(DAEMON, 'utils', 'access.py'), encoding='utf-8').read()
+    raised = re.findall(r"AccessRefused\((40[134]),\s*f?(['\"])(.*?)\2\s*[,)]", source, re.S)
+    assert len(raised) >= 25, 'the walk found the refusals'
+    for code, _, text in raised:
+        assert not re.search(r"\b[rwx]\b(?![-'])", text.replace("{bit}", "").replace("{held}", "")), text
+        assert 'requires' not in text and 'you hold' not in text, text
+        if code == '403':
+            assert 'not permitted' in text, text
+        if code == '401':
+            assert 'Authentication error' in text, text
+    from utils.helper import Helper
+    assert Helper().get_access_code(False, 'changing node node001 is not permitted: you may read it (other)') == 403
+    assert Helper().get_access_code(False, 'Authentication error: user carol is disabled') == 401

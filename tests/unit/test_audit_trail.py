@@ -153,7 +153,7 @@ def test_a_refusal_names_the_missing_bit_and_the_class(trail, db, world):
     assert line.startswith('AUDIT ') is False and 'AUDIT user=dave id=' in line
     assert 'action="POST /config/node/node001"' in line and 'object="node node001"' in line
     assert 'outcome=refused code=403' in line
-    assert 'detail="node node001 requires w; you hold r-- (reader in intel)"' in line
+    assert 'detail="changing node node001 is not permitted: you may read it (reader role)"' in line
 
 
 def test_a_plain_read_leaves_no_line_and_a_power_status_is_a_read(trail, db, world):
@@ -211,7 +211,7 @@ def test_a_failed_write_is_on_record_as_failed_and_a_views_own_403_as_refused(tr
     @stub.route('/config/node/<string:name>/_chmod', methods=['POST'])
     @token_required
     def chmod(name=None):
-        return {'message': 'node node001: chmod is for owners, usergroup admins, rootus and admin users'}, 403
+        return {'message': 'chmod on node node001 is not permitted: that is for owners, usergroup admins, rootus and admin users'}, 403
     app = Flask(__name__)
     app.register_blueprint(stub)
     admin = {'x-access-tokens': _token(0)}
@@ -219,7 +219,7 @@ def test_a_failed_write_is_on_record_as_failed_and_a_views_own_403_as_refused(tr
     assert 'outcome=failed code=400' in _lines(trail)[-1]
     app.test_client().post('/config/node/node001/_chmod', headers=admin, data='{}', content_type='application/json')
     assert 'outcome=refused code=403' in _lines(trail)[-1]
-    assert 'detail="node node001: chmod is for owners' in _lines(trail)[-1]
+    assert 'detail="chmod on node node001 is not permitted' in _lines(trail)[-1]
 
 
 def test_logins_and_login_refusals_are_recorded(trail, db, world, monkeypatch):

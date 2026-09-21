@@ -273,8 +273,8 @@ def test_a_hostlist_crossing_the_boundary_is_refused_whole_naming_the_nodes(seed
                                       data=json.dumps(body), content_type='application/json')
     assert response.status_code == 403
     message = json.loads(response.data)['message']
-    assert message.startswith('refused for 2 of 2 nodes'), message
-    assert 'node001 (node node001 requires x; you hold r-- (reader in intel))' in message
+    assert message.startswith('not permitted for 2 of 2 nodes'), message
+    assert 'node001 (operating node node001 is not permitted: you may read it (reader role))' in message
     assert 'node002 (node node002 is not available)' in message
     status_body = {'control': {'power': {'status': {'hostlist': 'node001'}}}}
     response = app.test_client().post('/control/action/power/_status', headers={'x-access-tokens': token},

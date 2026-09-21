@@ -71,6 +71,13 @@ class Service(object):
                 name = CONSTANT['SERVICES']['DHCP6']
         if "dns" == name:
             name = CONSTANT['SERVICES']['DNS']
+        if "mounts" == name:
+            # not a service: the exports and fstab this controller renders from the
+            # mounts documents, queued like a reload so writes collapse and run in order
+            from utils.mountsrender import MountsRender
+            if action == 'render':
+                return MountsRender().render_controller()
+            return False, f'Mounts Action {action} Is Not Recognized.'
 
         status=False
         match name:

@@ -32,6 +32,8 @@ __status__      = 'Development'
 
 from base64 import b64decode, b64encode
 from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64, request_entry_path
+from utils.mountsrender import MountsRender
 from utils.database import Database
 from utils.log import Log
 from utils.config import Config
@@ -48,6 +50,12 @@ from common.constant import CONSTANT
 # True means: cannot be empty if supplied. False means: can only be empty or correct
 NAME_REFERENCES = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False,
                    'cloud': False, 'redfishsetup': False, 'biosconfig': False}
+
+
+# The documents a node holds in its own right rather than inherit. The listing
+# raises _override for these exactly as the single read does: one list, so the
+# two reads answer the same question.
+NODE_DOCUMENTS = ['disklayout', 'osimage_filter', 'mounts']
 
 
 class Node():
@@ -177,6 +185,9 @@ class Node():
                                 node[key] = str(Helper().make_bool(node[key]))
                             node[key] = node[key] or value
                             node['_override'] = True
+                for key in NODE_DOCUMENTS:
+                    if node.get(key):
+                        node['_override'] = True
                 # -------------
                 # strict override: node overrides group overrides the network base
                 effective = route_couplings.get(('node', nodeid), [])
@@ -330,6 +341,7 @@ class Node():
                 'group.install_mode AS group_install_mode',
                 'group.disklayout AS group_disklayout',
                 'group.osimage_filter AS group_osimage_filter',
+                'group.mounts AS group_mounts',
                 'group.netboot AS group_netboot',
                 'group.bootmenu AS group_bootmenu',
                 'group.roles AS group_roles',
@@ -497,6 +509,7 @@ class Node():
                 node['cluster_provision_method'] = cluster[0]['provision_method']
                 node['cluster_provision_fallback'] = cluster[0]['provision_fallback']
                 node['cluster_install_mode'] = cluster[0]['install_mode']
+                node['cluster_mounts'] = cluster[0]['mounts']
 
             # What's configured for the node, or the group, or a default fallback
             items = {
@@ -556,13 +569,15 @@ class Node():
                 if 'cluster_'+key in node:
                     del node['cluster_'+key]
             # same as above but now specifically base64
-            b64items = {'prescript': '', 'partscript': '', 'postscript': '',
-                        'disklayout': '', 'osimage_filter': ''}
+            b64items = {key: '' for key in ['prescript', 'partscript', 'postscript'] + NODE_DOCUMENTS}
             try:
                 for key, value in b64items.items():
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         node[key] = node['group_'+key]
                         node['_'+key+'_source'] = 'group'
+                    elif 'cluster_'+key in node and node['cluster_'+key] and not node[key]:
+                        node[key] = node['cluster_'+key]
+                        node['_'+key+'_source'] = 'cluster'
                     elif node[key]:
                         node['_'+key+'_source'] = 'node'
                         node['_override'] = True
@@ -574,6 +589,8 @@ class Node():
                         node['_'+key+'_source'] = 'default'
                     if 'group_'+key in node:
                         del node['group_'+key]
+                    if 'cluster_'+key in node:
+                        del node['cluster_'+key]
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
@@ -671,6 +688,101 @@ class Node():
         return status, response
 
 
+
+    def _own_or_effective_mounts(self, name=None):
+        """The node's own document, or, when it has none, what it resolves to and
+        where that came from: an add on a node without a document starts from the
+        entries it currently sees, so it keeps them, and owns the copy from then on."""
+        nodes = Database().get_record(table='node', where=f"name = '{name}'")
+        if not nodes:
+            return None, None, f'Node {name} is not present in database'
+        own = nodes[0].get('mounts') or ''
+        if own:
+            return own, None, None
+        status, response = self.get_node(name)
+        detail = ((response or {}).get('config', {}).get('node', {}) if status is True else {})
+        detail = detail.get(name) or (next(iter(detail.values()), {}) if detail else {})
+        effective = detail.get('mounts') or ''
+        return effective, (detail.get('_mounts_source') if effective else None), None
+
+    def _envelope(self, name=None, request_data=None):
+        """What the caller sent for this node, out of the config envelope."""
+        try:
+            return request_data['config']['node'][name]
+        except (KeyError, TypeError):
+            return None
+
+    def update_mount(self, name=None, request_data=None):
+        """Add one entry to the node's mounts document, or replace the one at its
+        path. Validation, the clash check and the render come from update_node."""
+        data = self._envelope(name, request_data)
+        if not data or not data.get('mount'):
+            return False, 'Invalid request: a mount entry is needed'
+        own, copied_from, error = self._own_or_effective_mounts(name)
+        if error:
+            return False, error
+        try:
+            value = upsert_entry(own, document_from_b64(data['mount']))
+        except MountsInvalid as exp:
+            return False, f'Invalid request: {exp}'
+        if value == own:
+            return True, 'Mounts document unchanged.'
+        status, message = self.update_node(name, {'config': {'node': {name: {'mounts': value}}}})
+        if status is True:
+            # an add is a creation and answers with its message; a copied document is
+            # the one thing the caller cannot see and is worth telling
+            message = f"Mount {request_entry_path(data['mount'])} added to node {name}."
+            if copied_from:
+                message = f"{message} The {copied_from} mounts document was copied to node {name} first; it now deviates from it."
+        return status, message
+
+    def remove_mount(self, name=None, request_data=None):
+        """Remove the entry at a path from the node's mounts document."""
+        data = self._envelope(name, request_data)
+        path = data.get('path') if data else None
+        if not path:
+            return False, 'Invalid request: a path is needed'
+        own, copied_from, error = self._own_or_effective_mounts(name)
+        if error:
+            return False, error
+        value, found = remove_entry(own, path)
+        if not found:
+            return False, f'Invalid request: no mount at {path} in the mounts document node {name} sees'
+        status, message = self.update_node(name, {'config': {'node': {name: {'mounts': value}}}})
+        if status is True:
+            message = f"Mount {path} removed from node {name}."
+            if copied_from:
+                message = f"{message} The {copied_from} mounts document was copied to node {name} first; it now deviates from it."
+        return status, message
+
+    def assign_profile(self, name=None, request_data=None):
+        """Add one profile to the node's own assignments. Profiles stack, so this
+        never touches the group's."""
+        return self._change_profiles(name, request_data, assign=True)
+
+    def unassign_profile(self, name=None, request_data=None):
+        """Take one profile out of the node's own assignments."""
+        return self._change_profiles(name, request_data, assign=False)
+
+    def _change_profiles(self, name=None, request_data=None, assign=True):
+        data = self._envelope(name, request_data)
+        profile = data.get('profile') if data else None
+        if not profile:
+            return False, 'Invalid request: a profile name is needed'
+        nodes = Database().get_record(table='node', where=f"name = '{name}'")
+        if not nodes:
+            return False, f'Node {name} is not present in database'
+        names = Profile().profile_names(nodes[0].get('profiles'))
+        if assign and profile in names:
+            return True, f'Profile {profile} is already assigned to node {name}.'
+        if not assign and profile not in names:
+            return False, f'Invalid request: profile {profile} is not assigned to node {name}'
+        names = names + [profile] if assign else [known for known in names if known != profile]
+        status, message = self.update_node(name, {'config': {'node': {name: {'profiles': ','.join(names)}}}})
+        if status is True:
+            message = f"Profile {profile} assigned to node {name}." if assign else f"Profile {profile} removed from node {name}."
+        return status, message
+
     def update_node(self, name=None, request_data=None):
         """
         This method will return update requested node.
@@ -708,6 +820,17 @@ class Node():
                         validate_disklayout(disklayout_json)
                     except DisklayoutInvalid as exp:
                         return False, f'Invalid request: {exp}'
+            # same for a mounts document: the grammar is checked here, once, for every
+            # client; an export may only name a controller or a node the stack knows
+            mounts_changed = 'mounts' in data
+            if data.get('mounts'):
+                try:
+                    validate_mounts(data['mounts'], MountsRender().server_names())
+                except MountsInvalid as exp:
+                    return False, f'Invalid request: {exp}'
+                clash = MountsRender().clash(('node', name), data['mounts'])
+                if clash:
+                    return False, f'Invalid request: {clash}'
             node = Database().get_record(table='node', where=f"name = '{name}'")
             oldnodename, nodename_new = None, None
             if node:
@@ -905,6 +1028,8 @@ class Node():
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
                 Queue().add_task_to_queue(task='run_bulk', param='node:master',
                                           subsystem='housekeeper', request_id='__node_update__')
+                if mounts_changed:
+                    Service().queue('mounts', 'render')
                 Profile().queue_node(nodename_new or name)
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],

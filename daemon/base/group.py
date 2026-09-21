@@ -31,6 +31,9 @@ __status__      = 'Development'
 
 from base64 import b64decode, b64encode
 from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64, request_entry_path
+from utils.mountsrender import MountsRender
+from utils.service import Service
 from concurrent.futures import ThreadPoolExecutor
 from utils.database import Database
 from utils.log import Log
@@ -45,7 +48,7 @@ from common.constant import CONSTANT
 # therefore mean the group deviates from what it would otherwise be given.
 # One list: the listing and the single read must answer the same question.
 OVERRIDABLE = ['provision_interface', 'provision_method', 'provision_fallback',
-               'kerneloptions', 'ipxe_kernel', 'unmanaged_bmc_users']
+               'kerneloptions', 'ipxe_kernel', 'unmanaged_bmc_users', 'mounts']
 
 # The named things a group points at: the key the payload carries, the table that
 # name belongs to, how that table is spelled when we have to say it is missing, and
@@ -182,7 +185,7 @@ class Group():
         }
         # same as above but now specifically base64
         b64items = {'prescript': '', 'partscript': '', 'postscript': '',
-                    'disklayout': '', 'osimage_filter': ''}
+                    'disklayout': '', 'osimage_filter': '', 'mounts': ''}
         cluster = Database().get_record(table='cluster')
         groups = Database().get_record(table='group', where=f"name = '{name}'")
         if groups:
@@ -290,6 +293,11 @@ class Group():
                     if key in group and group[key]:
                         group[key] = group[key] or default_data
                         group['_'+key+'_source'] = 'group'
+                        if key in OVERRIDABLE:
+                            group['_override'] = True
+                    elif cluster and cluster[0].get(key):
+                        group[key] = cluster[0][key]
+                        group['_'+key+'_source'] = 'cluster'
                     else:
                         group[key] = default_data
                         group['_'+key+'_source'] = 'default'
@@ -378,6 +386,101 @@ class Group():
         return None
 
 
+
+    def _own_or_effective_mounts(self, name=None):
+        """The group's own document, or, when it has none, what it resolves to and
+        where that came from: an add on a group without a document starts from the
+        entries it currently sees, so it keeps them, and owns the copy from then on."""
+        nodes = Database().get_record(table='group', where=f"name = '{name}'")
+        if not nodes:
+            return None, None, f'Group {name} is not present in database'
+        own = nodes[0].get('mounts') or ''
+        if own:
+            return own, None, None
+        status, response = self.get_group(name)
+        detail = ((response or {}).get('config', {}).get('group', {}) if status is True else {})
+        detail = detail.get(name) or (next(iter(detail.values()), {}) if detail else {})
+        effective = detail.get('mounts') or ''
+        return effective, (detail.get('_mounts_source') if effective else None), None
+
+    def _envelope(self, name=None, request_data=None):
+        """What the caller sent for this group, out of the config envelope."""
+        try:
+            return request_data['config']['group'][name]
+        except (KeyError, TypeError):
+            return None
+
+    def update_mount(self, name=None, request_data=None):
+        """Add one entry to the group's mounts document, or replace the one at its
+        path. Validation, the clash check and the render come from update_group."""
+        data = self._envelope(name, request_data)
+        if not data or not data.get('mount'):
+            return False, 'Invalid request: a mount entry is needed'
+        own, copied_from, error = self._own_or_effective_mounts(name)
+        if error:
+            return False, error
+        try:
+            value = upsert_entry(own, document_from_b64(data['mount']))
+        except MountsInvalid as exp:
+            return False, f'Invalid request: {exp}'
+        if value == own:
+            return True, 'Mounts document unchanged.'
+        status, message = self.update_group(name, {'config': {'group': {name: {'mounts': value}}}})
+        if status is True:
+            # an add is a creation and answers with its message; a copied document is
+            # the one thing the caller cannot see and is worth telling
+            message = f"Mount {request_entry_path(data['mount'])} added to group {name}."
+            if copied_from:
+                message = f"{message} The {copied_from} mounts document was copied to group {name} first; it now deviates from it."
+        return status, message
+
+    def remove_mount(self, name=None, request_data=None):
+        """Remove the entry at a path from the group's mounts document."""
+        data = self._envelope(name, request_data)
+        path = data.get('path') if data else None
+        if not path:
+            return False, 'Invalid request: a path is needed'
+        own, copied_from, error = self._own_or_effective_mounts(name)
+        if error:
+            return False, error
+        value, found = remove_entry(own, path)
+        if not found:
+            return False, f'Invalid request: no mount at {path} in the mounts document group {name} sees'
+        status, message = self.update_group(name, {'config': {'group': {name: {'mounts': value}}}})
+        if status is True:
+            message = f"Mount {path} removed from group {name}."
+            if copied_from:
+                message = f"{message} The {copied_from} mounts document was copied to group {name} first; it now deviates from it."
+        return status, message
+
+    def assign_profile(self, name=None, request_data=None):
+        """Add one profile to the group's own assignments. Profiles stack, so this
+        never touches the cluster's."""
+        return self._change_profiles(name, request_data, assign=True)
+
+    def unassign_profile(self, name=None, request_data=None):
+        """Take one profile out of the group's own assignments."""
+        return self._change_profiles(name, request_data, assign=False)
+
+    def _change_profiles(self, name=None, request_data=None, assign=True):
+        data = self._envelope(name, request_data)
+        profile = data.get('profile') if data else None
+        if not profile:
+            return False, 'Invalid request: a profile name is needed'
+        nodes = Database().get_record(table='group', where=f"name = '{name}'")
+        if not nodes:
+            return False, f'Group {name} is not present in database'
+        names = Profile().profile_names(nodes[0].get('profiles'))
+        if assign and profile in names:
+            return True, f'Profile {profile} is already assigned to group {name}.'
+        if not assign and profile not in names:
+            return False, f'Invalid request: profile {profile} is not assigned to group {name}'
+        names = names + [profile] if assign else [known for known in names if known != profile]
+        status, message = self.update_group(name, {'config': {'group': {name: {'profiles': ','.join(names)}}}})
+        if status is True:
+            message = f"Profile {profile} assigned to group {name}." if assign else f"Profile {profile} removed from group {name}."
+        return status, message
+
     def update_group(self, name=None, request_data=None):
         """
         This method will create or update a group.
@@ -411,6 +514,15 @@ class Group():
                         validate_disklayout(disklayout_json)
                     except DisklayoutInvalid as exp:
                         return False, f'Invalid request: {exp}'
+            mounts_changed = 'mounts' in data
+            if data.get('mounts'):
+                try:
+                    validate_mounts(data['mounts'], MountsRender().server_names())
+                except MountsInvalid as exp:
+                    return False, f'Invalid request: {exp}'
+                clash = MountsRender().clash(('group', name), data['mounts'])
+                if clash:
+                    return False, f'Invalid request: {clash}'
             oldgroupname = None
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
@@ -655,6 +767,8 @@ class Group():
                 # ---- we call the group plugin - maybe someone wants to run something after create/update?
                 Queue().add_task_to_queue(task='run_bulk', param='group:master', 
                                           subsystem='housekeeper', request_id='__group_update__')
+                if mounts_changed:
+                    Service().queue('mounts', 'render')
                 # profiles are assigned on the group, so a change here changes what every
                 # node in it should hold
                 Profile().queue_group(name)

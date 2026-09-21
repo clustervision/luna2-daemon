@@ -110,6 +110,26 @@ def config_group_disklayout(name=None):
     return dumps(payload), 200
 
 
+@group_blueprint.route('/config/group/<string:name>/mounts', methods=['GET'])
+@token_required
+@validate_name
+def config_group_mounts(name=None):
+    """
+    The group's resolved mounts document (cluster->group), on its own, mirroring the
+    node route. Same config.group.<name>.mounts shape the full group detail returns.
+    """
+    status, response = Group().get_group(name)
+    if status is not True:
+        return {'message': response}, 404
+    groups = (response or {}).get('config', {}).get('group', {})
+    entry = groups.get(name) or (next(iter(groups.values()), {}) if groups else {})
+    payload = {'config': {'group': {name: {
+        'mounts': entry.get('mounts'),
+        '_mounts_source': entry.get('_mounts_source'),
+    }}}}
+    return dumps(payload), 200
+
+
 @group_blueprint.route("/config/group/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name
@@ -126,6 +146,68 @@ def config_group_member(name=None):
     else:
         response = {'message': response}
     return response, access_code
+
+
+@group_blueprint.route('/config/group/<string:name>/mounts', methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:group'], skip=None)
+def config_group_mounts_add(name=None):
+    """
+    Add one entry to the group's mounts document, or replace the one at its path. The
+    body is the entry itself. A group without a document of its own starts from what
+    it resolves to and owns that copy from then on.
+    """
+    status, response = Journal().add_request(function="Group.update_mount", object=name, payload=request.data)
+    if status is True:
+        status, response = Group().update_mount(name, request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@group_blueprint.route('/config/group/<string:name>/mounts/_remove', methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:group'], skip=None)
+def config_group_mounts_remove(name=None):
+    """
+    Remove the entry at a path from the group's mounts document. The body carries the path.
+    """
+    status, response = Journal().add_request(function="Group.remove_mount", object=name, payload=request.data)
+    if status is True:
+        status, response = Group().remove_mount(name, request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@group_blueprint.route('/config/group/<string:name>/profiles', methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:group'], skip=None)
+def config_group_profile_assign(name=None):
+    """
+    Assign one profile to the group, beside the ones it has. The body carries the profile name.
+    """
+    status, response = Journal().add_request(function="Group.assign_profile", object=name, payload=request.data)
+    if status is True:
+        status, response = Group().assign_profile(name, request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@group_blueprint.route('/config/group/<string:name>/profiles/_unassign', methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:group'], skip=None)
+def config_group_profile_unassign(name=None):
+    """
+    Take one profile away from the group. The body carries the profile name.
+    """
+    status, response = Journal().add_request(function="Group.unassign_profile", object=name, payload=request.data)
+    if status is True:
+        status, response = Group().unassign_profile(name, request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
 
 
 @group_blueprint.route("/config/group/<string:name>", methods=['POST'])

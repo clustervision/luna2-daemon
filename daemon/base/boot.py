@@ -1560,6 +1560,13 @@ class Boot():
         from utils.firmware_push import FirmwarePush
         data['hold_seconds'], data['hold_reason'] = FirmwarePush().hold_seconds(
             nodename=data['nodename'])
+        # what this node mounts and serves: controller is the address the cluster
+        # answers on (the floating one where HA is configured), self the controller
+        # rendering this install
+        from utils.mountsrender import MountsRender
+        data.update(MountsRender().render_node(node, node_details.get('mounts'), {
+            'controller': self.controller_beaconip or self.controller_ip,
+            'self': self.controller_ip or self.controller_beaconip}))
 
         data['osrelease'] = 'default'
         data['distribution'] = 'redhat'

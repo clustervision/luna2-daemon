@@ -247,6 +247,9 @@ CLASSIC_FUNCTIONS = {
     'get_json_exact',
     # TRIX-1968: profiles - files plus a service action, applied at install time
     'node_profiles',
+    # TRIX-2131: the network mounts document, written into the image root after the
+    # post phase: the managed fstab block, the mountpoints and the exports a node serves
+    'node_mounts',
     'lunainit',
     'node_roles',
     'node_scripts',
@@ -280,7 +283,12 @@ CLASSIC_FLOW = [
     # for an image nobody has decided on yet
     'update_inventory',
     'partscript', 'download_image', 'unpack_imagefile', 'collect_mac_n_name_net',
-    'change_net', 'node_secrets', 'postscript', 'node_roles',
+    'change_net', 'node_secrets', 'postscript',
+    # TRIX-2131: mounts land after the post phase and before roles, so a role that
+    # starts a service finds the share in fstab; the call renders only for a node
+    # whose document gives it something to write
+    'node_mounts',
+    'node_roles',
     # TRIX-1968: profiles apply after roles; the call renders only for a node with
     # profiles assigned, so an unassigned node keeps its installer byte-identical
     'node_profiles',
@@ -423,7 +431,48 @@ def _baseline_classic_template():
 # be listed is a difference nobody meant: every osimage that has not been rebuilt runs
 # this file, so a line lost here changes nodes nobody has touched.
 BLESSED_CLASSIC_REMOVALS = []
-BLESSED_CLASSIC_ADDITIONS = []
+# TRIX-2131: the node_mounts function and its guarded call, until the branch lands
+BLESSED_CLASSIC_ADDITIONS = [
+    '}',
+    '',
+    'function node_mounts {',
+    '    update_status "install.mounts"',
+    '',
+    '    # the mountpoints, with the owner, group and mode the document gives them',
+    '    echo "{{ LUNA_MOUNTS_DIRS_B64 }}" | base64 -d | while read -r MPATH MOWNER MGROUP MMODE; do',
+    '        [ "$MPATH" ] || continue',
+    '        mkdir -p "/${rootmnt}${MPATH}"',
+    '        if [ "$MOWNER" != "-" ] || [ "$MGROUP" != "-" ]; then',
+    '            [ "$MOWNER" == "-" ] && MOWNER=""',
+    '            [ "$MGROUP" == "-" ] && MGROUP=""',
+    '            chroot "/${rootmnt}" /bin/chown "${MOWNER}:${MGROUP}" "${MPATH}" || echo "Luna2: mountpoint ${MPATH}: owner not set"',
+    '        fi',
+    '        [ "$MMODE" != "-" ] && chmod "$MMODE" "/${rootmnt}${MPATH}"',
+    '    done',
+    '    # the managed block replaces what an earlier install left; nothing outside it moves',
+    '    if [ -n "{{ LUNA_MOUNTS_FSTAB_B64 }}" ]; then',
+    '        touch "/${rootmnt}/etc/fstab"',
+    '        sed -i \'/^# BEGIN luna mounts$/,/^# END luna mounts$/d\' "/${rootmnt}/etc/fstab"',
+    '        # a mountpoint the image\'s own fstab already carries is left to that line:',
+    '        # a second line for one mountpoint breaks systemd\'s fstab generator',
+    '        echo "{{ LUNA_MOUNTS_FSTAB_B64 }}" | base64 -d | while read -r MLINE; do',
+    '            MPOINT=$(echo "$MLINE" | awk \'/^[^#]/ {print $2}\')',
+    '            if [ -n "$MPOINT" ] && awk -v mp="$MPOINT" \'$1 !~ /^#/ && $2 == mp {found=1} END {exit !found}\' "/${rootmnt}/etc/fstab"; then',
+    '                echo "Luna2: mountpoint ${MPOINT} already in fstab, left to the existing line"',
+    '            else',
+    '                echo "$MLINE" >> "/${rootmnt}/etc/fstab"',
+    '            fi',
+    '        done',
+    '    fi',
+    '    # what this node serves, for the nfs server the image carries',
+    '    if [ -n "{{ LUNA_MOUNTS_EXPORTS_B64 }}" ]; then',
+    '        mkdir -p "/${rootmnt}/etc/exports.d"',
+    '        echo "{{ LUNA_MOUNTS_EXPORTS_B64 }}" | base64 -d > "/${rootmnt}/etc/exports.d/luna.exports"',
+    '    fi',
+    '{% if LUNA_MOUNTS_FSTAB_B64 or LUNA_MOUNTS_EXPORTS_B64 or LUNA_MOUNTS_DIRS_B64 %}',
+    'node_mounts',
+    '{% endif %}',
+]
 
 
 MERGED_HINT = (

@@ -82,6 +82,53 @@ def config_cluster_post():
     return response, access_code
 
 
+@cluster_blueprint.route("/config/cluster/mounts", methods=['GET'])
+@token_required
+def config_cluster_mounts():
+    """
+    The cluster's mounts document on its own, the top of the cluster->group->node
+    chain. Same config.cluster.mounts shape the full cluster detail returns.
+    """
+    status, response = Cluster().information()
+    if status is not True:
+        return {'message': response}, 404
+    entry = (response or {}).get('config', {}).get('cluster', {})
+    payload = {'config': {'cluster': {
+        'mounts': entry.get('mounts'),
+        '_mounts_source': 'cluster' if entry.get('mounts') else 'default',
+    }}}
+    return dumps(payload), 200
+
+
+@cluster_blueprint.route("/config/cluster/mounts", methods=['POST'])
+@token_required
+@input_filter(checks=['config:cluster'], skip=None)
+def config_cluster_mounts_add():
+    """
+    Add one entry to the cluster's mounts document, or replace the one at its path.
+    The body is the entry itself.
+    """
+    status, response = Journal().add_request(function="Cluster.update_mount", payload=request.data)
+    if status is True:
+        status, response = Cluster().update_mount(request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@cluster_blueprint.route("/config/cluster/mounts/_remove", methods=['POST'])
+@token_required
+@input_filter(checks=['config:cluster'], skip=None)
+def config_cluster_mounts_remove():
+    """
+    Remove the entry at a path from the cluster's mounts document. The body carries the path.
+    """
+    status, response = Journal().add_request(function="Cluster.remove_mount", payload=request.data)
+    if status is True:
+        status, response = Cluster().remove_mount(request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
 @cluster_blueprint.route("/config/cluster/export", methods=['GET'])
 @token_required
 def config_cluster_export():

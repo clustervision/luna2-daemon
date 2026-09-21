@@ -38,6 +38,8 @@ from utils.service import Service
 from utils.helper import Helper
 from utils.tables import Tables
 from utils.controller import Controller
+from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64, request_entry_path
+from utils.mountsrender import MountsRender
 from common.constant import CONSTANT
 
 
@@ -145,6 +147,47 @@ class Cluster():
                 self.logger.error(f"Error during config import: {exp}")
         return status, response
 
+
+
+    def update_mount(self, request_data=None):
+        """Add one entry to the cluster's mounts document, or replace the one at its
+        path. Validation, the clash check and the render come from update_cluster."""
+        try:
+            data = request_data['config']['cluster']
+        except (KeyError, TypeError):
+            data = None
+        if not data or not data.get('mount'):
+            return False, 'Invalid request: a mount entry is needed'
+        cluster = Database().get_record(table='cluster')
+        own = (cluster[0].get('mounts') or '') if cluster else ''
+        try:
+            value = upsert_entry(own, document_from_b64(data['mount']))
+        except MountsInvalid as exp:
+            return False, f'Invalid request: {exp}'
+        if value == own:
+            return True, 'Mounts document unchanged.'
+        status, message = self.update_cluster({'config': {'cluster': {'mounts': value}}})
+        if status is True:
+            message = f"Mount {request_entry_path(data['mount'])} added to the cluster."
+        return status, message
+
+    def remove_mount(self, request_data=None):
+        """Remove the entry at a path from the cluster's mounts document."""
+        try:
+            path = request_data['config']['cluster'].get('path')
+        except (KeyError, TypeError, AttributeError):
+            path = None
+        if not path:
+            return False, 'Invalid request: a path is needed'
+        cluster = Database().get_record(table='cluster')
+        own = (cluster[0].get('mounts') or '') if cluster else ''
+        value, found = remove_entry(own, path)
+        if not found:
+            return False, f'Invalid request: no mount at {path} in the cluster mounts document'
+        status, message = self.update_cluster({'config': {'cluster': {'mounts': value}}})
+        if status is True:
+            message = f"Mount {path} removed from the cluster."
+        return status, message
 
     def update_cluster(self, request_data=None):
         """
@@ -260,6 +303,15 @@ class Cluster():
                 if data['install_mode'] not in ['auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'legacy']:
                     status = False
                     return status, 'install_mode must be one of auto, sync, full, local, memboot, sanitize or legacy'
+            mounts_changed = 'mounts' in data
+            if data.get('mounts'):
+                try:
+                    validate_mounts(data['mounts'], MountsRender().server_names())
+                except MountsInvalid as exp:
+                    return False, f'Invalid request: {exp}'
+                clash = MountsRender().clash(('cluster', None), data['mounts'])
+                if clash:
+                    return False, f'Invalid request: {clash}'
 
             cluster_columns = Database().get_columns('cluster')
             cluster_check = Helper().compare_list(data, cluster_columns)
@@ -339,6 +391,8 @@ class Cluster():
                         Database().update('cluster', row, where)
                         Service().queue('dns','reload')
                         Service().queue('dns','restart')
+                        if mounts_changed:
+                            Service().queue('mounts', 'render')
                         response = 'Cluster updated'
                     elif len(controller_ips) > 0:
                         response = 'Controllers updated'

@@ -21,6 +21,9 @@ into ``sys.modules`` before any daemon module is imported. pytest loads this
 conftest before collecting test modules, so the stub is in place in time.
 """
 
+import ipaddress
+import os
+import socket
 import sys
 import types
 
@@ -139,3 +142,56 @@ def _reset_thread_connection(database_module):
             pass
     local_thread.connection = None
     local_thread.cursor = None
+
+
+# ── no test reaches the network ─────────────────────────────────────────────
+# A sweep that a test starts in a background pool can connect to a seeded BMC address
+# after the test has returned; nothing waits for it, and interpreter shutdown does.
+# Every non-loopback connect is refused at once and remembered with the test that was
+# running, so the run exits and the report names the culprit (TRIX-2132).
+
+_REACHED = []
+_REAL_CONNECT = socket.socket.connect
+_REAL_CONNECT_EX = socket.socket.connect_ex
+
+
+def _offsite(sock, address):
+    if sock.family not in (socket.AF_INET, socket.AF_INET6) or not isinstance(address, tuple):
+        return False
+    try:
+        return not ipaddress.ip_address(address[0]).is_loopback
+    except ValueError:
+        return address[0] not in ('localhost',)
+
+
+def _guarded_connect(sock, address):
+    if _offsite(sock, address):
+        _REACHED.append((address, os.environ.get('PYTEST_CURRENT_TEST', '<outside a test>')))
+        raise ConnectionRefusedError(f'test reached the network: {address}')
+    return _REAL_CONNECT(sock, address)
+
+
+def _guarded_connect_ex(sock, address):
+    if _offsite(sock, address):
+        _REACHED.append((address, os.environ.get('PYTEST_CURRENT_TEST', '<outside a test>')))
+        return 111
+    return _REAL_CONNECT_EX(sock, address)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def no_network(request):
+    request.config.network_reached = _REACHED
+    socket.socket.connect = _guarded_connect
+    socket.socket.connect_ex = _guarded_connect_ex
+    yield
+    socket.socket.connect = _REAL_CONNECT
+    socket.socket.connect_ex = _REAL_CONNECT_EX
+
+
+def pytest_sessionfinish(session, exitstatus):
+    if _REACHED:
+        lines = [f"  {test}  ->  {address[0]}:{address[1]}" for address, test in _REACHED]
+        session.config.pluginmanager.get_plugin('terminalreporter').write_sep(
+            '=', 'tests reached the network (TRIX-2132); stub the transport in:', red=True)
+        session.config.pluginmanager.get_plugin('terminalreporter').write_line('\n'.join(lines))
+        session.exitstatus = 1

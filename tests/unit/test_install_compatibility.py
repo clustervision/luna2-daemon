@@ -383,148 +383,37 @@ def test_classic_installer_runs_them_in_the_same_order():
     )
 
 
-# Where the classic installer's content legitimately comes from, most specific first.
-# The branch that owned this file has merged, so development carries its content and is
-# the baseline again. Naming a feature branch ahead of its merge is what this list used
-# to do, and it does not survive: the branch was renamed, the ref stopped resolving, and
-# a ref that does not resolve falls through to the next entry silently rather than
-# failing -- so the comparison quietly changed what it was comparing against.
-CLASSIC_BASELINES = (
-    'origin/development',
-    'development',
-)
+# The classic installer, as blessed: tests/regression/golden/templ_install.cfg is a copy of
+# the file, and the test below holds the template to it byte for byte. A change to the
+# installer regenerates the golden in the same commit, so the merge request shows the two
+# moving together and a reviewer reads the diff. Every osimage that has not been rebuilt
+# executes this file, so a line changed here reaches nodes nobody has touched -- which is
+# why a copy in the tree, and not a comparison with a branch, is what holds it: a branch
+# moves under the test, has to be fetched, and had to be re-blessed at every landing.
+CLASSIC_GOLDEN = os.path.join(os.path.dirname(__file__), '..', 'regression', 'golden', 'templ_install.cfg')
 
 
-def _baseline_classic_template():
-    """The classic installer as it stands on the branch that owns it.
+def test_the_classic_installer_matches_its_golden():
+    """The whole file, not its shape.
 
-    Returns (ref, text), or None when no baseline can be read -- a shallow clone, an
-    exported tree, no git at all -- so the test skips rather than failing for reasons
-    that have nothing to do with the installer.
+    The function and flow lists above catch a function appearing, vanishing or moving.
+    They cannot see a line changing *inside* one -- and that is exactly how the classic
+    installer drifted once: a single `exit 1` became `exit $LUNARET`, carried in from an
+    abandoned model where lpart ran inside the operator's script fields. Structurally
+    identical, behaviourally different, and invisible to every other test here.
     """
-    for ref in CLASSIC_BASELINES:
-        try:
-            result = subprocess.run(
-                ['git', 'show', f'{ref}:daemon/templates/templ_install.cfg'],
-                cwd=os.path.dirname(DAEMON), capture_output=True, timeout=30
-            )
-        except (OSError, subprocess.SubprocessError):
-            return None
-        if result.returncode == 0:
-            return ref, result.stdout.decode('utf-8')
-    return None
-
-
-# Every line by which the classic installer differs from its owner, enumerated in both
-# directions -- a line that is *changed* is a removal and an addition, and listing only
-# what appeared would wave the other half through.
-#
-# Both are empty, and that is the healthy state: the file here is byte-identical to the
-# one on the baseline branch. They were not empty while this branch's changes to the
-# classic installer were still unmerged, and emptying them is what landing those changes
-# means - the baseline moves, and a difference that has been ported is no longer a
-# difference to bless. The reasons that used to sit here are in the history of the
-# branch that now carries the lines.
-#
-# When a legitimate divergence appears again, list it here with the reason, in whichever
-# direction it falls, and delete the entry once it lands on the baseline. What must never
-# be listed is a difference nobody meant: every osimage that has not been rebuilt runs
-# this file, so a line lost here changes nodes nobody has touched.
-BLESSED_CLASSIC_REMOVALS = []
-# TRIX-2131: the node_mounts function and its guarded call, until the branch lands
-BLESSED_CLASSIC_ADDITIONS = [
-    '}',
-    '',
-    'function node_mounts {',
-    '    update_status "install.mounts"',
-    '',
-    '    # the mountpoints, with the owner, group and mode the document gives them',
-    '    echo "{{ LUNA_MOUNTS_DIRS_B64 }}" | base64 -d | while read -r MPATH MOWNER MGROUP MMODE; do',
-    '        [ "$MPATH" ] || continue',
-    '        mkdir -p "/${rootmnt}${MPATH}"',
-    '        if [ "$MOWNER" != "-" ] || [ "$MGROUP" != "-" ]; then',
-    '            [ "$MOWNER" == "-" ] && MOWNER=""',
-    '            [ "$MGROUP" == "-" ] && MGROUP=""',
-    '            chroot "/${rootmnt}" /bin/chown "${MOWNER}:${MGROUP}" "${MPATH}" || echo "Luna2: mountpoint ${MPATH}: owner not set"',
-    '        fi',
-    '        [ "$MMODE" != "-" ] && chmod "$MMODE" "/${rootmnt}${MPATH}"',
-    '    done',
-    '    # the managed block replaces what an earlier install left; nothing outside it moves',
-    '    if [ -n "{{ LUNA_MOUNTS_FSTAB_B64 }}" ]; then',
-    '        touch "/${rootmnt}/etc/fstab"',
-    '        sed -i \'/^# BEGIN luna mounts$/,/^# END luna mounts$/d\' "/${rootmnt}/etc/fstab"',
-    '        # a mountpoint the image\'s own fstab already carries is left to that line:',
-    '        # a second line for one mountpoint breaks systemd\'s fstab generator',
-    '        echo "{{ LUNA_MOUNTS_FSTAB_B64 }}" | base64 -d | while read -r MLINE; do',
-    '            MPOINT=$(echo "$MLINE" | awk \'/^[^#]/ {print $2}\')',
-    '            if [ -n "$MPOINT" ] && awk -v mp="$MPOINT" \'$1 !~ /^#/ && $2 == mp {found=1} END {exit !found}\' "/${rootmnt}/etc/fstab"; then',
-    '                echo "Luna2: mountpoint ${MPOINT} already in fstab, left to the existing line"',
-    '            else',
-    '                echo "$MLINE" >> "/${rootmnt}/etc/fstab"',
-    '            fi',
-    '        done',
-    '    fi',
-    '    # what this node serves, for the nfs server the image carries',
-    '    if [ -n "{{ LUNA_MOUNTS_EXPORTS_B64 }}" ]; then',
-    '        mkdir -p "/${rootmnt}/etc/exports.d"',
-    '        echo "{{ LUNA_MOUNTS_EXPORTS_B64 }}" | base64 -d > "/${rootmnt}/etc/exports.d/luna.exports"',
-    '    fi',
-    '{% if LUNA_MOUNTS_FSTAB_B64 or LUNA_MOUNTS_EXPORTS_B64 or LUNA_MOUNTS_DIRS_B64 %}',
-    'node_mounts',
-    '{% endif %}',
-]
-
-
-MERGED_HINT = (
-    '\nIf these lines are now on the baseline -- i.e. the branch carrying them has '
-    'merged -- then the difference no longer exists and the fix is to empty both '
-    'lists. That removal is part of landing the branch, not a follow-up.'
-)
-
-
-def test_classic_installer_only_differs_from_its_owner_by_what_we_blessed():
-    """The classic path is not ours to change, and the whole file says so.
-
-    The blessed function and flow lists above catch a function appearing, vanishing or
-    moving. They cannot see a line changing *inside* one -- and that is exactly how the
-    classic installer drifted once: a single `exit 1` became `exit $LUNARET`, carried in
-    from the campaign's abandoned model where lpart ran inside the operator's script
-    fields. Structurally identical, behaviourally different, and invisible to every
-    other test here.
-
-    So this compares the whole file against the branch that owns it, in both directions.
-    Every line we add and every line we drop is listed above with its reason, rather
-    than tolerated by a loose rule -- and both lists matter, because changing a line
-    shows up as one of each and checking only the additions would pass half of it.
-
-    Another ticket's changes to this file are welcome and are not blessed here: they
-    are ported commit-for-commit, so they land in the baseline as well as here and
-    never show up as a difference. That is the point -- carrying someone else's work
-    as a diff we approve of is exactly how the ownership gets lost.
-    """
-    baseline = _baseline_classic_template()
-    if baseline is None:
-        pytest.skip('no baseline branch available in this checkout')
-    ref, original = baseline
+    with open(CLASSIC_GOLDEN, 'r', encoding='utf-8') as handle:
+        golden = handle.read()
     with open(CLASSIC, 'r', encoding='utf-8') as handle:
         current = handle.read()
-    diff = list(difflib.unified_diff(
-        original.splitlines(), current.splitlines(), lineterm='', n=0
-    ))
-    added = [line[1:] for line in diff if line.startswith('+') and not line.startswith('+++')]
-    removed = [line[1:] for line in diff if line.startswith('-') and not line.startswith('---')]
-    assert removed == BLESSED_CLASSIC_REMOVALS, (
-        f'the classic installer dropped or altered lines that {ref} has and nobody '
-        f'blessed:\n  expected: {BLESSED_CLASSIC_REMOVALS}\n  found:    {removed}\n'
-        f'Every osimage that has not been rebuilt executes this file, so a line lost '
-        f'here changes nodes nobody has touched. If this is a port that fell behind, '
-        f'finish the port rather than blessing the gap.' + MERGED_HINT
-    )
-    assert added == BLESSED_CLASSIC_ADDITIONS, (
-        f'the classic installer gained lines that {ref} does not have and nobody '
-        f'blessed:\n  expected: {BLESSED_CLASSIC_ADDITIONS}\n  found:    {added}\n'
-        f'Changes to the classic installer belong to whoever owns it -- land them '
-        f'there and port them, rather than blessing them here.' + MERGED_HINT
+    diff = '\n'.join(difflib.unified_diff(
+        golden.splitlines(), current.splitlines(), 'golden/templ_install.cfg',
+        'daemon/templates/templ_install.cfg', lineterm='', n=1))
+    assert current == golden, (
+        'the classic installer differs from its golden:\n' + diff + '\n'
+        'If the change is meant, regenerate the golden in the same commit and read the diff:\n'
+        '    python tests/regression/regen_classic_installer.py\n'
+        'Every osimage that has not been rebuilt executes this file.'
     )
 
 

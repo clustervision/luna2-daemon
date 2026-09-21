@@ -37,6 +37,7 @@ from utils.log import Log
 from utils.database import Database
 from base.user import User
 from utils.helper import Helper
+from utils.audit import Audit
 from common.constant import CONSTANT
 
 # Files with these extensions are handed out by the file server only with a token;
@@ -82,8 +83,12 @@ class Authentication():
                                 message = f'Authentication token generated, Token {jwt_token}'
                                 self.logger.debug(message)
                                 status = True
+                                Audit().record(userid=user_id, username=username, method='POST', path='/token',
+                                               outcome='login', code=201)
                             else:
                                 self.logger.warning(message)
+                                Audit().record(username=username, method='POST', path='/token',
+                                               outcome='refused', code=401, detail=message)
                         else:
                             if CONSTANT['API']['PASSWORD'] != password:
                                 shown = password if self.logger.isEnabledFor(logging.DEBUG) else '******'

@@ -39,6 +39,7 @@ from utils.log import Log
 from common.constant import CONSTANT
 from common.route_grammar import requirement, GrammarError
 from utils.access import Access
+from utils.audit import Audit
 
 LOGGER = Log.get_logger()
 
@@ -61,6 +62,7 @@ def token_required(function=None, *, requires=None):
                 LOGGER.error('A valid token is missing. None supplied')
                 response = {'message': 'A valid token is missing'}
                 code = 401
+                _audit('refused', code, response['message'])
                 return json.dumps(response), code
             try:
                 claims = jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) ## Decoding Token
@@ -68,25 +70,52 @@ def token_required(function=None, *, requires=None):
                 LOGGER.error('Token is invalid. Cannot decode')
                 response = {'message': 'Token is invalid'}
                 code = 401
+                _audit('refused', code, response['message'])
                 return json.dumps(response), code
             except Exception as exp:
                 LOGGER.error(f'Token is invalid. {exp}')
                 response = {'message': 'Token is invalid'}
                 code = 401
+                _audit('refused', code, response['message'])
                 return json.dumps(response), code
             if claims.get('scope') == 'provision':
                 LOGGER.error('Provision-scoped token rejected on a protected endpoint')
                 response = {'message': 'Token is not permitted for this endpoint'}
+                _audit('refused', 403, response['message'])
                 return json.dumps(response), 403
             g.userid = claims.get('id')
             g.requirement = _requirement(kwargs, requires)
             refused = _refused()
             if refused:
                 return refused
-            return function(**kwargs)
+            return _audited(function(**kwargs))
         decorator.requires = requires
         return decorator
     return wrap(function) if function is not None else wrap
+
+
+def _audit(outcome, code, detail=None):
+    """
+    One line in the trail for this call: who, what, which object, what came of it. The
+    caller record is what the check already read; a token whose user is gone carries
+    only the id. Never the body.
+    """
+    caller = getattr(g, 'caller', None) or {}
+    Audit().record(userid=getattr(g, 'userid', None), username=caller.get('username'), source=caller.get('source'),
+                   method=request.method, path=request.path, requirement=getattr(g, 'requirement', None),
+                   outcome=outcome, code=code, detail=detail)
+
+
+def _audited(response):
+    """
+    An allowed call that changes state is recorded after the view answered, with the code
+    it answered, so a write the base class refused is on record as such.
+    """
+    if Audit.state_changing(request.method, request.url_rule.rule if request.url_rule else None,
+                            (request.view_args or {}).get('action')):
+        code = response[1] if isinstance(response, tuple) and len(response) > 1 else 200
+        _audit('allowed' if int(code) < 400 else 'failed', code)
+    return response
 
 
 def _refused():
@@ -99,6 +128,7 @@ def _refused():
     if allowed:
         return None
     LOGGER.warning(f'refused: user {g.userid} {request.method} {request.path}: {message}')
+    _audit('refused', code, message)
     return json.dumps({'message': message}), code
 
 
@@ -174,6 +204,7 @@ def provision_token_required(function=None, *, node_in_payload=None, only=None, 
                 refused = _refused()
                 if refused:
                     return refused
+                return _audited(function(**kwargs))
             return function(**kwargs)
         decorator.requires = requires
         return decorator

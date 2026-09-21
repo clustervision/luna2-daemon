@@ -42,6 +42,7 @@ from flask import g, has_request_context, request
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
+from common.constant import CONSTANT
 from base.usergroup import ROLE_CAPS
 
 # Governed tables and their default mode when the row says nothing (design section 5).
@@ -192,7 +193,8 @@ class Access():
         if has_request_context() and getattr(g, 'caller', None) and g.caller['id'] == userid:
             return g.caller
         if userid in (0, '0', None):
-            caller = {'id': 0, 'admin': True, 'usergroups': {}, 'hardware': set()}
+            caller = {'id': 0, 'admin': True, 'usergroups': {}, 'hardware': set(),
+                      'username': CONSTANT['API']['USERNAME'], 'source': 'ini'}
         else:
             rows = Database().get_record(table='user', where=f"id = '{userid}'")
             if not rows:
@@ -207,7 +209,8 @@ class Access():
             if leading:
                 for row in Database().get_record(table='usergroup', where=f"id IN ({','.join(map(str, leading))}) AND hardware = '1'") or []:
                     hardware.add(int(row['id']))
-            caller = {'id': int(userid), 'admin': admin, 'usergroups': usergroups, 'hardware': hardware}
+            caller = {'id': int(userid), 'admin': admin, 'usergroups': usergroups, 'hardware': hardware,
+                      'username': rows[0]['username'], 'source': rows[0]['source']}
         if has_request_context():
             g.caller = caller
         return caller

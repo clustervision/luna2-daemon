@@ -35,6 +35,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 from utils.model import Model
+from utils.access import Access
 
 
 class Route():
@@ -55,7 +56,7 @@ class Route():
         This method returns the whole route catalog, or a single route by name.
         """
         where = f"name='{name}'" if name else None
-        routes = Database().get_record(table='route', where=where)
+        routes = Access().visible('route', Database().get_record(table='route', where=where))
         if not routes:
             return False, f"Route {name} does not exist" if name else "No routes are available"
         response = {'config': {'route': {}}}
@@ -109,7 +110,7 @@ class Route():
             if target_name != name:
                 return True, f"Route {name} renamed to {target_name}"
             return True, f"Route {name} updated"
-        Database().insert('route', row)
+        Database().insert('route', Access().created_row('route', row))
         return True, f"Route {name} created"
 
     def delete_route(self, name=None):

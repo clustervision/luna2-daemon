@@ -30,12 +30,14 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import logging
-from  hashlib import md5
 from datetime import datetime, timedelta
 from re import search
 from jwt import encode, decode, exceptions
 from utils.log import Log
 from utils.database import Database
+from base.user import User
+from utils.helper import Helper
+from utils.audit import Audit
 from common.constant import CONSTANT
 
 # Files with these extensions are handed out by the file server only with a token;
@@ -73,30 +75,31 @@ class Authentication():
                     expiry_time = datetime.utcnow() + api_expiry
                     api_key = CONSTANT['API']['SECRET_KEY']
                     if username and password:
+                        on_behalf_of = request_data.get('on_behalf_of')
                         if CONSTANT['API']['USERNAME'] != username:
-                            message = f'Username {username} does not belong to INI.'
-                            self.logger.info(message)
-                            where = f"username = '{username}' AND roleid = '1';"
-                            user = Database().get_record(table='user', where=where)
-                            if user:
-                                user_id = user[0]["id"]
-                                user_password = user[0]["password"]
-                                if user_password == md5(password.encode()).hexdigest():
-                                    jwt_token = encode(
-                                        {'id': user_id, 'exp': expiry_time},
-                                        api_key,
-                                        'HS256'
-                                    )
-                                    message = f'Authentication token generated, Token {jwt_token}'
-                                    self.logger.debug(message)
-                                    status = True
-                                else:
-                                    shown = password if self.logger.isEnabledFor(logging.DEBUG) else '******'
-                                    message = f'Incorrect password {shown} for user {username}'
-                                    self.logger.warning(message)
+                            self.logger.info(f'Username {username} does not belong to INI.')
+                            user_id, message = self.login(username, password)
+                            if user_id is not None and on_behalf_of:
+                                # the delegate vouched for somebody: the token is that person's
+                                user_id, message = self.delegate(user_id, username, on_behalf_of)
+                            if user_id is not None:
+                                jwt_token = encode({'id': user_id, 'exp': expiry_time}, api_key, 'HS256')
+                                message = f'Authentication token generated, Token {jwt_token}'
+                                self.logger.debug(message)
+                                status = True
+                                Audit().record(userid=user_id, username=on_behalf_of or username, method='POST', path='/token',
+                                               outcome='delegated' if on_behalf_of else 'login', code=201,
+                                               detail=f'by {username}' if on_behalf_of else None)
                             else:
-                                message = f'User {username} does not exist'
-                                self.logger.error(message)
+                                self.logger.warning(message)
+                                Audit().record(username=username, method='POST', path='/token',
+                                               outcome='refused', code=403 if on_behalf_of else 401,
+                                               detail=f'on behalf of {on_behalf_of}: {message}' if on_behalf_of else message)
+                        elif on_behalf_of:
+                            message = 'The configuration-file account is not a delegate'
+                            self.logger.warning(message)
+                            Audit().record(username=username, method='POST', path='/token', outcome='refused', code=403,
+                                           detail=f'on behalf of {on_behalf_of}: {message}')
                         else:
                             if CONSTANT['API']['PASSWORD'] != password:
                                 shown = password if self.logger.isEnabledFor(logging.DEBUG) else '******'
@@ -122,7 +125,93 @@ class Authentication():
             message = 'Login Required'
             self.logger.error(message)
         response = {'token' : jwt_token} if jwt_token else {'message' : message}
+        if not jwt_token and request_data and request_data.get('on_behalf_of'):
+            # a delegation refused is a forbidden act by an authenticated caller, not a bad login
+            response['code'] = 403
         return status, response
+
+
+    def delegate(self, delegate_id=None, delegate_name=None, person=None):
+        """
+        A user carrying the delegate flag vouches for a person: the person is resolved through
+        the chain without a credential, the way a login would have found them, and becomes a
+        Luna user by the same path. A program that vouches never acts as itself.
+        Output - the person's id and a message, or None and the reason.
+        """
+        rows = Database().get_record(table='user', where=f"id = '{delegate_id}'")
+        if not rows or not Helper().make_bool(rows[0]['delegate']):
+            return None, f'User {delegate_name} may not obtain a token on behalf of others'
+        if person == CONSTANT['API']['USERNAME']:
+            return None, 'The configuration-file account cannot be delegated to'
+        from utils.journal import Journal
+        plugins_path = CONSTANT['PLUGINS']['PLUGINS_DIRECTORY']
+        auth_plugins = Helper().plugin_finder(f'{plugins_path}/auth')
+        for source in self.chain():
+            try:
+                plugin_class = Helper().plugin_load(auth_plugins, 'auth', [source])
+                if not plugin_class:
+                    continue
+                known, result = plugin_class().resolve(person)
+            except Exception as exp:
+                self.logger.error(f"authentication source {source} is unavailable: {exp}")
+                continue
+            if not known:
+                continue
+            journaled, message = Journal().add_request(function="User.login_identity", object=source, payload=result)
+            if not journaled:
+                self.logger.warning(f"delegated login of {person} not journaled: {message}; the table sync repairs the peer")
+            user_id, message = User().login_identity(source, result)
+            if user_id is not None and self._is_delegate(user_id):
+                return None, f'User {person} is a delegate and cannot be delegated to'
+            return user_id, message
+        return None, f'User {person} is not known to any authentication source'
+
+
+    def _is_delegate(self, userid=None):
+        rows = Database().get_record(table='user', where=f"id = '{userid}'")
+        return bool(rows) and Helper().make_bool(rows[0]['delegate']) is True
+
+
+    def chain(self):
+        """
+        Output - the authentication sources in the order they are asked, from [AUTH] CHAIN;
+        local then pam when the ini says nothing.
+        """
+        named = CONSTANT.get('AUTH', {}).get('CHAIN') or 'local, pam'
+        return [source.strip().lower() for source in named.split(',') if source.strip()]
+
+
+    def login(self, username=None, password=None):
+        """
+        This method walks the chain. The first source that knows the name decides: verified
+        becomes a Luna user through login_identity, refused stops the chain. A source that
+        cannot work is logged and skipped, so a local user still gets in.
+        Output - the user's id and a message, or None and the reason.
+        """
+        # the journal imports every base class, and one of them imports this module
+        from utils.journal import Journal
+        plugins_path = CONSTANT['PLUGINS']['PLUGINS_DIRECTORY']
+        auth_plugins = Helper().plugin_finder(f'{plugins_path}/auth')
+        for source in self.chain():
+            try:
+                plugin_class = Helper().plugin_load(auth_plugins, 'auth', [source])
+                if not plugin_class:
+                    self.logger.error(f"authentication source {source} has no plugin; skipped")
+                    continue
+                status, result = plugin_class().authenticate(username, password)
+            except Exception as exp:
+                self.logger.error(f"authentication source {source} is unavailable: {exp}")
+                continue
+            if status is None:
+                self.logger.debug(f"authentication source {source} does not know {username}: {result}")
+                continue
+            if status is False:
+                return None, result
+            journaled, message = Journal().add_request(function="User.login_identity", object=source, payload=result)
+            if not journaled:
+                self.logger.warning(f"login of {username} not journaled: {message}; the table sync repairs the peer")
+            return User().login_identity(source, result)
+        return None, f'User {username} is not known to any authentication source'
 
 
     def node_token(self, request_data=None, nodename=None):

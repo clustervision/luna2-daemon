@@ -45,6 +45,7 @@ from base.interface import Interface
 from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
+from utils.access import Access
 
 # The named things a node points at, and whether a supplied value may be empty.
 # True means: cannot be empty if supplied. False means: can only be empty or correct
@@ -81,7 +82,7 @@ class Node():
         # we collect all needed info from all tables at once and use dicts to collect data/info
         # A join is not really suitable as there are too many permutations in where the below
         # is way more efficient. -Antoine
-        nodes = Database().get_record(table='node', orderby='name')
+        nodes = Access().visible('node', Database().get_record(table='node', orderby='name'))
         groups = Database().get_record(table='group')
         osimages = Database().get_record(table='osimage')
         switches = Database().get_record(table='switch')
@@ -324,7 +325,7 @@ class Node():
         This method will return requested node in detailed format.
         """
         status = False
-        nodes = Database().get_record(table='node', where=f"name = '{name}'")
+        nodes = Access().visible('node', Database().get_record(table='node', where=f"name = '{name}'"))
         all_nodes = Database().get_record_join(
             [
                 'node.*',
@@ -357,7 +358,10 @@ class Node():
             f"node.name='{name}'"
         )
         if all_nodes and nodes:
+            # the join carries the stored ids; keep what visible() rendered
+            rendered = {key: nodes[0][key] for key in ('owners', 'usergroups', 'access')}
             nodes[0].update(all_nodes[0])
+            nodes[0].update(rendered)
         if nodes:
             node = nodes[0]
             response = {'config': {'node': {} }}
@@ -995,7 +999,7 @@ class Node():
                         return False, 'Invalid request: group name is required for new nodes'
                     data['name'] = name
                     row = Helper().make_rows(data)
-                    nodeid = Database().insert('node', row)
+                    nodeid = Database().insert('node', Access().created_row('node', row))
                     response = f'Node {name} created successfully'
                     status = True
 
@@ -1117,7 +1121,7 @@ class Node():
             if columns_check:
                 new_nodeid=None
                 row = Helper().make_rows(data)
-                new_nodeid = Database().insert('node', row)
+                new_nodeid = Database().insert('node', Access().created_row('node', row))
                 if not new_nodeid:
                     return False, f'Internal error: Node {newnodename} is not created due to possible property clash'
                 response = f'Node {newnodename} created successfully'

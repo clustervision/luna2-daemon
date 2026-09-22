@@ -34,6 +34,7 @@ from utils.log import Log
 from utils.helper import Helper
 from utils.model import Model
 from utils.ha import HA
+from utils.access import Access
 
 class Rack():
     """
@@ -103,8 +104,30 @@ class Rack():
                                                           'orientation': device['orientation'],
                                                           'height': device['height'],
                                                           'position': device['position']})
+            # racks the caller may not read are not listed; devices in a rack likewise
+            racks = {row['name']: row for row in Access().visible('rack', Database().get_record(table='rack') or [])}
+            for rackname in list(config):
+                if rackname not in racks:
+                    del config[rackname]
+                    continue
+                for key in ('owners', 'usergroups', 'access'):
+                    config[rackname][key] = racks[rackname][key]
+            self._readable_devices(config)
             response['config']['rack']=dict(sorted(config.items()))
         return status, response
+
+
+    def _readable_devices(self, config=None):
+        """
+        Drop from every rack the devices the caller may not read, one lookup per device type.
+        """
+        by_type = {}
+        for rack in config.values():
+            for device in rack['devices']:
+                by_type.setdefault(device['type'], set()).add(device['name'])
+        readable = {kind: set(Access().visible_names(kind, sorted(names))) for kind, names in by_type.items()}
+        for rack in config.values():
+            rack['devices'] = [d for d in rack['devices'] if d['name'] in readable.get(d['type'], set())]
 
 
     def update_rack(self, name=None, request_data=None):
@@ -167,7 +190,7 @@ class Rack():
                 Database().update('rack', row, where)
             elif create:
                 row = Helper().make_rows(data)
-                rackid = Database().insert('rack', row)
+                rackid = Database().insert('rack', Access().created_row('rack', row))
 
             if not rackid:
                 return False, f"Could not update or create rack {name}"
@@ -305,6 +328,10 @@ class Rack():
                                               'height': self.inventory_items['height'],
                                               'orientation': self.inventory_items['orientation']
                                               })
+        entries = response['config']['rack']['inventory']
+        readable = {kind: set(Access().visible_names(kind, [e['name'] for e in entries if e['type'] == kind]))
+                    for kind in {e['type'] for e in entries}}
+        response['config']['rack']['inventory'] = [e for e in entries if e['name'] in readable[e['type']]]
         return status, response
 
 

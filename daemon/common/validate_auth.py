@@ -33,52 +33,134 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 from functools import wraps
-from flask import request, json
+from flask import request, json, g
 import jwt
 from utils.log import Log
 from common.constant import CONSTANT
+from common.route_grammar import requirement, GrammarError
+from utils.access import Access
+from utils.audit import Audit
 
 LOGGER = Log.get_logger()
 
 
-def token_required(function):
+def token_required(function=None, *, requires=None):
     """
-    Input - Token
+    Input - Token; optionally what the route requires, when the path grammar would
+            read it wrong: a kind such as 'rootus', or an (entity, bit) pair.
     Process - After validate the Token, Return the arguments
     and keyword arguments Of The API.
     Output - Success or Failure.
     """
-    @wraps(function)
-    def decorator(*args, **kwargs):
-        token = None
-        if 'x-access-tokens' in request.headers:
-            token = request.headers['x-access-tokens']
-        if not token:
-            LOGGER.error('A valid token is missing. None supplied')
-            response = {'message': 'A valid token is missing'}
-            code = 401
-            return json.dumps(response), code
-        try:
-            claims = jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) ## Decoding Token
-        except jwt.exceptions.DecodeError:
-            LOGGER.error('Token is invalid. Cannot decode')
-            response = {'message': 'Token is invalid'}
-            code = 401
-            return json.dumps(response), code
-        except Exception as exp:
-            LOGGER.error(f'Token is invalid. {exp}')
-            response = {'message': 'Token is invalid'}
-            code = 401
-            return json.dumps(response), code
-        if claims.get('scope') == 'provision':
-            LOGGER.error('Provision-scoped token rejected on a protected endpoint')
-            response = {'message': 'Token is not permitted for this endpoint'}
-            return json.dumps(response), 403
-        return function(**kwargs)
-    return decorator
+    def wrap(function):
+        @wraps(function)
+        def decorator(*args, **kwargs):
+            token = None
+            if 'x-access-tokens' in request.headers:
+                token = request.headers['x-access-tokens']
+            if not token:
+                LOGGER.error('A valid token is missing. None supplied')
+                response = {'message': 'A valid token is missing'}
+                code = 401
+                _audit('refused', code, response['message'])
+                return json.dumps(response), code
+            try:
+                claims = jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) ## Decoding Token
+            except jwt.exceptions.DecodeError:
+                LOGGER.error('Token is invalid. Cannot decode')
+                response = {'message': 'Token is invalid'}
+                code = 401
+                _audit('refused', code, response['message'])
+                return json.dumps(response), code
+            except Exception as exp:
+                LOGGER.error(f'Token is invalid. {exp}')
+                response = {'message': 'Token is invalid'}
+                code = 401
+                _audit('refused', code, response['message'])
+                return json.dumps(response), code
+            if claims.get('scope') == 'provision':
+                LOGGER.error('Provision-scoped token rejected on a protected endpoint')
+                response = {'message': 'Token is not permitted for this endpoint'}
+                _audit('refused', 403, response['message'])
+                return json.dumps(response), 403
+            g.userid = claims.get('id')
+            g.requirement = _requirement(kwargs, requires)
+            refused = _refused()
+            if refused:
+                return refused
+            return _audited(function(**kwargs))
+        decorator.requires = requires
+        return decorator
+    return wrap(function) if function is not None else wrap
 
 
-def provision_token_required(function=None, *, node_in_payload=None, only=None):
+def _audit(outcome, code, detail=None):
+    """
+    One line in the trail for this call: who, what, which object, what came of it. The
+    caller record is what the check already read; a token whose user is gone carries
+    only the id. Never the body.
+    """
+    caller = getattr(g, 'caller', None) or {}
+    Audit().record(userid=getattr(g, 'userid', None), username=caller.get('username'), source=caller.get('source'),
+                   method=request.method, path=request.path, requirement=getattr(g, 'requirement', None),
+                   outcome=outcome, code=code, detail=detail)
+
+
+def _audited(response):
+    """
+    An allowed call that changes state is recorded after the view answered, with the code
+    it answered, so a write the base class refused is on record as such.
+    """
+    if Audit.state_changing(request.method, request.url_rule.rule if request.url_rule else None,
+                            (request.view_args or {}).get('action')):
+        code = int(response[1] if isinstance(response, tuple) and len(response) > 1 else 200)
+        # a view or base class that says no after the gate let the call through is still a
+        # refusal: the generic access verbs and the create rules answer their own 403 and 404
+        outcome = 'allowed' if code < 400 else ('refused' if code in (401, 403, 404) else 'failed')
+        _audit(outcome, code, _message_of(response) if code >= 400 else None)
+    return response
+
+
+def _message_of(response):
+    """
+    The message a view answered with, for the trail; None when there is none to read.
+    """
+    body = response[0] if isinstance(response, tuple) else response
+    try:
+        parsed = json.loads(body) if isinstance(body, (str, bytes)) else body
+        return parsed.get('message') if isinstance(parsed, dict) else None
+    except (ValueError, AttributeError):
+        return None
+
+
+def _refused():
+    """
+    The bit check on what the route requires. None when the caller may proceed, else the
+    response to answer with: 404 for an object the caller may not see, 403 for a bit it
+    lacks, both with the reason.
+    """
+    allowed, code, message = Access().check(g.userid, g.requirement)
+    if allowed:
+        return None
+    LOGGER.warning(f'refused: user {g.userid} {request.method} {request.path}: {message}')
+    _audit('refused', code, message)
+    return json.dumps({'message': message}), code
+
+
+def _requirement(kwargs, requires=None):
+    """
+    What this route asks of which object: what it declared, else the grammar. A route
+    neither can place is logged and carries no requirement; the derived test keeps that
+    from reaching a shipped route.
+    """
+    try:
+        return requirement(request.url_rule.rule, request.method, kwargs, requires)
+    except GrammarError as exp:
+        LOGGER.error(f'route without a requirement: {exp}')
+        return None
+
+
+def provision_token_required(function=None, *, node_in_payload=None, only=None, requires=None):
     """
     Input - Token
     Process - Accept an admin token, or a node-scoped provision token whose
@@ -131,7 +213,15 @@ def provision_token_required(function=None, *, node_in_payload=None, only=None):
                         LOGGER.error(f"Provision token for {claims.get('node')} used on {target}")
                         response = {'message': 'Token is not valid for this node'}
                         return json.dumps(response), 403
+            g.userid = claims.get('id')
+            g.requirement = _requirement(kwargs, requires)
+            if claims.get('scope') != 'provision':
+                refused = _refused()
+                if refused:
+                    return refused
+                return _audited(function(**kwargs))
             return function(**kwargs)
+        decorator.requires = requires
         return decorator
     return wrap(function) if function is not None else wrap
 

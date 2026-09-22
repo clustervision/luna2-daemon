@@ -38,6 +38,7 @@ __status__      = 'Development'
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
+from utils.access import Access
 
 
 class RedfishSetup():
@@ -69,6 +70,9 @@ class RedfishSetup():
             'port': setup['port'],
             'verify': Helper().make_bool(setup['verify']),
             'comment': setup['comment'],
+            'owners': setup['owners'],
+            'usergroups': setup['usergroups'],
+            'access': setup['access'],
             'accounts': []
         }
         where = f"redfishsetupid = '{setup['id']}'"
@@ -84,7 +88,7 @@ class RedfishSetup():
         This method will return all the redfishsetup in detailed format.
         """
         status = False
-        setups = Database().get_record(table=self.table)
+        setups = Access().visible(self.table, Database().get_record(table=self.table))
         if setups:
             response = {'config': {self.table: {}}}
             for setup in setups:
@@ -101,7 +105,7 @@ class RedfishSetup():
         This method will return requested redfishsetup in detailed format.
         """
         status = False
-        setup = Database().get_record(table=self.table, where=f"name = '{name}'")
+        setup = Access().visible(self.table, Database().get_record(table=self.table, where=f"name = '{name}'"))
         if setup:
             response = {'config': {self.table: {name: self._setup_with_accounts(setup[0])}}}
             status = True
@@ -119,6 +123,11 @@ class RedfishSetup():
         if not setup:
             return status, f'{self.table_cap} {name} is not available'
         members = self.assigned_to(name)
+        # 'node x' and 'group y' strings: shown for the objects the caller may read
+        readable = {}
+        for kind in {m.split(' ', 1)[0] for m in members}:
+            readable[kind] = set(Access().visible_names(kind, [m.split(' ', 1)[1] for m in members if m.startswith(kind + ' ')]))
+        members = [m for m in members if m.split(' ', 1)[1] in readable[m.split(' ', 1)[0]]]
         if members:
             response = {'config': {self.table: {name: {'members': members}}}}
             status = True
@@ -213,7 +222,7 @@ class RedfishSetup():
                 # cannot tell whether the certificate is checked, and the behaviour
                 # would rest on None happening to be falsy where it is consumed
                 data['verify'] = '0'
-            setupid = Database().insert(self.table, Helper().make_rows(data))
+            setupid = Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(data)))
             if not setupid:
                 response = f'Internal error: {self.table_cap} {name} create failed'
                 self.logger.error(response)
@@ -279,7 +288,9 @@ class RedfishSetup():
         newsetup = dict(setup[0])
         del newsetup['id']
         newsetup['name'] = newname
-        new_setupid = Database().insert(self.table, Helper().make_rows(newsetup))
+        # a department's clone carries the creator's columns in the body; the source's otherwise
+        newsetup.update({key: data[key] for key in ('owners', 'usergroups', 'access') if key in data})
+        new_setupid = Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(newsetup)))
         where = f"redfishsetupid = '{setupid}'"
         for record in Database().get_record(table='redfishaccount', where=where) or []:
             del record['id']

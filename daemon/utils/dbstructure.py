@@ -46,7 +46,8 @@ class DBStructure():
         self.logger = Log.get_logger()
         self.tables = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets',
                        'nodeinterface', 'bmcsetup','ha', 'monitor', 'ipaddress',
-                       'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
+                       'groupinterface', 'group', 'network', 'user', 'usergroup',
+                       'usergroupmember', 'usergroupmap', 'switch',
                        'switchinterface',
                        'cloud', 'otherdevices', 'controller', 'groupsecrets', 'node',
                        'cluster', 'tracker', 'dns', 'journal', 'rack', 'rackinventory',
@@ -224,14 +225,18 @@ class DBStructure():
             return DATABASE_LAYOUT_ipaddress
         if table == "groupinterface":
             return DATABASE_LAYOUT_groupinterface
-        if table == "roles":
-            return DATABASE_LAYOUT_roles
         if table == "group":
             return DATABASE_LAYOUT_group
         if table == "network":
             return DATABASE_LAYOUT_network
         if table == "user":
             return DATABASE_LAYOUT_user
+        if table == "usergroup":
+            return DATABASE_LAYOUT_usergroup
+        if table == "usergroupmember":
+            return DATABASE_LAYOUT_usergroupmember
+        if table == "usergroupmap":
+            return DATABASE_LAYOUT_usergroupmap
         if table == "switch":
             return DATABASE_LAYOUT_switch
         if table == "switchinterface":

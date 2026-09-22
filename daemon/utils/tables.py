@@ -52,7 +52,8 @@ class Tables():
     def __init__(self):
         self.logger = Log.get_logger()
         self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup',
-              'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
+              'ipaddress', 'groupinterface', 'group', 'network', 'user', 'usergroup',
+              'usergroupmember', 'usergroupmap', 'switch',
               'switchinterface',
               'otherdevices', 'groupsecrets', 'clustersecrets', 'profile', 'profilefile',
               'node', 'cluster', 'dns','controller','cloud',
@@ -100,7 +101,8 @@ class Tables():
                 # journaled write lands there, seconds apart. They are not what the sweep
                 # compares controllers on; hashing them made every table carrying them
                 # differ on every sweep and be repaired every hour with identical content.
-                dbcolumns = sorted(column for column in dbcolumns if column not in ('created', 'updated'))
+                # lastlogin is stamped by whichever controller took the login, for the same reason.
+                dbcolumns = sorted(column for column in dbcolumns if column not in ('created', 'updated', 'lastlogin'))
                 data=Database().get_record(select=Database().quote_columns(dbcolumns),table=table,orderby=order)
                 if data:
                     # An encrypted column is hashed by what it means, not by how it happens to be

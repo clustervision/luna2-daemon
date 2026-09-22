@@ -42,6 +42,7 @@ from base.node import Node
 from base.interface import Interface
 from base.osimage import OSImage
 from utils.journal import Journal
+from utils.access import Access
 from utils.helper import Helper
 from utils.status import Status
 from utils.ha import HA
@@ -252,6 +253,10 @@ def config_node_osgrab(name=None):
     Output - Success or Failure.
     """
     access_code=404
+    target = Access().pushed_object('node', name, request.data, 'osimage', 'osimageid', 'osimage')
+    verdict = Access().require('osimage', target, 'w')
+    if verdict[0] is not True:
+        return {'message': verdict[1]}, verdict[2]
     osimage=None
     hastate=HA().get_hastate()
     if hastate is True:
@@ -298,6 +303,10 @@ def config_node_ospush(name=None):
     Output - Success or Failure.
     """
     access_code=404
+    target = Access().pushed_object('node', name, request.data, 'osimage', 'osimageid', 'osimage')
+    verdict = Access().require('osimage', target, 'w')
+    if verdict[0] is not True:
+        return {'message': verdict[1]}, verdict[2]
     returned = OSImage().push(name, request.data)
     status=returned[0]
     response=returned[1]

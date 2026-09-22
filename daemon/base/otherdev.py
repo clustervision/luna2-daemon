@@ -35,6 +35,7 @@ from utils.helper import Helper
 from utils.config import Config
 from utils.service import Service
 from utils.model import Model
+from utils.access import Access
 
 
 class OtherDev():
@@ -116,7 +117,7 @@ class OtherDev():
                 row = Helper().make_rows(data)
                 if column_check:
                     if create:
-                        device_id = Database().insert(self.table, row)
+                        device_id = Database().insert(self.table, Access().created_row(self.table, row))
                         response = f'Device {name} created successfully'
                         status=True
                     if update:
@@ -208,7 +209,7 @@ class OtherDev():
                         data['macaddress'] = data['macaddress'].lower()
 
                     row = Helper().make_rows(data)
-                    device_id = Database().insert(self.table, row)
+                    device_id = Database().insert(self.table, Access().created_row(self.table, row))
                     if not device_id:
                         status=False
                         return status, 'Internal error: Device not cloned due to clashing config'

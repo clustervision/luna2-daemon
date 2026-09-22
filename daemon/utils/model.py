@@ -33,6 +33,7 @@ __status__      = 'Development'
 from utils.log import Log
 from utils.helper import Helper
 from utils.database import Database
+from utils.access import Access
 
 
 class Model():
@@ -57,6 +58,7 @@ class Model():
             all_records = Database().get_record(table=table, where=f"name = '{name}'")
         else:
             all_records = Database().get_record(table=table)
+        all_records = Access().visible(table, all_records)
         if all_records:
             if new_table:
                 config_table = new_table
@@ -104,6 +106,7 @@ class Model():
             if list_nodes:
                 for node in list_nodes:
                     nodes.append(node['name'])
+                nodes = Access().visible_names('node', nodes)
             if nodes:
                 response['config'][table][name]['members'] = nodes
                 self.logger.debug(f'Provided all {table_cap} members for nodes {nodes}.')
@@ -212,7 +215,7 @@ class Model():
             column_check = Helper().compare_list(data, columns)
             if column_check:
                 row = Helper().make_rows(data)
-                Database().insert(table, row)
+                Database().insert(table, Access().created_row(table, row))
                 self.logger.info(f'{name} successfully added in {table}')
                 response = f'{name} successfully added in {table}'
                 status=True
@@ -294,7 +297,7 @@ class Model():
             column_check = Helper().compare_list(data, columns)
             row = Helper().make_rows(data)
             if column_check:
-                Database().insert(table, row)
+                Database().insert(table, Access().created_row(table, row))
                 response = f'{name} cloned as {new_record} successfully'
                 status=True
             else:

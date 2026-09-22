@@ -97,6 +97,7 @@ setup(
         "daemon/plugins/osimage/filesystem": ["README","*py"],
         "daemon/plugins/osimage/other": ["README","*py"],
         "daemon/plugins/profile/delivery": ["README","*.py"],
+        "daemon/plugins/auth": ["README","*.py"],
         "daemon/nodescripts": ["*.py"]
     },
     data_files = [],

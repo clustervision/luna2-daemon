@@ -164,6 +164,7 @@ MATCH = {
     'biosconfig': 'nameandclear',
     'firmwarecatalog': 'name',
     'newbiosname': 'name',
+    'newfirmwarename': 'name',
     'account': 'name',
     'scheme': 'redfishscheme',
     'role': 'redfishrole'

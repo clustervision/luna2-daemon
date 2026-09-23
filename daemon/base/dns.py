@@ -85,8 +85,9 @@ class DNS():
                 status=True
                 response='DNS entries added or changed'
                 networkid=network[0]['id']
+                applied = 0
                 for entry in data:
-                    if 'host' in entry and 'ipaddress' in entry:
+                    if isinstance(entry, dict) and 'host' in entry and 'ipaddress' in entry:
                         host=entry['host']
                         ipaddress=entry['ipaddress']
                         valid_ip = Helper().check_ip(ipaddress)
@@ -102,6 +103,9 @@ class DNS():
                                 Database().update('dns', row, where)
                             else:
                                 Database().insert('dns', row)
+                            applied += 1
+                if not applied:
+                    return False, 'Invalid request: no entry with a host and a valid ipaddress'
                 Service().queue('dns','reload')
             else:
                 status=False

@@ -185,6 +185,8 @@ class Secret():
         unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['node'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
@@ -282,6 +284,8 @@ class Secret():
         warning = ''
         if request_data:
             data = request_data['config']['secrets']['node'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
@@ -348,6 +352,8 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['node'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
@@ -467,6 +473,8 @@ class Secret():
         unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['group'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 groupid = group[0]['id']
@@ -559,6 +567,8 @@ class Secret():
         warning = ''
         if request_data:
             data = request_data['config']['secrets']['group'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 groupid = group[0]['id']
@@ -627,6 +637,8 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['group'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 groupid = group[0]['id']
@@ -744,6 +756,8 @@ class Secret():
         unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['cluster']
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             cluster = Database().get_record(table='cluster')
             if cluster:
                 clusterid = cluster[0]['id']
@@ -835,6 +849,8 @@ class Secret():
         warning = ''
         if request_data:
             data = request_data['config']['secrets']['cluster']
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             cluster = Database().get_record(table='cluster')
             if cluster:
                 clusterid = cluster[0]['id']
@@ -901,6 +917,8 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['cluster']
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             cluster = Database().get_record(table='cluster')
             if cluster:
                 clusterid = cluster[0]['id']

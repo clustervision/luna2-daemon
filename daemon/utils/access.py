@@ -625,7 +625,8 @@ class Access():
         """
         try:
             body = request.get_json(force=True, silent=True) or {}
-            return body['config'][entity][name] or {}
+            found = body['config'][entity][name]
+            return found if isinstance(found, dict) else {}
         except (KeyError, TypeError, AttributeError):
             return {}
 

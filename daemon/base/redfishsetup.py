@@ -211,8 +211,8 @@ class RedfishSetup():
             if newname:
                 # nothing else to do: node and group hold the id, so everything
                 # pointing at this setup keeps pointing at it
+                response = f'{self.table_cap} {name} updated, renamed to {newname}'
                 name = newname
-                response = f'{self.table_cap} renamed to {newname}'
         else:
             data['name'] = name
             if 'scheme' not in data or not data['scheme']:

@@ -43,6 +43,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 from common.constant import CONSTANT
+from common.route_grammar import ALIAS
 from base.usergroup import ROLE_CAPS
 
 # Governed tables and their default mode when the row says nothing (design section 5).
@@ -80,6 +81,10 @@ ROOTUS = {
 
 BITS = {'r': 4, 'w': 2, 'x': 1}
 COLUMNS = ('owners', 'usergroups', 'access')
+
+# A request body carries its object under the route's segment, which is not the table name
+# for /config/profiles and /config/otherdev. Children aliased to a parent keep their own body.
+BODY_KEYS = {table: segment for segment, table in ALIAS.items() if table in GOVERNED and segment not in CHILDREN}
 # the bits in words, for every message a person can meet: r is read, w is change, x is operate
 ACTION = {'r': 'reading', 'w': 'changing', 'x': 'operating'}
 MAY = {'r': 'read', 'w': 'change', 'x': 'operate'}
@@ -625,7 +630,7 @@ class Access():
         """
         try:
             body = request.get_json(force=True, silent=True) or {}
-            found = body['config'][entity][name]
+            found = body['config'][BODY_KEYS.get(entity, entity)][name]
             return found if isinstance(found, dict) else {}
         except (KeyError, TypeError, AttributeError):
             return {}
@@ -649,7 +654,7 @@ class Access():
         if entity == 'node':
             return
         try:
-            body = request.get_json(force=True, silent=True)['config'][entity][name]
+            body = request.get_json(force=True, silent=True)['config'][BODY_KEYS.get(entity, entity)][name]
         except (KeyError, TypeError):
             return
         if not isinstance(body, dict):

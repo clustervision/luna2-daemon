@@ -105,6 +105,15 @@ class Profile():
         return detail
 
 
+    def _listed(self, profile):
+        """A profile as a list or show answers it: rendered by Access().visible, so
+        owners, usergroups and access join it here and not in _profile_with_files,
+        which the boot path also uses on rows nobody rendered."""
+        detail = self._profile_with_files(profile)
+        detail.update({key: profile[key] for key in ('owners', 'usergroups', 'access')})
+        return detail
+
+
     def get_all_profiles(self):
         """
         This method will return all profiles in detailed format.
@@ -114,7 +123,7 @@ class Profile():
         if profiles:
             response = {'config': {'profiles': {} }}
             for profile in profiles:
-                response['config']['profiles'][profile['name']] = self._profile_with_files(profile)
+                response['config']['profiles'][profile['name']] = self._listed(profile)
             status=True
         else:
             self.logger.warning('no profiles available')
@@ -130,7 +139,7 @@ class Profile():
         status=False
         profile = Access().visible('profile', Database().get_record(table='profile', where=f"name = '{name}'"))
         if profile:
-            response = {'config': {'profiles': {name: self._profile_with_files(profile[0])} }}
+            response = {'config': {'profiles': {name: self._listed(profile[0])} }}
             status=True
         else:
             response = f'Profile {name} is not available'

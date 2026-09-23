@@ -163,7 +163,10 @@ class Bios():
             # would leave it showing something no other entity shows
             'grab_exclude': record['grab_exclude'],
             'updated': record['updated'],
-            'comment': record['comment']
+            'comment': record['comment'],
+            'owners': record['owners'],
+            'usergroups': record['usergroups'],
+            'access': record['access']
         }
 
 

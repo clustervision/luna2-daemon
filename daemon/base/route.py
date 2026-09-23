@@ -70,6 +70,9 @@ class Route():
                 'device': route['device'],
                 'comment': route['comment'],
                 'assigned': ','.join(targets),
+                'owners': route['owners'],
+                'usergroups': route['usergroups'],
+                'access': route['access'],
             }
         return True, response
 

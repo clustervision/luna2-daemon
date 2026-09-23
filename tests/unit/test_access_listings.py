@@ -234,6 +234,44 @@ def test_every_entry_carries_owners_usergroups_and_access_as_names(seeded):
         context.pop()
 
 
+SEGMENT = {'otherdevices': 'otherdev', 'profile': 'profiles'}
+
+
+def test_every_governed_list_and_show_answers_owners_usergroups_and_access(sqlite_db):
+    """
+    The class the osimage case above is one instance of. Access().visible renders the
+    three fields into the rows, and an entity that then builds its answer field by field
+    drops them: the CLI prints --NA--. Every governed table, list and show, through its
+    real route, derived from GOVERNED so the next table is covered without being named.
+    """
+    from common.constant import CONSTANT
+    from utils.access import GOVERNED
+    from utils.database import Database
+    from utils.helper import Helper
+    db = Database()
+    clusterid = db.insert('cluster', Helper().make_rows({'name': 'cluster'}))
+    controller = db.insert('controller', Helper().make_rows({'hostname': 'controller', 'clusterid': clusterid, 'beacon': 1}))
+    db.insert('ipaddress', Helper().make_rows({'tableref': 'controller', 'tablerefid': controller, 'ipaddress': '10.141.255.254'}))
+    for table in GOVERNED:
+        if table != 'cluster':
+            db.insert(table, Helper().make_rows({'name': 'probe'}))
+    client = _routes_app().test_client()
+    token = encode({'id': 0}, CONSTANT['API']['SECRET_KEY'], 'HS256')
+    missing = []
+    for table in sorted(GOVERNED):
+        segment = SEGMENT.get(table, table)
+        paths = ['/config/cluster'] if table == 'cluster' else [f'/config/{segment}', f'/config/{segment}/probe']
+        for path in paths:
+            response = client.get(path, headers={'x-access-tokens': token})
+            assert response.status_code == 200, (path, response.data[:200])
+            answered = json.loads(response.data)['config'][segment]
+            entry = answered if table == 'cluster' else answered['probe']
+            shown = {key: entry.get(key) for key in ('owners', 'usergroups', 'access')}
+            if shown['owners'] != 'rootus' or shown['usergroups'] != '' or not str(shown['access']).startswith('r'):
+                missing.append(f'{path}: {shown}')
+    assert not missing, 'answers without the rendered owners, usergroups and access:\n  ' + '\n  '.join(missing)
+
+
 def test_admin_and_rootus_see_everything_annotated(seeded):
     from base.osimage import OSImage
     from base.secret import Secret

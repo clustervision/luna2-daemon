@@ -219,6 +219,8 @@ class Authentication():
         This method will provide a PyJWT encoded token for a node.
         """
         status=False
+        if not isinstance(request_data, dict):
+            return False, 'Invalid request: the body must be an object'
         if not request_data:
             self.logger.error('Login Required')
             response = 'Login Required'

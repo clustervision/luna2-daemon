@@ -205,6 +205,7 @@ def config_osimage_clone(name=None):
             status=returned[0]
             response=returned[1]
             if status is False:
+                access_code = Helper().get_access_code(status, response)
                 response = {'message': response}
                 return response, access_code
             response={'message': 'something went wrong.....'}
@@ -234,6 +235,7 @@ def config_osimage_clone(name=None):
             access_code = 201
             response = {'message': response}
     else:
+        access_code = Helper().get_access_code(status, response)
         response = {'message': response}
     return response, access_code
 
@@ -419,6 +421,7 @@ def config_osimage_kernel_post(name=None):
             access_code = 204
             response = {'message': response}
     else:
+        access_code = Helper().get_access_code(status, response)
         response = {'message': response}
     return response, access_code
 

@@ -273,13 +273,11 @@ class Model():
         response = {}
         status=False
         data = request_data['config'][table][name]
-        new_record = new_name
-        if new_name in request_data['config'][table][name]:
-            data['name'] = data[new_name]
-            new_record = data[new_name]
-            del data[new_name]
-        else:
-            data['name'] = name
+        if not data.get(new_name):
+            return False, f'Invalid request: a new name is required to clone {name}'
+        data['name'] = data[new_name]
+        new_record = data[new_name]
+        del data[new_name]
         record = Database().get_record(table=table, where=f"name = '{name}'")
         if record:
             where = f"name = '{new_record}'"
@@ -297,7 +295,8 @@ class Model():
             column_check = Helper().compare_list(data, columns)
             row = Helper().make_rows(data)
             if column_check:
-                Database().insert(table, Access().created_row(table, row))
+                if not Database().insert(table, Access().created_row(table, row)):
+                    return False, f'Internal error: {name} could not be cloned as {new_record}'
                 response = f'{name} cloned as {new_record} successfully'
                 status=True
             else:

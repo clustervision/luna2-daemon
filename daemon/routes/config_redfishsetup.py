@@ -176,5 +176,6 @@ def config_node_redfishaccounts_provision():
         access_code = 200
         response = dumps(response)
     else:
+        access_code = Helper().get_access_code(status, response)
         response = {'message': response}
     return response, access_code

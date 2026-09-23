@@ -201,7 +201,7 @@ class Rack():
                 self.logger.debug(f"DEVICES: {devices}")
                 for device in devices:
                     if 'name' not in device:
-                        return False, "device name not supplied in data structure"
+                        return False, "Invalid request: device name not supplied in data structure"
                     inventory_id = None
                     create, update = False, False
                     for device_type in ['node','switch','otherdevices','controller']:
@@ -216,7 +216,7 @@ class Rack():
                     if 'type' in device:
                         device_data['tableref'] = device['type']
                     elif create:
-                        return False, f"Type for {device['name']} not found in data structure"
+                        return False, f"Invalid request: type for {device['name']} not found in data structure"
 
                     for item in ['height','position','orientation']:
                         if item in device:
@@ -363,7 +363,7 @@ class Rack():
 
             for device in data:
                 if 'name' not in device:
-                    return False, "device name not supplied in data structure"
+                    return False, "Invalid request: device name not supplied in data structure"
                 create, update = False, False
                 inventory_id = None
                 for device_type in ['node','switch','otherdevices','controller']:
@@ -378,14 +378,14 @@ class Rack():
                 if 'type' in device:
                     device_data['tableref'] = device['type']
                 elif create:
-                    return False, f"Type for {device['name']} not found in data structure"
+                    return False, f"Invalid request: type for {device['name']} not found in data structure"
 
                 for item in ['height','orientation']:
                     if item in device:
                         device_data[item] = device[item]
                            
                 if 'height' in device_data and str(device_data['height']) == '0' and device_type != 'otherdevices':
-                    return False, f"{device['name']} is not allowed to have 0 height"
+                    return False, f"Invalid request: {device['name']} is not allowed to have 0 height"
 
                 for key, value in self.inventory_items.items():
                     if key in device_data:

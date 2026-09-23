@@ -91,5 +91,5 @@ def delete_dns(name=None,network=None):
     status, response = Journal().add_request(function="DNS.delete_dns", object=name, param=network)
     if status is True:
         status, response = DNS().delete_dns(name,network)
-        access_code = 204
+        access_code = Helper().get_access_code(status, response)
     return {'message': response}, access_code

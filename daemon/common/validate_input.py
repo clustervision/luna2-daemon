@@ -164,6 +164,7 @@ MATCH = {
     'biosconfig': 'nameandclear',
     'firmwarecatalog': 'name',
     'newbiosname': 'name',
+    'newfirmwarename': 'name',
     'account': 'name',
     'scheme': 'redfishscheme',
     'role': 'redfishrole'
@@ -249,7 +250,7 @@ def input_filter(checks=None, skip=None, json=True):
             else:
                 check_list = checks
             # Checking for Name in kwargs and appending the name in checks - Sumit
-            if check_structure(data, check_list):
+            if check_structure(data, check_list, object_at_end=True):
                 data = parse_item(data)
                 _st().skip_list = []
                 LOGGER.debug(f"----- END ----- {data}")
@@ -377,9 +378,10 @@ def filter_data(data=None, name=None):
     return data
 
 
-def check_structure(data=None, checks=None):
+def check_structure(data=None, checks=None, object_at_end=False):
     """
-    This method will validate the structure of the data.
+    This method will validate the structure of the data. With object_at_end the
+    path must lead to a dict or list: the object the route reads its fields from.
     """
     if not checks:
         return True
@@ -393,11 +395,14 @@ def check_structure(data=None, checks=None):
             arr = check.split(':')
             slice_data = data
             for element in arr:
-                if not element in slice_data:
+                if not isinstance(slice_data, dict) or not element in slice_data:
                     LOGGER.debug(f"{element} not found in data {slice_data}")
                     return False
                 LOGGER.debug(f"OK: {element} found in data {slice_data}")
                 slice_data = slice_data[element]
+            if object_at_end and not isinstance(slice_data, (dict, list)):
+                LOGGER.debug(f"{check} does not lead to an object: {slice_data}")
+                return False
         return True
     except Exception as exp:
         LOGGER.debug(f"filter encountered issue due to incorrect data/json/dict?: {exp}")

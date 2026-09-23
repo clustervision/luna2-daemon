@@ -132,6 +132,13 @@ class Firmware():
                 return False, f'Internal error: {self.table_cap} {name} create failed'
             return True, f'{self.table_cap} {name} created' + self.staging_note(data.get('imagefile'))
         del data['name']
+        if 'newfirmwarename' in data:
+            newname = data.pop('newfirmwarename')
+            if Database().get_record(table=self.table, where=f"name = '{newname}'"):
+                return False, f'Invalid request: {self.table_cap} {newname} already exists'
+            data['name'] = newname
+        if not Helper().compare_list(data, Database().get_columns(self.table)):
+            return False, 'Invalid request: Columns are incorrect'
         if not data:
             return False, 'Nothing to update'
         Database().update(self.table, Helper().make_rows(data),

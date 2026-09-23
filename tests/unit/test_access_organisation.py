@@ -132,6 +132,7 @@ def world(db):
     db.insert('node', Helper().make_rows({'name': 'node001', 'groupid': g_intel, 'usergroups': str(intel), 'access': '770'}))
     db.insert('node', Helper().make_rows({'name': 'node002', 'groupid': g_amd, 'usergroups': str(amd), 'access': '770'}))
     db.insert('osimage', Helper().make_rows({'name': 'rocky9', 'access': '774'}))
+    db.insert('otherdevices', Helper().make_rows({'name': 'pdu-alice', 'owners': str(ids['alice'])}))
     return types.SimpleNamespace(ids=ids, intel=intel, amd=amd, g_intel=g_intel, g_amd=g_amd)
 
 
@@ -153,6 +154,11 @@ def client(db):
                           view_func=token_required(make(entity)), methods=['POST'])
         stub.add_url_rule(f'/config/{entity}/<string:name>/_delete', endpoint=f'{entity}_delete',
                           view_func=token_required(make(entity)), methods=['GET'])
+
+    # the two governed entities whose route segment is not their table name
+    for segment in ('profiles', 'otherdev'):
+        stub.add_url_rule(f'/config/{segment}/<string:name>', endpoint=f'{segment}_post',
+                          view_func=token_required(make(segment)), methods=['POST'])
 
     for entity in ('node', 'group'):
         stub.add_url_rule(f'/config/{entity}/<string:name>/interfaces/<string:interface>/_delete',
@@ -308,6 +314,49 @@ def test_the_three_columns_cannot_be_set_through_a_create_or_update_body(client,
         assert code == 403 and 'changed with chown, chgrp and chmod' in body['message'], payload
     for userid in (0, world.ids['zed']):
         assert client.as_(userid).post('/config/group/compute-intel', _body('group', 'compute-intel', access='777'))[0] == 200
+
+
+def test_every_governed_write_route_finds_its_body_under_its_own_segment(db):
+    """The column guard and the creator stamp read the body under the key the route's
+    base class reads, which is the URL segment; for profiles and otherdev that is not the
+    table name. Derived from the real routes, so a new aliased entity is covered."""
+    from cases.route_requirements_cases import app as routes_app
+    from common.route_grammar import ALIAS
+    from utils.access import Access, CHILDREN, GOVERNED
+    app, checked = routes_app(), set()
+    for rule in app.url_map.iter_rules():
+        parts = rule.rule.strip('/').split('/')
+        if 'POST' not in rule.methods or len(parts) != 3 or parts[0] != 'config' or parts[2] != '<string:name>':
+            continue
+        segment = parts[1]
+        table = ALIAS.get(segment, segment)
+        # a child (dns, osimagetag) is gated by its parent and its body describes the child
+        if table not in GOVERNED or segment in CHILDREN:
+            continue
+        with app.test_request_context(f'/config/{segment}/probe', method='POST',
+                                      json={'config': {segment: {'probe': {'access': '777'}}}}):
+            assert Access()._body_of(table, 'probe') == {'access': '777'}, rule.rule
+        checked.add(table)
+    assert {'profile', 'otherdevices', 'node', 'osimage'} <= checked, checked
+
+
+def test_a_department_profile_create_carries_the_creators_columns(client, world):
+    alice = client.as_(world.ids['alice'])
+    code, body = alice.post('/config/profiles/mine', _body('profiles', 'mine', service='chronyd', action='restart'))
+    assert code == 200, body
+    sent = body['body']['config']['profiles']['mine']
+    assert sent['owners'] == str(world.ids['alice']) and sent['usergroups'] == str(world.intel)
+
+
+def test_the_three_columns_cannot_be_set_through_a_profiles_or_otherdev_body(client, world):
+    alice = client.as_(world.ids['alice'])
+    for payload in ({'access': '777'}, {'usergroups': str(world.amd)}, {'owners': '0'}):
+        code, body = alice.post('/config/profiles/mine', _body('profiles', 'mine', service='chronyd', **payload))
+        assert code == 403 and 'changed with chown, chgrp and chmod' in body['message'], payload
+        code, body = alice.post('/config/otherdev/pdu-alice', _body('otherdev', 'pdu-alice', **payload))
+        assert code == 403 and 'changed with chown, chgrp and chmod' in body['message'], payload
+    assert client.as_(world.ids['zed']).post('/config/otherdev/pdu-alice',
+                                             _body('otherdev', 'pdu-alice', access='777'))[0] == 200
 
 
 def test_a_node_created_into_a_group_copies_the_groups_columns(world):

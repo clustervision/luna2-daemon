@@ -808,15 +808,43 @@ class Access():
     def forget_user(self, userid=None):
         """
         A deleted user leaves no ownership behind: its id goes out of the owners of every
-        governed row, so nothing answers to that id later.
+        governed row, so nothing answers to that id later. A row whose last owner goes
+        passes to an admin of a usergroup listed on it, and to rootus when there is none.
         """
         for table in GOVERNED:
-            for row in Database().get_record(select=['id', 'owners'], table=table,
+            for row in Database().get_record(select=['id', 'owners', 'usergroups'], table=table,
                                              where="owners IS NOT NULL AND owners != ''") or []:
                 owners = self.ids(row['owners'])
                 if int(userid) in owners:
                     remaining = ','.join(str(i) for i in owners if i != int(userid))
-                    self._store(table, row, 'owners', remaining or None)
+                    self._store(table, row, 'owners', remaining or self._heir(row, userid))
+
+    def _heir(self, row=None, userid=None):
+        """
+        Who takes a row whose last owner is leaving: an admin of a usergroup listed on it,
+        else None, which reads as rootus-owned.
+        """
+        groups = self.ids((row or {}).get('usergroups'))
+        if not groups:
+            return None
+        where = f"role = 'admin' AND usergroupid IN ({','.join(str(g) for g in groups)})"
+        for member in Database().get_record(select=['userid'], table='usergroupmember', where=where) or []:
+            if int(member['userid']) != int(userid):
+                return str(member['userid'])
+        return None
+
+    def forget_usergroup(self, groupid=None):
+        """
+        A deleted usergroup leaves no listing behind: its id goes out of the usergroups of
+        every governed row, so no row is left answering to an id that no longer exists.
+        """
+        for table in GOVERNED:
+            for row in Database().get_record(select=['id', 'usergroups'], table=table,
+                                             where="usergroups IS NOT NULL AND usergroups != ''") or []:
+                groups = self.ids(row['usergroups'])
+                if int(groupid) in groups:
+                    remaining = ','.join(str(i) for i in groups if i != int(groupid))
+                    self._store(table, row, 'usergroups', remaining or None)
 
     def _admin_of_listed(self, caller, row):
         return any(caller['usergroups'].get(gid) == 'admin' for gid in self.ids(row.get('usergroups')))

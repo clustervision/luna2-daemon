@@ -125,14 +125,17 @@ class UserGroup():
 
     def delete_usergroup(self, name=None):
         """
-        This method will delete a usergroup, its memberships and its map rows.
+        This method will delete a usergroup, its memberships, its map rows and its
+        listing on every governed object.
         """
+        from utils.access import Access  # the access module reads ROLE_CAPS from here
         existing = Database().get_record(table='usergroup', where=f"name = '{name}'")
         if not existing:
             return False, f'Usergroup {name} is not available'
         where = [{'column': 'usergroupid', 'value': existing[0]['id']}]
         Database().delete_row('usergroupmember', where)
         Database().delete_row('usergroupmap', where)
+        Access().forget_usergroup(existing[0]['id'])
         Database().delete_row('usergroup', [{'column': 'id', 'value': existing[0]['id']}])
         return True, f'Usergroup {name} removed.'
 

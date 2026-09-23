@@ -431,29 +431,35 @@ class Helper(object):
                     data['ipaddress'] = subnet_record[0]['id']
         return data
 
-    def get_available_ip(self, network=None, subnet=None, takenips=[], ping=False):
+    def get_available_ip(self, network=None, subnet=None, takenips=None, ping=False):
         """
         This method will provide the available IP address list.
         Optionally we can ping it to just make sure...
         """
+        takenips = list(takenips or [])
         if subnet:
             network+=str('/'+subnet)
         try:
-            avail = None
             net = ipaddress.ip_network(f"{network}")
+            free = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
             if not ping:
-                avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
-                return str(next(avail))
+                return str(next(free))
             # we try to ping for X ips, if none of these are free,
             # something else is going on (read: rogue devices)....
-            ret = 0
-            maximum = 5
-            while(maximum > 0 and ret != 1):
-                avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
-                takenips.append(avail)
-                result, ret = self.runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                maximum -= 1
-            return str(next(avail))
+            # An address that answers belongs to something the database does not know
+            # about. Falling back to the first candidate keeps the old answer when every
+            # one of them replies.
+            first = None
+            for _ in range(5):
+                candidate = next(free, None)
+                if candidate is None:
+                    break
+                if first is None:
+                    first = candidate
+                _, ret = self.runcommand(f"ping -w1 -c1 {candidate}", True, 3)
+                if ret == 1:  # no reply: nothing is holding it
+                    return candidate
+            return first
         except Exception as exp:
             return None
 

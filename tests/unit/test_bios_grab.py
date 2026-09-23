@@ -44,10 +44,10 @@ def entry(name, **flags):
 
 
 REGISTRY = {'RegistryEntries': {'Attributes': [
-    entry('BootMode'),
-    entry('SriovGlobalEnable'),
+    entry('BootMode', DisplayName='Boot Mode'),
+    entry('SriovGlobalEnable', DisplayName='SR-IOV Global Enable'),
     entry('ProcVirtualization'),
-    entry('SystemServiceTag', IsSystemUniqueProperty=True),
+    entry('SystemServiceTag', IsSystemUniqueProperty=True, DisplayName='Service Tag'),
     entry('SystemModelName', ReadOnly=True),
     entry('MemoryPresent', Immutable=True),
     entry('SetupPassword', WriteOnly=True),
@@ -207,6 +207,18 @@ def test_a_grab_resolves_the_registry_by_id_not_by_guessing_a_path(bmc):
     assert data['biosversion'] == '2.15.1'
 
 
+def test_a_grab_keeps_the_boards_name_for_what_it_stores_and_nothing_else(bmc):
+    """
+    The name is read from the registry the grab already holds. Only a stored
+    setting gets one, and one the registry gives no name is left without
+    rather than given a made-up name.
+    """
+    bmc()
+    _, payload = Bios().collect_bios(node='node001', name='golden')
+    data = payload['config']['biosconfig']['golden']
+    assert data['labels'] == {'BootMode': 'Boot Mode', 'SriovGlobalEnable': 'SR-IOV Global Enable'}
+
+
 def test_a_machine_that_publishes_no_registry_is_refused(bmc):
     """
     Refusing is right. A configuration we cannot filter is one we would push
@@ -274,6 +286,15 @@ def test_the_attributes_are_always_base64_and_survive_a_restore(sqlite_db, bmc):
     assert json.loads(b64decode(restored)) == {'BootMode': 'Uefi',
                                                'SriovGlobalEnable': 'Enabled',
                                                'ProcVirtualization': 'Enabled'}
+
+
+def test_the_labels_are_base64_and_survive_a_restore(sqlite_db, bmc):
+    """Same reason as the attributes: a name like 'Boot Option #1' in stored
+    JSON would not come back from an import that strips quotes."""
+    row, _ = stored(sqlite_db, bmc)
+    assert row['labels'].replace("'", "").replace('"', "") == row['labels']
+    assert json.loads(b64decode(row['labels'])) == {'BootMode': 'Boot Mode',
+                                                    'SriovGlobalEnable': 'SR-IOV Global Enable'}
 
 
 def test_a_new_configuration_is_seeded_with_the_shipped_exclude_list(sqlite_db, bmc):

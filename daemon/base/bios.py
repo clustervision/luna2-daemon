@@ -134,6 +134,7 @@ class Bios():
             return False, f'BIOS configuration {name} is not available'
         detail = self.detail(record[0])
         detail['attributes'] = self.stored_attributes(record[0])
+        detail['labels'] = self.stored_attributes(record[0], column='labels')
         return True, {'config': {self.table: {name: detail}}}
 
     def detail(self, record=None):
@@ -166,22 +167,23 @@ class Bios():
         }
 
 
-    def stored_attributes(self, record=None):
+    def stored_attributes(self, record=None, column='attributes'):
         """
-        This method returns a configuration's attributes as a dict.
+        This method returns a configuration's attributes as a dict, or its
+        labels with column='labels'.
 
         A row whose attributes will not parse is reported empty and said out loud
         rather than raising: the configuration is still there to be looked at and
         repaired, and an exception here would take out the list of every other
         configuration alongside it.
         """
-        raw = self.decode((record or {}).get('attributes'))
+        raw = self.decode((record or {}).get(column))
         if not raw:
             return {}
         try:
             return loads(raw)
         except ValueError:
-            self.logger.error(f"BIOS configuration {record.get('name')} has unreadable attributes")
+            self.logger.error(f"BIOS configuration {record.get('name')} has unreadable {column}")
             return {}
 
 
@@ -440,6 +442,7 @@ class Bios():
                            f'to another; {len(dropped)} attribute(s) were dropped')
         return True, {'config': {self.table: {name: {
             'attributes': kept,
+            'labels': self.planner.labels(registry=registry, names=kept),
             'dropped': dropped,
             'manufacturer': system.get('Manufacturer'),
             'model': system.get('Model'),
@@ -593,6 +596,7 @@ class Bios():
             'biosversion': data.get('biosversion'),
             'nodeid': node[0]['id'] if node else None,
             'attributes': self.encode(dumps(data.get('attributes') or {})),
+            'labels': self.encode(dumps(data.get('labels') or {})),
             'updated': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         }
         record = Database().get_record(table=self.table, where=f"name = '{name}'")

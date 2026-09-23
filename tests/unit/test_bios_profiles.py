@@ -105,7 +105,8 @@ def test_what_the_board_cannot_express_is_refused_by_name_never_dropped():
     assert resolved == {'Naples0023': 'Off'}
     assert refused == {
         'serial_console': 'is not published by this board type',
-        'nosuchthing': 'is neither a known concept nor an attribute this board type publishes'}
+        'nosuchthing': 'is neither a known concept nor an attribute or setting name '
+                       'this board type publishes'}
 
 
 def test_an_ambiguous_concept_is_refused_with_the_candidates():
@@ -121,6 +122,42 @@ def test_an_ambiguous_concept_is_refused_with_the_candidates():
                                       'name the attribute instead'}
     resolved, _ = Planner().resolve(registry=twins, entries={'A2': 'on'})
     assert resolved == {'A2': 'Enabled'}
+
+
+def test_a_setting_is_found_by_the_name_the_board_gives_it():
+    """
+    What show lists beside the attribute is a name an operator will type back,
+    so it is accepted, loosely spaced and in any case, and written as the
+    attribute - the same map that travels for an attribute name or a concept.
+    """
+    resolved, refused = Planner().resolve(registry=REGISTRY, entries={
+        'Ac Loss Control': 'last state', ' svm  MODE ': 'disabled'})
+    assert refused == {}
+    assert resolved == {'Naples0265': 'Last State', 'Naples0021': 'Disabled'}
+    _, refused = Planner().resolve(registry=REGISTRY, entries={'Ac Loss Control': 'maybe'})
+    assert refused == {'Ac Loss Control': '(Naples0265) takes one of: Power Off, Power On, Last State'}
+
+
+def test_a_name_the_board_repeats_is_refused_with_the_candidates():
+    """The R181 calls two attributes 'Boot Option #1'; a guess is written to
+    hardware, so the operator names the attribute."""
+    resolved, refused = Planner().resolve(registry=REGISTRY, entries={'Boot Option #1': 'Hard Disk'})
+    assert resolved == {}
+    assert refused == {'Boot Option #1': 'is ambiguous on this board type, matching '
+                                         'FBO101, FBO201; name the attribute instead'}
+
+
+def test_a_concept_keeps_its_meaning_over_a_setting_of_that_name():
+    """A concept and a DisplayName can spell the same word; the concept's
+    anchored patterns decide, so adding names did not move any concept."""
+    board = {'RegistryEntries': {'Attributes': [
+        {'AttributeName': 'X1', 'DisplayName': 'Hyper-Threading', 'Type': 'Enumeration',
+         'Value': [{'ValueName': 'Enabled'}, {'ValueName': 'Disabled'}]},
+        {'AttributeName': 'X2', 'DisplayName': 'hyperthreading', 'Type': 'Enumeration',
+         'Value': [{'ValueName': 'Enabled'}, {'ValueName': 'Disabled'}]}]}}
+    _, refused = Planner().resolve(registry=board, entries={'hyperthreading': 'off'})
+    assert refused == {'hyperthreading': 'is ambiguous on this board type, matching X1, X2; '
+                                         'name the attribute instead'}
 
 
 def test_a_vendor_mapping_is_used_only_when_its_attribute_exists():
@@ -177,10 +214,11 @@ def cluster_fixture(sqlite_db):
     other = db.insert('group', Helper().make_rows({'name': 'gpu-nodes'}))
     db.insert('node', Helper().make_rows({'name': 'node003', 'groupid': other}))
     attributes = {'Naples0023': 'Auto', 'PCIS007': 'Disabled', 'FBO001': 'UEFI'}
+    labels = Planner().labels(registry=REGISTRY, names=attributes)
     Bios().store_grabbed('golden', {'config': {'biosconfig': {'golden': {
-        'attributes': attributes, 'dropped': {}, 'manufacturer': 'GIGABYTE',
+        'attributes': attributes, 'labels': labels, 'dropped': {}, 'manufacturer': 'GIGABYTE',
         'model': 'R181-Z91-00', 'biosversion': 'F25', 'node': 'node001'}}}})
-    return {'groupid': groupid, 'attributes': attributes}
+    return {'groupid': groupid, 'attributes': attributes, 'labels': labels}
 
 
 def config(name):
@@ -192,7 +230,8 @@ def test_a_clone_is_the_grab_under_a_new_name_with_its_provenance(cluster):
         'newbiosname': 'hpc-nosmt'}}}})
     assert status is True and message == 'BIOS configuration golden cloned to hpc-nosmt'
     source, clone = config('golden')[0], config('hpc-nosmt')[0]
-    for column in ('manufacturer', 'model', 'biosversion', 'nodeid', 'attributes', 'grab_exclude'):
+    for column in ('manufacturer', 'model', 'biosversion', 'nodeid', 'attributes', 'labels',
+                   'grab_exclude'):
         assert clone[column] == source[column], column
     assert clone['id'] != source['id']
     assert Bios().detail(clone)['grabbedfrom'] == 'node001'
@@ -224,6 +263,32 @@ def test_a_change_by_concept_lands_as_the_boards_attribute_and_touches_nothing_e
     assert Bios().stored_attributes(config('hpc-nosmt')[0]) == {
         'Naples0023': 'Off', 'PCIS007': 'Enabled', 'FBO001': 'UEFI'}
     assert Bios().stored_attributes(config('golden')[0]) == cluster['attributes']
+
+
+def test_labels_are_shown_beside_the_attributes_and_never_pushed(cluster):
+    """
+    A configuration is pushed to other machines by attribute name; the labels
+    are for reading only. They come back as their own key, and neither what is
+    pushed nor the digest status compares against moves because of them.
+    """
+    assert cluster['labels'] == {'Naples0023': 'SMT Mode', 'PCIS007': 'SR-IOV Support',
+                                 'FBO001': 'Boot mode select'}
+    row = config('golden')[0]
+    _, shown = Bios().get_bios('golden')
+    shown = shown['config']['biosconfig']['golden']
+    assert shown['attributes'] == cluster['attributes']
+    assert shown['labels'] == cluster['labels']
+    assert Bios().stored_attributes(row) == cluster['attributes']
+    assert Bios().content_digest(row) == digest_of(cluster['attributes'])
+
+
+def test_a_configuration_grabbed_before_labels_existed_shows_none(cluster):
+    Database().update('biosconfig', Helper().make_rows({'labels': None}),
+                      [{"column": "name", "value": "golden"}])
+    _, shown = Bios().get_bios('golden')
+    shown = shown['config']['biosconfig']['golden']
+    assert shown['labels'] == {}
+    assert shown['attributes'] == cluster['attributes']
 
 
 def test_one_bad_entry_refuses_the_whole_change_by_name(cluster, monkeypatch):

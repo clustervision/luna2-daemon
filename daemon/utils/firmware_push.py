@@ -560,16 +560,20 @@ class FirmwarePush():
         which is the one question whose answer cannot be produced by an image that
         went into the slot the machine is not booting from.
 
-        It keeps asking while the board cannot answer: a BMC that has just flashed
-        itself is rebooting, and a read that lands in that window sees no service or
-        an inventory without the component - neither of which says anything about
-        the flash. Only an answer decides; the deadline only says how long to wait
-        for one.
+        It keeps asking until the board answers with the version that was asked for:
+        a BMC that has just flashed itself is rebooting, and a read that lands in that
+        window sees no service, an inventory without the component, or the version it
+        booted with - none of which says anything about the flash. Answering is not
+        the same as having switched over, so an answer that is not the wanted version
+        is not yet a verdict; only the wanted version, or the deadline, ends the wait.
         """
         waited = 0
+        status, version = False, None
         while True:
             status, version = self.running_version(redfish=redfish, component=component)
-            if status or waited >= deadline:
+            if status and str(version).strip() == str(wanted).strip():
+                return True, version
+            if waited >= deadline:
                 break
             sleep(POLL_INTERVAL)
             waited += POLL_INTERVAL

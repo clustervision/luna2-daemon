@@ -178,6 +178,7 @@ DATABASE_LAYOUT_biosconfig = [
 {"column": "biosversion",          "datatype": "VARCHAR", "length": "64"},
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
 {"column": "attributes",           "datatype": "TEXT"},
+{"column": "labels",               "datatype": "TEXT"},
 {"column": "grab_exclude",         "datatype": "TEXT"},
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"},

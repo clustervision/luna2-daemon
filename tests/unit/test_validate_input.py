@@ -414,3 +414,25 @@ def test_a_journal_object_with_a_colon_still_replicates():
     filter_data("node001'--", 'objectname')
     assert validate_input._st().error, "the chmod family's object segment keeps the name rule"
     validate_input._st().error = None
+
+
+def test_every_request_id_the_daemon_hands_out_can_be_followed():
+    """The daemon queues its own tasks under ids like __internal__, and an equal request is
+    answered with that id; a status route refusing it leaves the client polling for ever."""
+    import glob, re
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+    issued = set()
+    for path in glob.glob(os.path.join(DAEMON_DIR, '**', '*.py'), recursive=True):
+        with open(path, encoding='utf-8') as source:
+            issued |= set(re.findall(r"request_id\s*=\s*['\"](__[a-z_]+__)['\"]", source.read()))
+    assert '__internal__' in issued, 'the scan found none of the ids it exists to check'
+    for value in sorted(issued) + ['1790167416.123456781234']:
+        validate_input._st().error = None
+        filter_data(value, 'request_id')
+        assert not validate_input._st().error, f"{value!r} refused as request_id"
+    for value in ("__internal__'--", "1790' OR '1'='1", '__x__/..'):
+        validate_input._st().error = None
+        filter_data(value, 'request_id')
+        assert validate_input._st().error, f"{value!r} accepted as request_id"
+    validate_input._st().error = None

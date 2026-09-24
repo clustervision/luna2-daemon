@@ -59,6 +59,9 @@ REG_EXP = {
     # a plugin file name: the strict character set, but 'default' is a real plugin
     'plugin': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
+    # a request id is ours or the daemon's own: __internal__ and its kind come back to a
+    # client that asks for a task the daemon had already queued
+    'requestid': { 'regexp': r'^([a-z0-9\-\.]+|__[a-z_]+__)$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\', or a daemon id such as __internal__' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
     'loosecsv': { 'regexp': r'^[a-z0-9\-\.\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\', \'.\' and \',\'' },
     'interfacecsv': { 'regexp': r'^[a-zA-Z0-9\.\-\,\ \:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, whitespace, \'.\', \':\', \'-\' and \',\'' },
@@ -141,7 +144,7 @@ MATCH = {
     'subset': 'strictname',
     'filename': 'filename',
     'subsystem': 'strictname',
-    'request_id': 'strictname',
+    'request_id': 'requestid',
     'device_type': 'strictname',
     'scope': 'profilescope',
     'object_type': 'strictname',

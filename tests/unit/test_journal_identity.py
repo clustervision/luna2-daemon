@@ -101,7 +101,8 @@ def test_the_identity_is_resolved_again_until_an_address_matches(housekeeper):
     waiting = [e for e in housekeeper.logger.errors if 'belongs to a controller' in e]
     assert len(waiting) == 1, 'said once at the start, not every five seconds'
     assert '192.0.2.10' in waiting[0], 'names the addresses it does have'
-    assert 'I am controller1, known after waiting 10 seconds for my address' in housekeeper.logger.warnings
+    assert 'Controller name resolution finished after waiting 10 seconds for my address' in (
+        housekeeper.logger.warnings)
     assert FakeHA.insync == [(None, False)], 'set out of sync before the wait, and never in sync without an identity'
 
 

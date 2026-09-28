@@ -177,6 +177,20 @@ def test_dhcp_overwrite_renders_subnet_and_host(config_env, seeded):
     assert f"fixed-address {NODE_IP}" in content
 
 
+def _assert_no_open_pool_in_a_group(family):
+    """kea allocates from any pool in a shared network the client may use, not only the selected
+    subnet's, so a classless pool beside a sibling serves every client of the block."""
+    for block in family.get("shared-networks", []):
+        subnets = block.get("subnet4", [])
+        if len([s for s in subnets if s.get("pools")]) < 2:
+            continue
+        for subnet in subnets:
+            for pool in subnet.get("pools", []):
+                assert "client-class" in pool, (
+                    f"open pool {pool['pool']} in shared network {block['name']}: kea hands it to "
+                    f"clients of every subnet in the block")
+
+
 @pytest.mark.regression
 def test_dhcp_kea_renders_relay_on_shared_network(config_env, seeded, constant):
     """TRIX-1921: a shared network carrying dhcp_relay renders a Kea 'relay' ip-addresses block."""
@@ -333,13 +347,10 @@ def test_dhcp_kea_anchor_beats_the_ignore_setting(config_env, seeded, constant):
 
 
 @pytest.mark.regression
-def test_dhcp_kea_relayed_pool_takes_no_policy_class(config_env, seeded, constant):
-    """A relayed member is picked out by its relay, so its pool must carry no policy class.
-
-    Every member class in a group holds the same udhcp test, so classing a relayed pool refuses
-    that network's own PXE clients -- which then fall through to the carrier's pool and boot on the
-    wrong subnet, with the wrong gateway. Measured on kea 3.0.3: an unknown node arriving over the
-    relay was offered the carrier's address instead of its own network's."""
+def test_dhcp_kea_relayed_pool_admits_its_relays_only(config_env, seeded, constant):
+    """Kea allocates from any pool in a shared network the client may use, not only the selected
+    subnet's. An open relayed pool therefore serves the whole group, the wire's own nodes included;
+    gated on the udhcp class it would refuse its own PXE clients instead. It is gated on its relay."""
     from utils.config import Config
 
     _insert("network", name="remote", network="10.150.0.0", subnet="16", dhcp=1,
@@ -351,14 +362,13 @@ def test_dhcp_kea_relayed_pool_takes_no_policy_class(config_env, seeded, constan
     content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
     parsed = _kea(content)
     _kea_accepts(content)
+    classes = {c["name"]: c.get("test", "") for c in parsed["Dhcp4"]["client-classes"]}
     subnets = {s["subnet"]: s for s in parsed["Dhcp4"]["shared-networks"][0]["subnet4"]}
     for pool in subnets["10.150.0.0/16"]["pools"]:
-        assert "client-class" not in pool, (
-            "a relayed member's pool carries a policy class; its own PXE clients are refused it "
-            "and fall through to the carrier's pool")
-    # the network on the wire still gets one -- that is what tells host from BMC
+        assert classes[pool["client-class"]] == "pkt4.giaddr == 10.150.0.1"
     for pool in subnets["10.141.0.0/16"]["pools"]:
-        assert "client-class" in pool
+        assert f"not member('{subnets['10.150.0.0/16']['pools'][0]['client-class']}')" in (
+            classes[pool["client-class"]]), "the wire's pool must be closed to relayed clients"
     _assert_classes_resolve(parsed["Dhcp4"])
 
 
@@ -517,7 +527,8 @@ def test_dhcp_kea_full_cluster_shape(config_env, seeded, constant):
 
     Each network has to end up in the right block with the right pool gate, and the three rules
     interact here in a way no pairwise fixture reaches: the wire pair are classed, the relayed
-    member must not be, and the anchor must stay out of a group that spans two relayed links."""
+    member is gated on its relay, and the anchor must stay out of a group that spans two relayed
+    links."""
     from utils.config import Config
     from utils.database import Database
 
@@ -536,11 +547,14 @@ def test_dhcp_kea_full_cluster_shape(config_env, seeded, constant):
 
     wire = blocks["cluster-ipmi-remote"]
     assert set(wire) == {"10.141.0.0/16", "10.148.0.0/16", "10.150.0.0/16"}
-    # the wire pair are told apart by class; the relayed member is told apart by its relay
+    # the wire pair are told apart by class; the relayed member is gated on its relay
+    classes = {c["name"]: c.get("test", "") for c in parsed["Dhcp4"]["client-classes"]}
     for prefix in ("10.141.0.0/16", "10.148.0.0/16"):
         assert all("client-class" in pool for pool in wire[prefix]["pools"]), prefix
-    assert all("client-class" not in pool for pool in wire["10.150.0.0/16"]["pools"]), (
-        "a relayed member's pool must take no policy class, or its own PXE clients are refused it")
+    assert all(classes[pool["client-class"]].startswith("pkt4.giaddr == ")
+               for pool in wire["10.150.0.0/16"]["pools"]), (
+        "a relayed member's pool is gated on its relay, not on the udhcp class")
+    _assert_no_open_pool_in_a_group(parsed["Dhcp4"])
 
     link = blocks["edge-linksel"]
     assert set(link) == {"10.170.35.0/24", "10.160.0.0/16"}
@@ -548,6 +562,51 @@ def test_dhcp_kea_full_cluster_shape(config_env, seeded, constant):
     assert all("client-class" in pool for pool in link["10.160.0.0/16"]["pools"]), (
         "a pool in an anchored block must be fenced")
     _assert_classes_resolve(parsed["Dhcp4"])
+
+
+def _two_links_behind_one_relay():
+    """One relay fronting two links, told apart only by their option-82.5 anchors."""
+    _insert("network", name="rel1", network="198.51.100.0", subnet="24",
+            network_ipv6="2001:db8:51::", subnet_ipv6="64", dhcp=1,
+            dhcp_range_begin="198.51.100.10", dhcp_range_end="198.51.100.20",
+            dhcp_range_begin_ipv6="2001:db8:51::10", dhcp_range_end_ipv6="2001:db8:51::20",
+            nameserver_ip="10.141.0.1", shared=NETWORK, dhcp_relay="10.0.12.7,2001:db8:12::7",
+            dhcp_link_subnet="203.0.113.0/26,2001:db8:a1::/64")
+    _insert("network", name="rel2", network="100.66.0.0", subnet="24",
+            network_ipv6="2001:db8:66::", subnet_ipv6="64", dhcp=1,
+            dhcp_range_begin="100.66.0.10", dhcp_range_end="100.66.0.20",
+            dhcp_range_begin_ipv6="2001:db8:66::10", dhcp_range_end_ipv6="2001:db8:66::20",
+            nameserver_ip="10.141.0.1", shared=NETWORK, dhcp_relay="10.0.12.7,2001:db8:12::7",
+            dhcp_link_subnet="203.0.113.64/26,2001:db8:a2::/64")
+
+
+@pytest.mark.regression
+@pytest.mark.parametrize("family,template,out", [("4", "templ_kea-dhcp4.cfg", "dhcpd.conf"),
+                                                 ("6", "templ_kea-dhcp6.cfg", "dhcpd6.conf")])
+def test_dhcp_kea_two_anchors_behind_one_relay_are_two_links(config_env, seeded, constant,
+                                                             family, template, out):
+    """In one shared network kea may allocate from any sibling the client is allowed, so a client
+    whose anchor names the second link was served from the first. Each anchored link gets a block
+    of its own, holding its anchor and its own network and nothing else."""
+    from utils.config import Config
+
+    _two_links_behind_one_relay()
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    constant["DHCP"]["TEMPLATE6"] = "templ_kea-dhcp6.cfg"
+    constant["DHCP"]["TEMPLATE" if family == "4" else "TEMPLATE6"] = template
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, out), encoding="utf-8").read()
+    parsed = _kea(content)[f"Dhcp{family}"]
+    _kea_accepts(content, family)
+
+    key = f"subnet{family}"
+    blocks = {b["name"]: {s["subnet"] for s in b[key]} for b in parsed["shared-networks"]}
+    expected = {"4": {"rel1-linksel": {"203.0.113.0/26", "198.51.100.0/24"},
+                      "rel2-linksel": {"203.0.113.64/26", "100.66.0.0/24"}},
+                "6": {"rel1-linksel": {"2001:db8:a1::/64", "2001:db8:51::/64"},
+                      "rel2-linksel": {"2001:db8:a2::/64", "2001:db8:66::/64"}}}[family]
+    assert blocks == expected
+    _assert_classes_resolve(parsed)
 
 
 @pytest.mark.regression

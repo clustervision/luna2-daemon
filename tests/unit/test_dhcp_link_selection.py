@@ -306,33 +306,66 @@ def test_shared_pools_the_carrier_excludes_every_member():
     assert derived[0]['test'] == "not member('ipmi-class') and not member('bmc2-class')"
 
 
-def test_shared_pools_a_relayed_member_gets_no_policy_class():
-    """It is picked out by its relay. A class there refuses its own network's PXE clients, which
-    then fall through to the carrier's pool and boot on the wrong subnet."""
+def test_shared_pools_a_relayed_member_admits_its_relays_only():
+    """Kea allocates from any pool in a shared network the client may use, so an open relayed pool
+    serves the whole group. The gate is the relay, not the udhcp class, which would refuse the
+    network's own PXE clients; and the carrier's pool is closed to what arrives over a relay."""
     subnets = _group(cluster='', remote='10.0.150.1')
-    Config().dhcp_shared_pools(subnets=subnets, pools=_pools('cluster-remote', 'remote'),
-                               group='cluster-remote', carrier='cluster', members=['remote'])
-    assert subnets['cluster']['pool_class'] == 'cluster-remote-carrier-class'
-    assert 'pool_class' not in subnets['remote']
+    derived = Config().dhcp_shared_pools(subnets=subnets, pools=_pools('cluster-remote', 'remote'),
+                                         group='cluster-remote', carrier='cluster', members=['remote'])
+    assert subnets['remote']['pool_class'] == 'cluster-remote-remote-via-class'
     assert subnets['remote']['range_begin'] == '10.0.1.1', 'it still gets its pool'
+    tests = {entry['name']: entry['test'] for entry in derived}
+    assert tests['cluster-remote-remote-via-class'] == 'pkt4.giaddr == 10.0.150.1'
+    assert subnets['cluster']['pool_class'] == 'cluster-remote-carrier-class'
+    assert tests['cluster-remote-carrier-class'] == (
+        "not member('remote-class') and not member('cluster-remote-remote-via-class')")
+    names = [entry['name'] for entry in derived]
+    assert names.index('cluster-remote-remote-via-class') < names.index('cluster-remote-carrier-class'), (
+        'kea refuses a member() reference to a class defined later in the list')
+
+
+def test_shared_pools_a_relayed_member_admits_every_relay_it_lists():
+    subnets = {'cluster': {'network': '10.0.0.0'},
+               'remote': {'network': '10.0.0.0', 'dhcp_relay': ['10.0.150.1', '10.0.150.2']}}
+    derived = Config().dhcp_shared_pools(subnets=subnets, pools=_pools('cluster-remote', 'remote'),
+                                         group='cluster-remote', carrier='cluster', members=['remote'])
+    via = [e for e in derived if e['name'] == 'cluster-remote-remote-via-class'][0]
+    assert via['test'] == 'pkt4.giaddr == 10.0.150.1 or pkt4.giaddr == 10.0.150.2'
 
 
 def test_shared_pools_an_anchored_group_fences_every_pool():
     """A foreign device on the link reaches the server too, so nothing in the block is left open.
-    A member that also has a policy class gets both, as one derived class - kea takes one name."""
+    A pool with a gate of its own gets both, as one derived class - kea takes one name."""
     subnets = _group(cluster='', inband='10.0.12.7')
     derived = Config().dhcp_shared_pools(subnets=subnets, pools=_pools('cluster-inband', 'inband'),
                                          group='cluster-inband', carrier='cluster',
                                          members=['inband'], fence='cluster-inband-boot-class')
     assert subnets['cluster']['pool_class'] == 'cluster-inband-cluster-pool-class'
-    assert subnets['inband']['pool_class'] == 'cluster-inband-boot-class', (
-        'a relayed member has no policy class, so the fence stands alone')
+    assert subnets['inband']['pool_class'] == 'cluster-inband-inband-pool-class'
     names = [entry['name'] for entry in derived]
-    assert names.index('cluster-inband-carrier-class') < names.index('cluster-inband-cluster-pool-class'), (
-        'kea refuses a member() reference to a class defined later in the list')
-    combined = [e for e in derived if e['name'] == 'cluster-inband-cluster-pool-class'][0]
-    assert combined['test'] == ("member('cluster-inband-carrier-class') "
-                                "and member('cluster-inband-boot-class')")
+    for gate, combined in (('cluster-inband-carrier-class', 'cluster-inband-cluster-pool-class'),
+                           ('cluster-inband-inband-via-class', 'cluster-inband-inband-pool-class')):
+        assert names.index(gate) < names.index(combined), (
+            'kea refuses a member() reference to a class defined later in the list')
+    tests = {entry['name']: entry['test'] for entry in derived}
+    assert tests['cluster-inband-cluster-pool-class'] == (
+        "member('cluster-inband-carrier-class') and member('cluster-inband-boot-class')")
+    assert tests['cluster-inband-inband-pool-class'] == (
+        "member('cluster-inband-inband-via-class') and member('cluster-inband-boot-class')")
+
+
+def test_group_shares_link_two_anchors_are_two_links_behind_one_relay():
+    """One relay fronting several links is the case option 82.5 exists for: the anchors tell the
+    links apart where the relay cannot, so members with anchors of their own are not one link."""
+    nets = {'base': {'shared': ''},
+            'rel1': {'shared': 'base', 'dhcp_relay': '10.0.12.7', 'dhcp_link_subnet': '10.0.35.0/26'},
+            'rel2': {'shared': 'base', 'dhcp_relay': '10.0.12.7', 'dhcp_link_subnet': '10.0.35.64/26'}}
+    assert Config().dhcp_group_shares_link('rel1', 'base', nets) is False
+    assert Config().dhcp_group_shares_link('rel2', 'base', nets) is False
+    # one anchor behind the shared relay is still one link with its relayed sibling
+    nets['rel2']['dhcp_link_subnet'] = ''
+    assert Config().dhcp_group_shares_link('rel1', 'base', nets) is True
 
 
 def test_shared_pools_v6_takes_no_policy_class_but_still_fences():

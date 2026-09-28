@@ -509,17 +509,32 @@ class Housekeeper(object):
             if not ha_object.get_hastate():
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return
+            ha_object.set_insync(False)
+            insync_state = {'monitor': {'status': {'insync': {'state': 'HA controller not in sync', 'status': '501'}}}}
+            Monitor().update_itemstatus(item='ha', name='insync', request_data=insync_state)
+            # ---------------------------- without knowing which controller we are, no entry is ours.
+            # an address can come up after the daemon has started, so we keep looking for it
+            waited=0
+            while not ha_object.get_me():
+                if waited % 60 == 0:
+                    addresses=', '.join(ip for _, _, ip in Helper().local_addresses()) or 'none'
+                    self.logger.error(f"None of my addresses ({addresses}) belongs to a controller: "
+                                      f"the journal does not run until one does")
+                if event.is_set():
+                    return
+                sleep(5)
+                waited+=5
+                ha_object=HA()
             me=ha_object.get_me()
             shadow=ha_object.get_shadow()
             if shadow:
                 self.logger.info(f"I am {me} and i am a shadow controller")
             else:
                 self.logger.info(f"I am {me}")
+            if waited:
+                self.logger.warning(f"Controller name resolution finished after waiting {waited} seconds for my address")
             journal_object=Journal(me)
             tables_object=Tables()
-            ha_object.set_insync(False)
-            insync_state = {'monitor': {'status': {'insync': {'state': 'HA controller not in sync', 'status': '501'}}}}
-            Monitor().update_itemstatus(item='ha', name='insync', request_data=insync_state)
             # ---------------------------- we keep asking the journal from others until successful
             while syncpull_status is False:
                 try:

@@ -762,11 +762,15 @@ class Config(object):
         anchor merged into that group would be reachable from every relayed member in it, and
         selection would land on whichever the render happened to put first. Relays in common are
         the evidence that the link really is shared; a member with no relay is on the wire and
-        cannot be picked out by a relay anyway, so it does not argue either way.
+        cannot be picked out by a relay anyway, so it does not argue either way. Two members with
+        anchors of their own are two links even behind one relay: that is what option 82.5 is for.
         """
         def relays (name):
             nwk = (networksbyname or {}).get(name) or {}
             return {relay.strip() for relay in (nwk.get('dhcp_relay') or '').split(',') if relay.strip()}
+        def anchors (name):
+            nwk = (networksbyname or {}).get(name) or {}
+            return {link.strip() for link in (nwk.get('dhcp_link_subnet') or '').split(',') if link.strip()}
         mine = relays(network)
         for member, nwk in (networksbyname or {}).items():
             if member == network:
@@ -775,6 +779,8 @@ class Config(object):
                 continue
             theirs = relays(member)
             if theirs and not (theirs & mine):
+                return False
+            if anchors(member) and anchors(network) and anchors(member) != anchors(network):
                 return False
         return True
 
@@ -804,18 +810,25 @@ class Config(object):
             if 'range_begin' not in pool or 'range_end' not in pool:
                 continue
             subnet['range_begin'], subnet['range_end'] = pool['range_begin'], pool['range_end']
-            # A relayed member is picked out by its relay, so its pool takes no policy class -
-            # the classes only tell apart members that share a wire, and they all carry the same
-            # udhcp test. Classing a relayed pool refuses its own network's PXE clients, which
-            # then fall through to the carrier's pool and boot on the wrong subnet.
+            # A relayed member's pool is gated on its relays, not on the udhcp class: that would
+            # refuse its own PXE clients. Kea allocates from any pool in a shared network the client
+            # may use, not only the selected subnet's, so an open pool here serves the whole group.
             if policy and 'dhcp_relay' not in subnet:
                 subnet['pool_class'] = carrier_class if name == carrier else f"{name}-class"
+            elif policy:
+                via = f"{group}-{name}-via-class"
+                derived.append({'name': via, 'test': ' or '.join(f"pkt4.giaddr == {relay}"
+                                                                 for relay in subnet['dhcp_relay'])})
+                subnet['pool_class'] = via
             elif fence:
                 subnet['pool_class'] = fence
         if policy and members and any(s.get('pool_class') == carrier_class
                                       for s in (subnets or {}).values()):
+            vias = [s['pool_class'] for s in (subnets or {}).values()
+                    if s.get('pool_class', '').endswith('-via-class')]
             derived.append({'name': carrier_class,
-                            'test': ' and '.join(f"not member('{m}-class')" for m in members)})
+                            'test': ' and '.join([f"not member('{m}-class')" for m in members]
+                                                 + [f"not member('{via}')" for via in vias])})
         if fence:
             for name, subnet in (subnets or {}).items():
                 base = subnet.get('pool_class')

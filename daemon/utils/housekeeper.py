@@ -532,7 +532,7 @@ class Housekeeper(object):
             else:
                 self.logger.info(f"I am {me}")
             if waited:
-                self.logger.warning(f"I am {me}, known after waiting {waited} seconds for my address")
+                self.logger.warning(f"Controller name resolution finished after waiting {waited} seconds for my address")
             journal_object=Journal(me)
             tables_object=Tables()
             # ---------------------------- we keep asking the journal from others until successful

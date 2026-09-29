@@ -806,6 +806,9 @@ class Node():
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
+            status, response = Helper().name_addressed(data, name)
+            if not status:
+                return status, response
             status, response = Helper().list_of_objects(data, 'interfaces')
             if not status:
                 return status, response

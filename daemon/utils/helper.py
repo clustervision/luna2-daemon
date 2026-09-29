@@ -790,6 +790,20 @@ class Helper(object):
         return True, None
 
 
+    def name_addressed(self, body=None, name=None):
+        """
+        Input - the fields of a request body, and the name of the object the request addresses
+        Output - (True, None), or (False, message) when the body names another object. The
+                 name comes from the request; a rename has a field of its own. Nothing there
+                 reads as the name not given, and it is taken out of the body.
+        """
+        if 'name' in body and body['name'] is None:
+            del body['name']
+        if 'name' in body and str(body['name']) != str(name):
+            return False, f"Invalid request: the body names {self.make_text(body['name'])}, the request addresses {name}"
+        return True, None
+
+
     def make_bool(self, variable=None, empty_is_none=False):
         """
         Input - string

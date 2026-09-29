@@ -265,6 +265,9 @@ class OSImage():
         }
         if request_data:
             data = request_data['config']['osimage'][name]
+            status, response = Helper().name_addressed(data, name)
+            if not status:
+                return status, response
             image = Database().get_record(table='osimage', where=f"name = '{name}'")
             if image:
                 image_id = image[0]['id']

@@ -159,3 +159,47 @@ def test_nothing_for_a_list_of_objects_reads_as_not_given(client, segment, name,
 def test_an_interface_without_its_name_is_refused(client, segment, name, action):
     code, text = client(segment, name, {'interfaces': [{'network': 'cluster'}]}, action)
     assert code == 400 and 'interface name is required for this operation' in text
+
+
+@pytest.mark.parametrize('table', ['group', 'node', 'osimage'])
+def test_a_body_that_names_another_object_is_refused(client, table):
+    """The object is the one the request addresses. A name in the body that differs is
+    refused, whether free or taken; a rename has a field of its own."""
+    from utils.database import Database
+    segment, name, create = OBJECTS[table]
+    assert client(segment, 'taken', dict(create, **({'path': '/tmp/__taken__'} if table == 'osimage' else {})))[0] == 201
+
+    def names():
+        return sorted(row['name'] for row in Database().get_record(table=table))
+    before = names()
+    for value in ('other', 'taken', 5, True, ['a'], {'a': 1}):
+        code, text = client(segment, name, {'name': value, 'comment': 'x'})
+        assert code == 400 and f'the request addresses {name}' in text, (value, code, text)
+        assert names() == before
+    assert not Database().get_record(table=table, where=f"name = '{name}'")[0]['comment']
+
+
+@pytest.mark.parametrize('table', sorted(OBJECTS))
+def test_the_name_addressed_or_nothing_in_the_body_changes_no_name(client, table):
+    from utils.database import Database
+    segment, name, _ = OBJECTS[table]
+    before = sorted(str(row['name']) for row in Database().get_record(table=table))
+    for value in (name, None):
+        assert client(segment, name, {'name': value, 'comment': 'x'})[0] == 204
+        assert sorted(str(row['name']) for row in Database().get_record(table=table)) == before
+
+
+@pytest.mark.parametrize('table, field', [('node', 'newnodename'), ('group', 'newgroupname')])
+def test_a_rename_by_its_own_field_still_works(client, table, field):
+    from utils.database import Database
+    segment, name, _ = OBJECTS[table]
+    assert client(segment, name, {'name': name, field: 'renamed'})[0] == 204
+    names = [row['name'] for row in Database().get_record(table=table)]
+    assert 'renamed' in names and name not in names
+
+
+def test_an_osimage_rename_still_reaches_the_image_on_disk(client):
+    """There is no image on disk here, so the rename stops where it would move the files:
+    past the name check, which is what this pins."""
+    code, text = client('osimage', 'img', {'name': 'img', 'newosimage': 'renamed'})
+    assert code == 404 and 'renaming img to renamed failed' in text

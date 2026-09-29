@@ -948,7 +948,7 @@ class Node():
                     osimagetagids = None
                     if 'osimageid' in data:
                         osimagetagids = Database().get_record(table='osimagetag', where=f"osimageid = '{data['osimageid']}' AND name = '{osimagetag}'")
-                    elif node and 'osimageid' in node[0]:
+                    elif node and node[0].get('osimageid'):
                         osimagetagids = Database().get_record(table='osimagetag', where=f"osimageid = '{node[0]['osimageid']}' AND name = '{osimagetag}'")
                     else:
                         # there is a race condition where someone changes the group AND sets a tag at the same time. ... who will do such a thing?? - Antoine

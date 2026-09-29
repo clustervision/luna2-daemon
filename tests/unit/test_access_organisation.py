@@ -408,6 +408,35 @@ def test_a_clone_body_is_converted_as_well(world):
     assert sent['owners'] == str(world.ids['alice']) and sent['access'] == '750'
 
 
+def test_a_provision_token_cannot_set_the_three_columns(db, world):
+    """A node's own token writes to its node during an install and passes no access check.
+    It may not say who owns the node or who may reach it, in the body or through the verbs;
+    what an install does post still goes through."""
+    from common.constant import CONSTANT
+    from common.validate_auth import provision_token_required, token_required
+    app = Flask(__name__)
+
+    def view(name=None, **_):
+        return json.dumps({'body': request.get_json(force=True, silent=True)}), 200
+    app.add_url_rule('/config/node/<string:name>', endpoint='node', view_func=provision_token_required(view), methods=['POST'])
+    app.add_url_rule('/config/node/<string:name>/inventory', endpoint='inventory', view_func=provision_token_required(view), methods=['POST'])
+    app.add_url_rule('/config/<string:entity>/<string:objectname>/_chmod', endpoint='chmod', view_func=token_required(view), methods=['POST'])
+    token = encode({'node': 'node001', 'scope': 'provision'}, CONSTANT['API']['SECRET_KEY'], 'HS256')
+
+    def post(path, body):
+        response = app.test_client().post(path, headers={'x-access-tokens': token}, data=json.dumps(body), content_type='application/json')
+        return response.status_code, json.loads(response.data)
+    for column, value in (('owners', 'carol'), ('usergroups', 'amd'), ('access', '777'), ('access', '')):
+        for path in ('/config/node/node001', '/config/node/node001/inventory'):
+            code, body = post(path, _body('node', 'node001', comment='x', **{column: value}))
+            assert code == 403 and f'setting {column} on node node001 is not permitted' in body['message'], (path, column)
+    assert post('/config/node/node001/_chmod', _body('node', 'node001', access='777'))[0] in (401, 403)
+    for fields in ({'name': 'node001', 'interfaces': [{'interface': 'BOOTIF', 'force': True, 'ipaddress': '10.141.0.1'}]},
+                   {'disklayout': 'e30='}, {'inventory': {'source': 'inband'}}):
+        code, body = post('/config/node/node001', {'config': {'node': {'node001': fields}}})
+        assert code == 200 and body['body']['config']['node']['node001'] == fields
+
+
 def test_every_governed_write_route_finds_its_body_under_its_own_segment(db):
     """The column guard and the creator stamp read the body under the key the route's
     base class reads, which is the URL segment; for profiles and otherdev that is not the

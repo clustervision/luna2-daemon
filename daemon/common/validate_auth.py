@@ -220,6 +220,11 @@ def provision_token_required(function=None, *, node_in_payload=None, only=None, 
                 if refused:
                     return refused
                 return _audited(function(**kwargs))
+            # a node reports on itself; who owns it and who may reach it is not the node's to say
+            allowed, code, message = Access().provision_body(g.requirement)
+            if not allowed:
+                LOGGER.error(f"Provision token for {claims.get('node')}: {message}")
+                return json.dumps({'message': message}), code
             return function(**kwargs)
         decorator.requires = requires
         return decorator

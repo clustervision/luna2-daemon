@@ -638,6 +638,20 @@ class Access():
             return False, exp.code, exp.message
         return False, 403, f'unknown requirement kind {kind}'
 
+    def provision_body(self, requirement=None):
+        """
+        Input - what the route requires, for a request that came with a node's provision token
+        Output - (True, None, None) or (False, code, message). Such a token passes no other
+                 check here, and chmod, chgrp and chown refuse it, so the write body is the
+                 one way it could set the three columns.
+        """
+        try:
+            if requirement and requirement.get('name') is not None:
+                self._no_columns_in_body(requirement.get('entity'), requirement['name'])
+        except AccessRefused as exp:
+            return False, exp.code, exp.message
+        return True, None, None
+
     def _override(self, userid, caller, requirement):
         """
         The primary object of a two-object action; the second is checked where the body

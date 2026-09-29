@@ -44,6 +44,7 @@ from utils.log import Log
 from utils.helper import Helper
 from common.constant import CONSTANT
 from common.route_grammar import ALIAS
+from common.validate_input import REG_EXP
 from base.usergroup import ROLE_CAPS
 
 # Governed tables and their default mode when the row says nothing (design section 5).
@@ -190,6 +191,51 @@ class Access():
         Output - their value 0 to 7
         """
         return sum(BITS[char] for char in text if char != '-')
+
+    def stored(self, table=None, columns=None):
+        """
+        Input - the body of a create or update on a governed table
+        Output - the same body with the three columns in the form the table holds: ids
+                 and an octal mode. A listing renders them as names and rwx text and
+                 clients post a response back, so the rendered form arrives here. Done
+                 once, before the route journals the request: the peer stores what it
+                 is handed and never resolves a name against its own tables.
+        """
+        if table not in GOVERNED or not columns:
+            return columns
+        for column, lookup in (('owners', self._userid), ('usergroups', self._usergroupid)):
+            if self._accepted('namelist', columns.get(column)):
+                columns[column] = ','.join(str(i) for i in self._known_ids(table, column, columns[column], lookup))
+        if self._accepted('accessmode', columns.get('access')):
+            columns['access'] = self.mode_octal(columns['access'])
+        return columns
+
+    def _accepted(self, rule, value):
+        """
+        Whether the input filter would accept the value. The access check runs before that
+        filter, so nothing it would refuse may reach a lookup here; it is left for the
+        filter to refuse.
+        """
+        return bool(value) and re.match(REG_EXP[rule]['regexp'], str(value)) is not None
+
+    def _known_ids(self, table, column, value, lookup):
+        """
+        Input - a csv of ids or names, and a name-to-id resolver
+        Output - the ids this cluster knows, in order. An object that came from elsewhere
+                 cannot carry another cluster's identities, so a name we cannot resolve
+                 drops out; so does rootus, because an empty column already means rootus.
+        """
+        ids = []
+        for entry in [item.strip().lstrip('+-') for item in str(value).split(',')]:
+            # a name first: a listing renders names, and a name may be all digits
+            ident = lookup(entry)
+            if ident is None and entry.isdigit():
+                ident = int(entry)
+            if ident is None:
+                self.logger.error(f"{table} {column}: {entry} is not known here, dropping it")
+            elif ident and ident not in ids:
+                ids.append(ident)
+        return ids
 
 
     # ── the caller ─────────────────────────────────────────────────────────
@@ -562,8 +608,10 @@ class Access():
                 if requirement.get('name') is None:
                     return True, None, None
                 entity, name, bit = requirement['entity'], requirement['name'], requirement['bit']
-                if not caller['admin'] and bit == 'w':
-                    self._no_columns_in_body(entity, name)
+                if bit == 'w':
+                    if not caller['admin']:
+                        self._no_columns_in_body(entity, name)
+                    self.stored(entity, self._body_of(entity, name))
                 if not caller['admin'] and bit == 'w' and self.row(entity, name) is None:
                     self.may_create(caller, entity, self._body_of(entity, name))
                     self._references(caller, entity, self._body_of(entity, name))
@@ -601,6 +649,7 @@ class Access():
             source = self.allowed(userid, entity, name, 'r')
             if not caller['admin']:
                 self._no_columns_in_body(entity, name)
+            self.stored(entity, self._body_of(entity, name))
             body = dict(self._body_of(entity, name))
             if entity == 'node' and 'group' not in body and source and source.get('groupid'):
                 # a clone body names only the new node; the group comes from the source

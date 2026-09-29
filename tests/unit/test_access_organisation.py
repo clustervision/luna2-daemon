@@ -316,6 +316,98 @@ def test_the_three_columns_cannot_be_set_through_a_create_or_update_body(client,
         assert client.as_(userid).post('/config/group/compute-intel', _body('group', 'compute-intel', access='777'))[0] == 200
 
 
+def test_a_rendered_body_posted_back_is_journaled_as_ids_and_octal(client, world):
+    """A listing renders the three columns as names and rwx text, and a client that posts a
+    response back sends them that way. The access check converts them in the body before the
+    route journals it, so both controllers store ids and an octal mode."""
+    for userid in (0, world.ids['zed']):
+        code, body = client.as_(userid).post('/config/osimage/imported', _body(
+            'osimage', 'imported', path='/trinity/images/imported',
+            owners='alice,ivan', usergroups='intel,amd', access='rwxrwxr--'))
+        assert code == 200, body
+        sent = body['body']['config']['osimage']['imported']
+        assert sent['owners'] == f"{world.ids['alice']},{world.ids['ivan']}"
+        assert sent['usergroups'] == f'{world.intel},{world.amd}'
+        assert sent['access'] == '774'
+        assert sent['path'] == '/trinity/images/imported', 'the rest of the body is untouched'
+
+
+def test_a_name_this_cluster_does_not_know_drops_out_of_the_body(client, world):
+    """An object exported elsewhere names users and usergroups that do not exist here. They
+    drop out rather than refuse the import; what is left empty reads as rootus-owned."""
+    code, body = client.as_(0).post('/config/osimage/imported', _body(
+        'osimage', 'imported', owners='rootus', usergroups='', access='rw-rw-r--'))
+    sent = body['body']['config']['osimage']['imported']
+    assert code == 200 and sent == {'owners': '', 'usergroups': '', 'access': '664'}
+    code, body = client.as_(0).post('/config/osimage/imported', _body(
+        'osimage', 'imported', owners='ghost,alice', usergroups='nowhere'))
+    sent = body['body']['config']['osimage']['imported']
+    assert code == 200 and sent == {'owners': str(world.ids['alice']), 'usergroups': ''}
+
+
+def test_what_the_input_filter_would_refuse_reaches_no_lookup(client, world, db, monkeypatch):
+    """The access check runs before the input filter. A value that filter refuses is left in
+    the body for it to refuse: it is not resolved, so it reaches no query, and not converted."""
+    from utils.access import Access
+    asked = []
+    monkeypatch.setattr(Access, '_userid', lambda self, name: asked.append(name))
+    for payload in ({'owners': "x' OR '1'='1"}, {'owners': ['alice']}, {'access': 'nonsense'}, {'access': 'xwrxwrxwr'}):
+        code, body = client.as_(0).post('/config/osimage/probe', _body('osimage', 'probe', **payload))
+        assert code == 200 and body['body']['config']['osimage']['probe'] == payload, payload
+    assert not asked
+
+
+def test_a_user_whose_name_is_all_digits_is_resolved_by_name(client, world, db):
+    """A listing renders names, so what comes back is read as a name first and as an id
+    only when nobody answers to it."""
+    from utils.helper import Helper
+    named = db.insert('user', Helper().make_rows({'username': '3', 'source': 'local', 'enabled': '1', 'admin': '0', 'delegate': '0'}))
+    assert named != 3
+    code, body = client.as_(0).post('/config/osimage/probe', _body('osimage', 'probe', owners='3,4'))
+    assert code == 200 and body['body']['config']['osimage']['probe']['owners'] == f'{named},4'
+
+
+def test_a_body_in_stored_form_or_without_the_columns_is_left_as_it_is(client, world):
+    """The conversion changes nothing that is already what the table holds."""
+    stored = {'owners': f"{world.ids['alice']},{world.ids['ivan']}", 'usergroups': str(world.intel), 'access': '750'}
+    code, body = client.as_(0).post('/config/group/compute-intel', _body('group', 'compute-intel', **stored))
+    assert code == 200 and body['body']['config']['group']['compute-intel'] == stored
+    code, body = client.as_(0).post('/config/group/compute-intel', _body('group', 'compute-intel', comment='x'))
+    assert code == 200 and body['body']['config']['group']['compute-intel'] == {'comment': 'x'}
+
+
+def test_a_rendered_osimage_posted_back_lists_again(client, world, db):
+    """The round trip an osimage export and import makes, through the real base class: what
+    a show returned is posted back, stored, and the listing still renders."""
+    from base.osimage import OSImage
+    db.update('osimage', [{'column': 'owners', 'value': str(world.ids['alice'])},
+                          {'column': 'usergroups', 'value': str(world.intel)}], [{'column': 'name', 'value': 'rocky9'}])
+    shown = OSImage().get_osimage('rocky9')[1]['config']['osimage']['rocky9']
+    assert (shown['owners'], shown['usergroups'], shown['access']) == ('alice', 'intel', 'rwxrwxr--')
+    rendered = {key: shown[key] for key in ('owners', 'usergroups', 'access')}
+    code, body = client.as_(0).post('/config/osimage/copy', _body('osimage', 'copy', path='/trinity/images/copy', **rendered))
+    assert code == 200, body
+    status, message = OSImage().update_osimage('copy', body['body'])
+    assert status, message
+    row = db.get_record(table='osimage', where="name = 'copy'")[0]
+    assert (row['owners'], row['usergroups'], row['access']) == (str(world.ids['alice']), str(world.intel), '774')
+    status, listing = OSImage().get_all_osimages()
+    assert status and listing['config']['osimage']['copy']['access'] == 'rwxrwxr--'
+
+
+def test_a_clone_body_is_converted_as_well(world):
+    """Clone has its own branch in the access check and takes a body of its own."""
+    from cases.route_requirements_cases import app as routes_app
+    from common.route_grammar import requirement
+    from utils.access import Access
+    rule = '/config/osimage/<string:name>/_clone'
+    payload = _body('osimage', 'rocky9', newosimage='rocky9-copy', owners='alice', access='rwxr-x---')
+    with routes_app().test_request_context('/config/osimage/rocky9/_clone', method='POST', json=payload):
+        assert Access().check(0, requirement(rule, 'POST', {'name': 'rocky9'})) == (True, None, None)
+        sent = request.get_json()['config']['osimage']['rocky9']
+    assert sent['owners'] == str(world.ids['alice']) and sent['access'] == '750'
+
+
 def test_every_governed_write_route_finds_its_body_under_its_own_segment(db):
     """The column guard and the creator stamp read the body under the key the route's
     base class reads, which is the URL segment; for profiles and otherdev that is not the

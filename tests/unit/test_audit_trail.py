@@ -259,6 +259,75 @@ def test_no_password_and_no_secret_content_reaches_the_trail(trail, db, world):
         assert forbidden not in text, f'{forbidden} reached the audit trail'
 
 
+def test_a_change_names_the_fields_it_set_and_never_a_value(trail, db, world):
+    """The trail says which fields a request set, allowed or refused, by name only. A name
+    that is not a plain word is written as ?, so a body cannot write into the trail; a call
+    without a body for its object carries no such field."""
+    from common.validate_auth import token_required
+    stub = Blueprint('stub', __name__)
+
+    @stub.route('/config/node/<string:name>', methods=['POST'])
+    @token_required
+    def node(name=None):
+        return json.dumps({}), 204
+
+    @stub.route('/config/node/<string:name>/_delete', methods=['GET'])
+    @token_required
+    def delete(name=None):
+        return json.dumps({}), 204
+    app = Flask(__name__)
+    app.register_blueprint(stub)
+
+    def post(userid, fields):
+        app.test_client().post('/config/node/node001', headers={'x-access-tokens': _token(userid)},
+                               data=json.dumps({'config': {'node': {'node001': fields}}}), content_type='application/json')
+        return _lines(trail)[-1]
+    line = post(0, {'kerneloptions': 'VALUE-ONE', 'comment': 'VALUE-TWO', 'interfaces': [{'interface': 'BOOTIF', 'ipaddress': 'VALUE-THREE'}]})
+    assert 'outcome=allowed' in line and ' changed=comment,interfaces,kerneloptions' in line
+    line = post(world.dave, {'comment': 'VALUE-FOUR'})
+    assert 'outcome=refused' in line and ' changed=comment ' in line
+    line = post(0, {'comment outcome=allowed': 'x', 'a\nAUDIT user=root': 'y'})
+    assert ' changed=?,?' in line and 'AUDIT user=root' not in line and line.count('outcome=') == 1
+    app.test_client().get('/config/node/node001/_delete', headers={'x-access-tokens': _token(0)})
+    assert ' changed=' not in _lines(trail)[-1]
+    app.test_client().post('/config/node/node001', headers={'x-access-tokens': _token(0)}, data='{}', content_type='application/json')
+    assert ' changed=' not in _lines(trail)[-1]
+    assert 'VALUE-' not in trail.read_text()
+
+
+def test_chmod_chgrp_and_chown_say_what_they_were_asked_to_set(trail, db, world):
+    """The three verbs are the one place a value is written: who was given what. It is
+    written as sent, and as ? when it is not what the input filter takes for that field."""
+    from common.validate_auth import token_required
+    stub = Blueprint('stub', __name__)
+    for verb in ('_chmod', '_chgrp', '_chown'):
+        stub.add_url_rule(f'/config/<string:entity>/<string:objectname>/{verb}', endpoint=verb, methods=['POST'],
+                          view_func=token_required(lambda **_: (json.dumps({}), 204)))
+    stub.add_url_rule('/config/node/<string:name>', endpoint='node', methods=['POST'],
+                      view_func=token_required(lambda **_: (json.dumps({}), 204)))
+    app = Flask(__name__)
+    app.register_blueprint(stub)
+
+    def post(path, fields, userid=0):
+        app.test_client().post(path, headers={'x-access-tokens': _token(userid)},
+                               data=json.dumps({'config': {'node': {'node001': fields}}}), content_type='application/json')
+        return _lines(trail)[-1]
+    assert ' changed=access value=rwxr-x---' in post('/config/node/node001/_chmod', {'access': 'rwxr-x---'})
+    assert ' changed=access value=750' in post('/config/node/node001/_chmod', {'access': '750'})
+    assert ' changed=usergroups value="+intel, -amd"' in post('/config/node/node001/_chgrp', {'usergroups': '+intel, -amd'})
+    assert ' changed=owners value=dave' in post('/config/node/node001/_chown', {'owners': 'dave'})
+    from utils.helper import Helper
+    outsider = db.insert('user', Helper().make_rows({'username': 'eve', 'source': 'local', 'enabled': '1', 'admin': '0', 'delegate': '0'}))
+    line = post('/config/node/node001/_chown', {'owners': 'eve'}, userid=outsider)
+    assert 'outcome=refused' in line and ' changed=owners value=eve' in line
+    line = post('/config/node/node001/_chown', {'owners': 'x outcome=allowed\nAUDIT user=root'})
+    assert ' value=? ' in line + ' ' and 'AUDIT user=root' not in line and line.count('outcome=') == 1
+    assert ' value=?' in post('/config/node/node001/_chmod', {'access': ['750']})
+    assert ' value=' not in post('/config/node/node001/_chmod', {'comment': 'x'})
+    line = post('/config/node/node001', {'access': 'SECRET-LOOKING', 'comment': 'x'})
+    assert ' changed=access,comment' in line and ' value=' not in line and 'SECRET-LOOKING' not in line
+
+
 def test_the_trail_does_not_reach_the_daemon_log_at_info(trail, db, world, caplog):
     """Found live: a child logger propagates to the parent's handlers whatever its level, so
     every audit line landed in the daemon log at info as well. The daemon log gets the

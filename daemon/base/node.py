@@ -806,6 +806,11 @@ class Node():
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
+            for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
+                if item in data:
+                    data[item] = Helper().make_text(data[item])
+            if 'routes' in data and data['routes'] is None:
+                data['routes'] = ''
             # Validate a disklayout the operator is SETTING here, at store time,
             # before it can reach a node. This is the daemon half of the
             # two-location check (the node's Go validator is the other): a sound

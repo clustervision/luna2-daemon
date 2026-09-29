@@ -203,6 +203,10 @@ class Access():
         """
         if table not in GOVERNED or not columns:
             return columns
+        for column in COLUMNS:
+            # the input filter reads text only: what is not text goes to it as text
+            if column in columns:
+                columns[column] = Helper().make_text(columns[column])
         for column, lookup in (('owners', self._userid), ('usergroups', self._usergroupid)):
             if self._accepted('namelist', columns.get(column)):
                 columns[column] = ','.join(str(i) for i in self._known_ids(table, column, columns[column], lookup))

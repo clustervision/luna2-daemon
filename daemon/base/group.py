@@ -502,6 +502,11 @@ class Group():
         create, update = False, False
         if request_data:
             data = request_data['config']['group'][name]
+            for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
+                if item in data:
+                    data[item] = Helper().make_text(data[item])
+            if 'routes' in data and data['routes'] is None:
+                data['routes'] = ''
             # Validate a disklayout the operator is SETTING on the group, at store
             # time, before it can cascade to any node (the daemon half of the
             # two-location check; the node's Go validator is the other). Sound
@@ -683,7 +688,8 @@ class Group():
                 if update:
                     where = [{"column": "id", "value": group_id}]
                     row = Helper().make_rows(data)
-                    if Database().update('group', row, where):
+                    # a change of the routes alone leaves no column to write
+                    if not row or Database().update('group', row, where):
                         response = f'Group {name} updated successfully'
                         status=True
                 elif create:

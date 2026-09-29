@@ -389,6 +389,11 @@ class Network():
                         if default_zone == "external":
                             default_gateway_metric="100"
                         data['gateway_metric'] = default_gateway_metric
+            for item in ['nameserver_ip','ntp_server']:
+                if item in data:
+                    data[item] = Helper().make_text(data[item])
+            if 'routes' in data and data['routes'] is None:
+                data['routes'] = ''
             if 'nameserver_ip' in data:
                 # nameserver_ip is a single input that may carry a mixed CSV of IPv4 and IPv6
                 # servers; segregate by family into the nameserver_ip (v4) and nameserver_ip_ipv6

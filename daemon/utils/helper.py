@@ -765,6 +765,16 @@ class Helper(object):
         return variable
 
 
+    def make_text(self, value=None):
+        """
+        Input - what a request body holds for a field that is text
+        Output - text: nothing becomes empty text, anything else is written out. A body
+                 may carry null, a number, a list or an object where text belongs; read as
+                 text it is cleared or refused by the checks the field already has.
+        """
+        return '' if value is None else str(value)
+
+
     def make_bool(self, variable=None, empty_is_none=False):
         """
         Input - string

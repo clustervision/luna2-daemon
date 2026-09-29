@@ -346,14 +346,19 @@ def test_a_name_this_cluster_does_not_know_drops_out_of_the_body(client, world):
 
 
 def test_what_the_input_filter_would_refuse_reaches_no_lookup(client, world, db, monkeypatch):
-    """The access check runs before the input filter. A value that filter refuses is left in
-    the body for it to refuse: it is not resolved, so it reaches no query, and not converted."""
+    """The access check runs before the input filter. A text that filter refuses is left in
+    the body for it to refuse: it is not resolved, so it reaches no query, and not converted.
+    That filter reads text only, so what is not text is handed to it as text."""
     from utils.access import Access
     asked = []
     monkeypatch.setattr(Access, '_userid', lambda self, name: asked.append(name))
-    for payload in ({'owners': "x' OR '1'='1"}, {'owners': ['alice']}, {'access': 'nonsense'}, {'access': 'xwrxwrxwr'}):
+    for payload in ({'owners': "x' OR '1'='1"}, {'access': 'nonsense'}, {'access': 'xwrxwrxwr'}):
         code, body = client.as_(0).post('/config/osimage/probe', _body('osimage', 'probe', **payload))
         assert code == 200 and body['body']['config']['osimage']['probe'] == payload, payload
+    for column, value, text in (('owners', ['alice'], "['alice']"), ('usergroups', {'a': 1}, "{'a': 1}"), ('access', 750, '750'),
+                                ('owners', None, ''), ('access', None, '')):
+        code, body = client.as_(0).post('/config/osimage/probe', _body('osimage', 'probe', **{column: value}))
+        assert code == 200 and body['body']['config']['osimage']['probe'] == {column: text}, (column, value)
     assert not asked
 
 

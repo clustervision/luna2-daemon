@@ -809,8 +809,6 @@ class Node():
             for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
                 if item in data:
                     data[item] = Helper().make_text(data[item])
-            if 'routes' in data and data['routes'] is None:
-                data['routes'] = ''
             # Validate a disklayout the operator is SETTING here, at store time,
             # before it can reach a node. This is the daemon half of the
             # two-location check (the node's Go validator is the other): a sound
@@ -985,6 +983,7 @@ class Node():
                 else:
                     data['scripts'] = None
 
+            has_routes = 'routes' in data
             node_routes = data.pop('routes', None)
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)
@@ -1011,7 +1010,7 @@ class Node():
                     if nodeid and 'groupid' in data and data['groupid']:
                         Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
 
-                if node_routes is not None:
+                if has_routes:
                     Route().reconcile('node', nodeid, node_routes)
 
                 if interfaces:

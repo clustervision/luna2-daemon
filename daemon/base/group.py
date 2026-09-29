@@ -505,8 +505,6 @@ class Group():
             for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
                 if item in data:
                     data[item] = Helper().make_text(data[item])
-            if 'routes' in data and data['routes'] is None:
-                data['routes'] = ''
             # Validate a disklayout the operator is SETTING on the group, at store
             # time, before it can cascade to any node (the daemon half of the
             # two-location check; the node's Go validator is the other). Sound
@@ -681,6 +679,7 @@ class Group():
                 else:
                     data['scripts'] = None
 
+            has_routes = 'routes' in data
             group_routes = data.pop('routes', None)
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)
@@ -699,7 +698,7 @@ class Group():
                     if group_id:
                         response = f'Group {name} created successfully'
                         status=True
-                if status and group_routes is not None:
+                if status and has_routes:
                     Route().reconcile('group', group_id, group_routes)
                 if status and new_interface:
                     for ifx in new_interface:

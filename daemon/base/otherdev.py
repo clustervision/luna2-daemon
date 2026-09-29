@@ -87,6 +87,9 @@ class OtherDev():
         create, update = False, False
         if request_data:
             data = request_data['config']['otherdev'][name]
+            status, response = Helper().name_addressed(data, name)
+            if not status:
+                return status, response
             data['name'] = name
             nonetwork = False
             if 'nonetwork' in data:

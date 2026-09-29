@@ -258,6 +258,9 @@ class Network():
             network_changed = False
 
             data = request_data['config']['network'][name]
+            status, response = Helper().name_addressed(data, name)
+            if not status:
+                return status, response
             data['name'] = name
             network = Database().get_record(table='network', where=f"name = '{name}'")
             if network:

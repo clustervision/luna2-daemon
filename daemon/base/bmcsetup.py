@@ -106,6 +106,9 @@ class BMCSetup():
         if request_data:
             if 'config' in request_data and self.table in request_data['config'] and name in request_data['config'][self.table]:
                 data=request_data['config'][self.table][name]
+                status, response = Helper().name_addressed(data, name)
+                if not status:
+                    return status, response
                 for key, value in items.items():
                     if key in data:
                         data[key] = data[key]

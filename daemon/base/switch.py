@@ -139,6 +139,9 @@ class Switch():
         }
         if request_data:
             data = request_data['config'][self.table][name]
+            status, response = Helper().name_addressed(data, name)
+            if not status:
+                return status, response
             data['name'] = name
             nonetwork = False
             if 'nonetwork' in data:

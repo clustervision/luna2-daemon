@@ -161,13 +161,18 @@ def test_an_interface_without_its_name_is_refused(client, segment, name, action)
     assert code == 400 and 'interface name is required for this operation' in text
 
 
-@pytest.mark.parametrize('table', ['group', 'node', 'osimage'])
+# what a second object of the same kind needs to differ in
+SECOND = {'osimage': {'path': '/tmp/__taken__'}, 'switch': {'ipaddress': '10.141.250.252'},
+          'otherdevices': {'ipaddress': '10.141.250.253'}, 'network': {'network': '10.151.0.0/16'}}
+
+
+@pytest.mark.parametrize('table', sorted(OBJECTS))
 def test_a_body_that_names_another_object_is_refused(client, table):
     """The object is the one the request addresses. A name in the body that differs is
     refused, whether free or taken; a rename has a field of its own."""
     from utils.database import Database
     segment, name, create = OBJECTS[table]
-    assert client(segment, 'taken', dict(create, **({'path': '/tmp/__taken__'} if table == 'osimage' else {})))[0] == 201
+    assert client(segment, 'taken', dict(create, **SECOND.get(table, {})))[0] in (201, 204)
 
     def names():
         return sorted(row['name'] for row in Database().get_record(table=table))
@@ -176,7 +181,7 @@ def test_a_body_that_names_another_object_is_refused(client, table):
         code, text = client(segment, name, {'name': value, 'comment': 'x'})
         assert code == 400 and f'the request addresses {name}' in text, (value, code, text)
         assert names() == before
-    assert not Database().get_record(table=table, where=f"name = '{name}'")[0]['comment']
+    assert not Database().get_record(table=table, where=f"name = '{name}'")[0].get('comment')
 
 
 @pytest.mark.parametrize('table', sorted(OBJECTS))
@@ -189,7 +194,9 @@ def test_the_name_addressed_or_nothing_in_the_body_changes_no_name(client, table
         assert sorted(str(row['name']) for row in Database().get_record(table=table)) == before
 
 
-@pytest.mark.parametrize('table, field', [('node', 'newnodename'), ('group', 'newgroupname')])
+@pytest.mark.parametrize('table, field', [('node', 'newnodename'), ('group', 'newgroupname'), ('bmcsetup', 'newbmcname'),
+                                          ('network', 'newnetname'), ('otherdevices', 'newotherdevname'),
+                                          ('rack', 'newrackname'), ('switch', 'newswitchname')])
 def test_a_rename_by_its_own_field_still_works(client, table, field):
     from utils.database import Database
     segment, name, _ = OBJECTS[table]

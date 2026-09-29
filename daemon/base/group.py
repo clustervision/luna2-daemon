@@ -502,6 +502,9 @@ class Group():
         create, update = False, False
         if request_data:
             data = request_data['config']['group'][name]
+            status, response = Helper().list_of_objects(data, 'interfaces')
+            if not status:
+                return status, response
             for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
                 if item in data:
                     data[item] = Helper().make_text(data[item])
@@ -824,6 +827,9 @@ class Group():
         if request_data:
             newgroupname = None
             data = request_data['config']['group'][name]
+            status, response = Helper().list_of_objects(data, 'interfaces')
+            if not status:
+                return status, response
             grp = Database().get_record(table='group', where=f"name = '{name}'")
             if grp:
                 group_id = grp[0]['id']

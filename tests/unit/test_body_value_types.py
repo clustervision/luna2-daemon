@@ -59,9 +59,9 @@ def client(tmp_path, monkeypatch):
     app.testing = True
     token = encode({'id': 0}, constant.CONSTANT['API']['SECRET_KEY'], 'HS256')
 
-    def post(segment, name, fields):
+    def post(segment, name, fields, action=''):
         # a write that raises is what halts the journal; an answer, whatever its code, does not
-        response = app.test_client().post(f'/config/{segment}/{name}', headers={'x-access-tokens': token},
+        response = app.test_client().post(f'/config/{segment}/{name}{action}', headers={'x-access-tokens': token},
                                           data=json.dumps({'config': {segment: {name: fields}}}), content_type='application/json')
         return response.status_code, response.get_data(as_text=True)
     for segment, name, fields in OBJECTS.values():
@@ -125,3 +125,37 @@ def test_routes_alone_are_coupled_and_nothing_clears_them(client, table):
         assert coupled() == 1
         assert client(segment, name, {'routes': clear})[0] == 204
         assert coupled() == 0
+
+
+# where a body carries a list of objects: segment, object, action, field, what a clone needs
+LISTS = [('node', 'n001', '', 'interfaces', {}), ('node', 'n001', '/interfaces', 'interfaces', {}),
+         ('node', 'n001', '/_clone', 'interfaces', {'newnodename': 'n002'}),
+         ('group', 'grp', '', 'interfaces', {}), ('group', 'grp', '/interfaces', 'interfaces', {}),
+         ('group', 'grp', '/_clone', 'interfaces', {'newgroupname': 'grp2'}),
+         ('switch', 'sw', '/interfaces', 'interfaces', {}), ('rack', 'rack1', '', 'devices', {})]
+
+
+@pytest.mark.parametrize('segment, name, action, field, more', LISTS)
+def test_what_is_not_a_list_of_objects_is_refused(client, segment, name, action, field, more):
+    from utils.database import Database
+    table = 'nodeinterface' if segment == 'node' else 'groupinterface' if segment == 'group' else 'switchinterface'
+    before = len(Database().get_record(table=table) or [])
+    for value in (5, True, 'eth0', {'interface': 'eth1'}, ['eth1'], [5], [None], [{'interface': 'eth1'}, 5]):
+        code, text = client(segment, name, {field: value, **more}, action)
+        assert code == 400 and f'{field} takes a list of objects' in text, (value, code, text)
+    assert len(Database().get_record(table=table) or []) == before
+    assert not Database().get_record(table=segment, where="name IN ('n002', 'grp2')")
+
+
+@pytest.mark.parametrize('segment, name, action, field, more', LISTS)
+def test_nothing_for_a_list_of_objects_reads_as_not_given(client, segment, name, action, field, more):
+    code, _ = client(segment, name, {field: None, 'comment': 'x', **more}, action)
+    assert code in ((201, 204) if action in ('', '/_clone') else (400, 404, 500))
+
+
+@pytest.mark.parametrize('segment, name, action', [('node', 'n001', ''), ('node', 'n001', '/interfaces'),
+                                                   ('group', 'grp', ''), ('group', 'grp', '/interfaces'),
+                                                   ('switch', 'sw', '/interfaces')])
+def test_an_interface_without_its_name_is_refused(client, segment, name, action):
+    code, text = client(segment, name, {'interfaces': [{'network': 'cluster'}]}, action)
+    assert code == 400 and 'interface name is required for this operation' in text

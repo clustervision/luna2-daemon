@@ -157,6 +157,9 @@ class Rack():
                     all_devices_dict[device_type] = Helper().convert_list_to_dict(all_devices_in_db, dbname)
 
             data = request_data['config']['rack'][name]
+            status, response = Helper().list_of_objects(data, 'devices')
+            if not status:
+                return status, response
             data['name'] = name
             devices = None
             if 'devices' in data:

@@ -120,6 +120,10 @@ class Interface():
         """
         status=False
         if request_data:
+            if name in request_data['config']['node']:
+                status, response = Helper().list_of_objects(request_data['config']['node'][name], 'interfaces')
+                if not status:
+                    return status, response
             if name in request_data['config']['node'] and 'interfaces' in request_data['config']['node'][name]:
                 new_data = request_data['config']['node'][name]['interfaces']
                 node = Database().get_record(table='node', where=f"name = '{name}'")
@@ -145,6 +149,8 @@ class Interface():
         message = None
         if data and nodeid:
             for interface in data:
+                if 'interface' not in interface:
+                    return False, 'Invalid request: interface name is required for this operation'
                 # Antoine
                 interface_name = interface['interface']
                 new_interface_name = None
@@ -746,6 +752,9 @@ class Interface():
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 group_id = group[0]['id']
+                status, response = Helper().list_of_objects(request_data['config']['group'][name], 'interfaces')
+                if not status:
+                    return status, response
                 if 'interfaces' in request_data['config']['group'][name]:
                     for ifx in request_data['config']['group'][name]['interfaces']:
                         if not 'interface' in ifx:
@@ -987,6 +996,9 @@ class Interface():
         if not switch:
             return False, f'Switch {name} not present in database'
         switchid = switch[0]['id']
+        status, response = Helper().list_of_objects(request_data.get('config', {}).get('switch', {}).get(name, {}), 'interfaces')
+        if not status:
+            return status, response
         interfaces = request_data.get('config', {}).get('switch', {}).get(name, {}).get('interfaces')
         if not interfaces:
             return False, 'Invalid request: no interfaces provided'

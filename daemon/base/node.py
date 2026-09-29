@@ -806,6 +806,9 @@ class Node():
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
+            status, response = Helper().list_of_objects(data, 'interfaces')
+            if not status:
+                return status, response
             for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
                 if item in data:
                     data[item] = Helper().make_text(data[item])
@@ -1075,6 +1078,9 @@ class Node():
 
             newnodename=None
             data = request_data['config']['node'][name]
+            status, response = Helper().list_of_objects(data, 'interfaces')
+            if not status:
+                return status, response
             node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']

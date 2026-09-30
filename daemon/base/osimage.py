@@ -47,6 +47,7 @@ from utils.hashes import Hashes
 from utils.model import Model
 from utils.database import Database
 from utils.access import Access
+from common.validate_body import body_checked
 
 class OSImage():
     """
@@ -248,6 +249,7 @@ class OSImage():
         return status, response
 
 
+    @body_checked('osimage')
     def update_osimage(self, name=None, request_data=None):
         """
         This method will create or update a osimage.
@@ -265,9 +267,6 @@ class OSImage():
         }
         if request_data:
             data = request_data['config']['osimage'][name]
-            status, response = Helper().name_addressed(data, name)
-            if not status:
-                return status, response
             image = Database().get_record(table='osimage', where=f"name = '{name}'")
             if image:
                 image_id = image[0]['id']

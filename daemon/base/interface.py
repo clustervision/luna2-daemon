@@ -36,6 +36,7 @@ from utils.config import Config
 from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
+from common.validate_body import body_checked
 
 
 class Interface():
@@ -114,16 +115,13 @@ class Interface():
         return status, response
 
 
+    @body_checked('node', lists=('interfaces',))
     def change_node_interface_by_name(self, name=None, request_data=None):
         """
         wrapper to call below function but gets nodeid first
         """
         status=False
         if request_data:
-            if name in request_data['config']['node']:
-                status, response = Helper().list_of_objects(request_data['config']['node'][name], 'interfaces')
-                if not status:
-                    return status, response
             if name in request_data['config']['node'] and 'interfaces' in request_data['config']['node'][name]:
                 new_data = request_data['config']['node'][name]['interfaces']
                 node = Database().get_record(table='node', where=f"name = '{name}'")
@@ -742,6 +740,7 @@ class Interface():
         return status, response
 
 
+    @body_checked('group', lists=('interfaces',))
     def change_group_interface(self, name=None, request_data=None):
         """
         This method will add or update the group interface.
@@ -752,9 +751,6 @@ class Interface():
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 group_id = group[0]['id']
-                status, response = Helper().list_of_objects(request_data['config']['group'][name], 'interfaces')
-                if not status:
-                    return status, response
                 if 'interfaces' in request_data['config']['group'][name]:
                     for ifx in request_data['config']['group'][name]['interfaces']:
                         if not 'interface' in ifx:
@@ -988,6 +984,7 @@ class Interface():
         response['config']['switch'][name]['interfaces'] = match
         return True, response
 
+    @body_checked('switch', lists=('interfaces',))
     def change_switch_interface(self, name=None, request_data=None):
         """Add or update one or more interfaces of a switch."""
         if not request_data:
@@ -996,9 +993,6 @@ class Interface():
         if not switch:
             return False, f'Switch {name} not present in database'
         switchid = switch[0]['id']
-        status, response = Helper().list_of_objects(request_data.get('config', {}).get('switch', {}).get(name, {}), 'interfaces')
-        if not status:
-            return status, response
         interfaces = request_data.get('config', {}).get('switch', {}).get(name, {}).get('interfaces')
         if not interfaces:
             return False, 'Invalid request: no interfaces provided'

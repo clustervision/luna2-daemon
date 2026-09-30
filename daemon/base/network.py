@@ -40,6 +40,7 @@ from utils.config import Config
 from utils.service import Service
 from utils.controller import Controller
 from utils.access import Access
+from common.validate_body import body_checked
 
 
 class Network():
@@ -240,6 +241,7 @@ class Network():
         return mine == other or theirs == name or (mine is not None and mine == theirs)
 
 
+    @body_checked('network')
     def update_network(self, name=None, request_data=None):
         """
         This method will create or update a network.
@@ -258,9 +260,6 @@ class Network():
             network_changed = False
 
             data = request_data['config']['network'][name]
-            status, response = Helper().name_addressed(data, name)
-            if not status:
-                return status, response
             data['name'] = name
             network = Database().get_record(table='network', where=f"name = '{name}'")
             if network:

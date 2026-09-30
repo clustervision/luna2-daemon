@@ -44,6 +44,7 @@ from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
 from utils.access import Access
+from common.validate_body import body_checked
 
 # The fields a group can hold in its own right rather than inherit, and which
 # therefore mean the group deviates from what it would otherwise be given.
@@ -483,6 +484,7 @@ class Group():
             message = f"Profile {profile} assigned to group {name}." if assign else f"Profile {profile} removed from group {name}."
         return status, message
 
+    @body_checked('group', lists=('interfaces',))
     def update_group(self, name=None, request_data=None):
         """
         This method will create or update a group.
@@ -502,12 +504,6 @@ class Group():
         create, update = False, False
         if request_data:
             data = request_data['config']['group'][name]
-            status, response = Helper().name_addressed(data, name)
-            if not status:
-                return status, response
-            status, response = Helper().list_of_objects(data, 'interfaces')
-            if not status:
-                return status, response
             for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
                 if item in data:
                     data[item] = Helper().make_text(data[item])
@@ -811,6 +807,7 @@ class Group():
         return status, response
 
 
+    @body_checked('group', lists=('interfaces',))
     def clone_group(self, name=None, request_data=None):
         """
         This method will clone a group.
@@ -830,9 +827,6 @@ class Group():
         if request_data:
             newgroupname = None
             data = request_data['config']['group'][name]
-            status, response = Helper().list_of_objects(data, 'interfaces')
-            if not status:
-                return status, response
             grp = Database().get_record(table='group', where=f"name = '{name}'")
             if grp:
                 group_id = grp[0]['id']

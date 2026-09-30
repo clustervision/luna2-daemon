@@ -46,6 +46,7 @@ from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
 from utils.access import Access
+from common.validate_body import body_checked
 
 # The named things a node points at, and whether a supplied value may be empty.
 # True means: cannot be empty if supplied. False means: can only be empty or correct
@@ -787,6 +788,7 @@ class Node():
             message = f"Profile {profile} assigned to node {name}." if assign else f"Profile {profile} removed from node {name}."
         return status, message
 
+    @body_checked('node', lists=('interfaces',))
     def update_node(self, name=None, request_data=None):
         """
         This method will return update requested node.
@@ -806,12 +808,6 @@ class Node():
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
-            status, response = Helper().name_addressed(data, name)
-            if not status:
-                return status, response
-            status, response = Helper().list_of_objects(data, 'interfaces')
-            if not status:
-                return status, response
             for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
                 if item in data:
                     data[item] = Helper().make_text(data[item])
@@ -1069,6 +1065,7 @@ class Node():
         return status, response
 
 
+    @body_checked('node', lists=('interfaces',))
     def clone_node(self, name=None, request_data=None):
         """This method will clone a node."""
         data = {}
@@ -1081,9 +1078,6 @@ class Node():
 
             newnodename=None
             data = request_data['config']['node'][name]
-            status, response = Helper().list_of_objects(data, 'interfaces')
-            if not status:
-                return status, response
             node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']

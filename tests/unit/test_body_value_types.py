@@ -14,6 +14,7 @@ checks the field already has. Every column of every object with a write route is
 read from the layout, through the real routes.
 """
 
+import ast
 import json
 import os
 
@@ -210,3 +211,48 @@ def test_an_osimage_rename_still_reaches_the_image_on_disk(client):
     past the name check, which is what this pins."""
     code, text = client('osimage', 'img', {'name': 'img', 'newosimage': 'renamed'})
     assert code == 404 and 'renaming img to renamed failed' in text
+
+
+# ── the derived half: every method that reads one of these bodies carries the check ──
+
+def test_every_method_that_reads_a_body_of_these_objects_carries_the_check():
+    """The check is a decorator on the base method, so a method added later that takes a
+    body for one of these objects has to carry it too. Read from the source: the update and
+    clone method of each of these objects, and every interface change, taking
+    (name, request_data), and the segment each names is the one the route keeps the body under."""
+    from common.route_grammar import ALIAS
+    segments = {table: segment for segment, table in ALIAS.items()}
+    expected = {'node': 'node', 'group': 'group', 'osimage': 'osimage', 'bmcsetup': 'bmcsetup', 'network': 'network',
+                'switch': 'switch', 'rack': 'rack', 'otherdevices': 'otherdev', 'interface': None}
+    missing, wrong = [], []
+    for name in os.listdir(os.path.join(DAEMON, 'base')):
+        table = name[:-3]
+        if table not in expected:
+            continue
+        tree = ast.parse(open(os.path.join(DAEMON, 'base', name), encoding='utf-8').read())
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef) or [a.arg for a in node.args.args] != ['self', 'name', 'request_data']:
+                continue
+            own = expected[table] or table
+            if node.name not in (f'update_{own}', f'clone_{own}') and not (node.name.startswith('change_') and 'interface' in node.name):
+                continue
+            found = [d for d in node.decorator_list if isinstance(d, ast.Call) and getattr(d.func, 'id', None) == 'body_checked']
+            if not found:
+                missing.append(f'{name}:{node.name}')
+                continue
+            segment = found[0].args[0].value
+            wanted = expected[table] or {'node': 'node', 'group': 'group', 'switch': 'switch'}.get(node.name.split('_')[1])
+            if segment != wanted:
+                wrong.append(f'{name}:{node.name} names {segment}, the route keeps the body under {wanted}')
+    assert not missing, missing
+    assert not wrong, wrong
+
+
+@pytest.mark.parametrize('segment, name, more', [('bmcsetup', 'bmc', {'newbmcname': 'bmc2'}), ('switch', 'sw', {'newswitchname': 'sw2'}),
+                                                  ('node', 'n001', {'newnodename': 'n002'}), ('group', 'grp', {'newgroupname': 'grp2'})])
+def test_a_clone_body_that_names_another_object_is_refused(client, segment, name, more):
+    from utils.database import Database
+    table = {'bmcsetup': 'bmcsetup', 'switch': 'switch', 'node': 'node', 'group': 'group'}[segment]
+    code, text = client(segment, name, {'name': 'zzz', **more}, '/_clone')
+    assert code == 400 and f'the request addresses {name}' in text, (code, text)
+    assert not Database().get_record(table=table, where="name IN ('zzz', 'bmc2', 'sw2', 'n002', 'grp2')")

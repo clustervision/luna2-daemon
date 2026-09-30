@@ -34,6 +34,7 @@ from utils.log import Log
 from utils.model import Model
 from utils.database import Database
 from utils.helper import Helper
+from common.validate_body import body_checked
 
 
 class BMCSetup():
@@ -84,6 +85,7 @@ class BMCSetup():
         )
         return status, response
 
+    @body_checked('bmcsetup')
     def update_bmcsetup(self, name=None, request_data=None):
         """
         This method will create or update a bmcsetup.
@@ -106,9 +108,6 @@ class BMCSetup():
         if request_data:
             if 'config' in request_data and self.table in request_data['config'] and name in request_data['config'][self.table]:
                 data=request_data['config'][self.table][name]
-                status, response = Helper().name_addressed(data, name)
-                if not status:
-                    return status, response
                 for key, value in items.items():
                     if key in data:
                         data[key] = data[key]
@@ -140,6 +139,7 @@ class BMCSetup():
         return status, response
 
 
+    @body_checked('bmcsetup')
     def clone_bmcsetup(self, name=None, request_data=None):
         """
         This method will clone a bmcsetup.

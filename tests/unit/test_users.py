@@ -6,6 +6,9 @@ classes and the SQLite data layer. Nothing is enforced yet: an admin token does 
 """
 import json
 import os
+import pwd
+import sys
+import types
 
 import pytest
 from flask import Flask
@@ -13,6 +16,10 @@ from jwt import decode, encode
 
 DAEMON = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'daemon'))
 TABLES = ['user', 'usergroup', 'usergroupmember', 'usergroupmap']
+
+
+def _no_account(name):
+    raise KeyError(name)
 
 
 @pytest.fixture
@@ -29,6 +36,11 @@ def db(tmp_path, monkeypatch):
         Database().create(table, DBStructure().get_database_table_structure(table))
     # a login walks the authentication chain, whose sources are plugin files
     monkeypatch.setitem(constant.CONSTANT['PLUGINS'], 'PLUGINS_DIRECTORY', os.path.join(DAEMON, 'plugins'))
+    # these tests are about Luna's own users. The chain ends at the accounts of the
+    # machine, so that machine has none here, whatever it holds and whether or not the
+    # PAM library is installed on it
+    monkeypatch.setattr(pwd, 'getpwnam', _no_account)
+    monkeypatch.setitem(sys.modules, 'pam', types.SimpleNamespace(pam=None))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
     database.local_thread.connection = None

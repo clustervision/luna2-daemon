@@ -36,6 +36,7 @@ from utils.config import Config
 from utils.service import Service
 from utils.model import Model
 from utils.access import Access
+from common.validate_body import body_checked
 
 class Switch():
     """
@@ -121,6 +122,7 @@ class Switch():
             {'column': 'mgmt', 'value': 1}])
 
 
+    @body_checked('switch')
     def update_switch(self, name=None, request_data=None):
         """
         This method will create or update a switch.
@@ -241,6 +243,7 @@ class Switch():
         return status, response
 
 
+    @body_checked('switch')
     def clone_switch(self, name=None, request_data=None):
         """
         This method will clone a switch.

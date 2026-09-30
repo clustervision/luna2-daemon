@@ -44,6 +44,7 @@ from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
 from utils.access import Access
+from common.validate_body import body_checked
 
 # The fields a group can hold in its own right rather than inherit, and which
 # therefore mean the group deviates from what it would otherwise be given.
@@ -483,6 +484,7 @@ class Group():
             message = f"Profile {profile} assigned to group {name}." if assign else f"Profile {profile} removed from group {name}."
         return status, message
 
+    @body_checked('group', lists=('interfaces',))
     def update_group(self, name=None, request_data=None):
         """
         This method will create or update a group.
@@ -502,6 +504,9 @@ class Group():
         create, update = False, False
         if request_data:
             data = request_data['config']['group'][name]
+            for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
+                if item in data:
+                    data[item] = Helper().make_text(data[item])
             # Validate a disklayout the operator is SETTING on the group, at store
             # time, before it can cascade to any node (the daemon half of the
             # two-location check; the node's Go validator is the other). Sound
@@ -676,6 +681,7 @@ class Group():
                 else:
                     data['scripts'] = None
 
+            has_routes = 'routes' in data
             group_routes = data.pop('routes', None)
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)
@@ -683,7 +689,8 @@ class Group():
                 if update:
                     where = [{"column": "id", "value": group_id}]
                     row = Helper().make_rows(data)
-                    if Database().update('group', row, where):
+                    # a change of the routes alone leaves no column to write
+                    if not row or Database().update('group', row, where):
                         response = f'Group {name} updated successfully'
                         status=True
                 elif create:
@@ -693,7 +700,7 @@ class Group():
                     if group_id:
                         response = f'Group {name} created successfully'
                         status=True
-                if status and group_routes is not None:
+                if status and has_routes:
                     Route().reconcile('group', group_id, group_routes)
                 if status and new_interface:
                     for ifx in new_interface:
@@ -800,6 +807,7 @@ class Group():
         return status, response
 
 
+    @body_checked('group', lists=('interfaces',))
     def clone_group(self, name=None, request_data=None):
         """
         This method will clone a group.

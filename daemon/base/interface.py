@@ -36,6 +36,7 @@ from utils.config import Config
 from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
+from common.validate_body import body_checked
 
 
 class Interface():
@@ -114,6 +115,7 @@ class Interface():
         return status, response
 
 
+    @body_checked('node', lists=('interfaces',))
     def change_node_interface_by_name(self, name=None, request_data=None):
         """
         wrapper to call below function but gets nodeid first
@@ -145,6 +147,8 @@ class Interface():
         message = None
         if data and nodeid:
             for interface in data:
+                if 'interface' not in interface:
+                    return False, 'Invalid request: interface name is required for this operation'
                 # Antoine
                 interface_name = interface['interface']
                 new_interface_name = None
@@ -736,6 +740,7 @@ class Interface():
         return status, response
 
 
+    @body_checked('group', lists=('interfaces',))
     def change_group_interface(self, name=None, request_data=None):
         """
         This method will add or update the group interface.
@@ -979,6 +984,7 @@ class Interface():
         response['config']['switch'][name]['interfaces'] = match
         return True, response
 
+    @body_checked('switch', lists=('interfaces',))
     def change_switch_interface(self, name=None, request_data=None):
         """Add or update one or more interfaces of a switch."""
         if not request_data:

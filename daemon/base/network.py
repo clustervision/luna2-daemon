@@ -40,6 +40,7 @@ from utils.config import Config
 from utils.service import Service
 from utils.controller import Controller
 from utils.access import Access
+from common.validate_body import body_checked
 
 
 class Network():
@@ -240,6 +241,7 @@ class Network():
         return mine == other or theirs == name or (mine is not None and mine == theirs)
 
 
+    @body_checked('network')
     def update_network(self, name=None, request_data=None):
         """
         This method will create or update a network.
@@ -389,6 +391,9 @@ class Network():
                         if default_zone == "external":
                             default_gateway_metric="100"
                         data['gateway_metric'] = default_gateway_metric
+            for item in ['nameserver_ip','ntp_server']:
+                if item in data:
+                    data[item] = Helper().make_text(data[item])
             if 'nameserver_ip' in data:
                 # nameserver_ip is a single input that may carry a mixed CSV of IPv4 and IPv6
                 # servers; segregate by family into the nameserver_ip (v4) and nameserver_ip_ipv6
@@ -645,6 +650,7 @@ class Network():
                     ret_msg = f"Internal error updating ip address for controller {controller['hostname']}"
                     return status, ret_msg
                 
+            has_routes = 'routes' in data
             network_routes = data.pop('routes', None)
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)
@@ -654,7 +660,7 @@ class Network():
                     networkid = Database().insert('network', Access().created_row('network', row))
                     response = f'Network {name} created successfully'
                     status=True
-                    if network_routes is not None:
+                    if has_routes:
                         Route().reconcile('network', networkid, network_routes)
                 elif update:
                     changed_fields = {
@@ -715,7 +721,7 @@ class Network():
 
                     where = [{"column": "id", "value": networkid}]
                     Database().update('network', row, where)
-                    if network_routes is not None:
+                    if has_routes:
                         Route().reconcile('network', networkid, network_routes)
                     # TWANNIE
                     if redistribute_ipaddress is True:

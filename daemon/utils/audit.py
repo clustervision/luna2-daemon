@@ -100,10 +100,13 @@ class Audit():
         return last in STATE_CHANGING_SUFFIXES
 
     def record(self, userid=None, username=None, source=None, method=None, path=None,
-               requirement=None, outcome=None, code=None, detail=None, request_id=None):
+               requirement=None, outcome=None, code=None, detail=None, request_id=None, changed=None,
+               value=None):
         """
         Input - who (id, name, source), what (method, path), which object (from the
-                requirement the grammar computed), and what came of it. No body, ever.
+                requirement the grammar computed), what came of it, and the names of the
+                fields the request set. No body, ever: names, never a value, except what
+                chmod, chgrp or chown was asked to set.
         """
         entity = (requirement or {}).get('entity') or '-'
         name = (requirement or {}).get('name') or '-'
@@ -112,6 +115,10 @@ class Audit():
                   ('outcome', outcome), ('code', code), ('controller', socket.gethostname().split('.')[0])]
         if request_id:
             fields.append(('request', request_id))
+        if changed:
+            fields.append(('changed', ','.join(changed)))
+        if value is not None:
+            fields.append(('value', value))
         if detail:
             fields.append(('detail', detail))
         line = 'AUDIT ' + ' '.join(f'{key}={self._quote(value)}' for key, value in fields)

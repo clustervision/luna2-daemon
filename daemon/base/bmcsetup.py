@@ -34,6 +34,7 @@ from utils.log import Log
 from utils.model import Model
 from utils.database import Database
 from utils.helper import Helper
+from common.validate_body import body_checked
 
 
 class BMCSetup():
@@ -84,6 +85,7 @@ class BMCSetup():
         )
         return status, response
 
+    @body_checked('bmcsetup')
     def update_bmcsetup(self, name=None, request_data=None):
         """
         This method will create or update a bmcsetup.
@@ -137,6 +139,7 @@ class BMCSetup():
         return status, response
 
 
+    @body_checked('bmcsetup')
     def clone_bmcsetup(self, name=None, request_data=None):
         """
         This method will clone a bmcsetup.

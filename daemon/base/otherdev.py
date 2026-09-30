@@ -36,6 +36,7 @@ from utils.config import Config
 from utils.service import Service
 from utils.model import Model
 from utils.access import Access
+from common.validate_body import body_checked
 
 
 class OtherDev():
@@ -78,6 +79,7 @@ class OtherDev():
         return status, response
 
 
+    @body_checked('otherdev')
     def update_otherdev(self, name=None, request_data=None):
         """
         This method will create or update a other device.
@@ -110,7 +112,7 @@ class OtherDev():
                 network = data['network']
                 del data['network']
             if data.get('macaddress'):
-                data['macaddress'] = data['macaddress'].lower()
+                data['macaddress'] = Helper().make_text(data['macaddress']).lower()
             column_check = Helper().compare_list(data, device_columns)
             data = Helper().check_ip_exist(data)
             if data:

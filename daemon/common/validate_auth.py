@@ -32,12 +32,14 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
+import re
 from functools import wraps
 from flask import request, json, g
 import jwt
 from utils.log import Log
 from common.constant import CONSTANT
 from common.route_grammar import requirement, GrammarError
+from common.validate_input import REG_EXP
 from utils.access import Access
 from utils.audit import Audit
 
@@ -94,6 +96,9 @@ def token_required(function=None, *, requires=None):
     return wrap(function) if function is not None else wrap
 
 
+VERB_FIELDS = {'_chmod': ('access', 'accessmode'), '_chgrp': ('usergroups', 'namelist'), '_chown': ('owners', 'namelist')}
+
+
 def _audit(outcome, code, detail=None):
     """
     One line in the trail for this call: who, what, which object, what came of it. The
@@ -103,7 +108,47 @@ def _audit(outcome, code, detail=None):
     caller = getattr(g, 'caller', None) or {}
     Audit().record(userid=getattr(g, 'userid', None), username=caller.get('username'), source=caller.get('source'),
                    method=request.method, path=request.path, requirement=getattr(g, 'requirement', None),
-                   outcome=outcome, code=code, detail=detail)
+                   outcome=outcome, code=code, detail=detail, changed=_changed(), value=_verb_value())
+
+
+def _object_body():
+    """
+    What the request body holds for its object, config.<segment>.<name>, or None.
+    """
+    try:
+        found = next(iter(request.get_json(force=True, silent=True)['config'].values()))
+        name = (request.view_args or {}).get('name') or (request.view_args or {}).get('objectname')
+        found = found[name] if name else found
+    except (KeyError, TypeError, AttributeError, StopIteration):
+        return None
+    return found if isinstance(found, dict) else None
+
+
+def _changed():
+    """
+    The names of the fields the request body sets on its object, for the trail. Names only,
+    never a value. A name that is not a plain word is written as ?, so a body cannot write
+    into the trail.
+    """
+    found = _object_body()
+    if not found:
+        return None
+    return sorted(key if re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', str(key)) else '?' for key in found)
+
+
+def _verb_value():
+    """
+    What chmod, chgrp or chown was asked to set, for the trail: who was given what is the
+    question a trail is read for, and none of it is a secret. Written as the caller sent it,
+    and only when it is what the input filter accepts for that field; otherwise as ?.
+    """
+    rule = request.url_rule.rule if request.url_rule else ''
+    field, pattern = VERB_FIELDS.get(rule.rstrip('/').split('/')[-1], (None, None))
+    found = _object_body()
+    if not field or not found or field not in found:
+        return None
+    value = found[field]
+    return value if isinstance(value, str) and re.match(REG_EXP[pattern]['regexp'], value) else '?'
 
 
 def _audited(response):
@@ -220,6 +265,11 @@ def provision_token_required(function=None, *, node_in_payload=None, only=None, 
                 if refused:
                     return refused
                 return _audited(function(**kwargs))
+            # a node reports on itself; who owns it and who may reach it is not the node's to say
+            allowed, code, message = Access().provision_body(g.requirement)
+            if not allowed:
+                LOGGER.error(f"Provision token for {claims.get('node')}: {message}")
+                return json.dumps({'message': message}), code
             return function(**kwargs)
         decorator.requires = requires
         return decorator

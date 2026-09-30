@@ -35,6 +35,7 @@ from utils.helper import Helper
 from utils.model import Model
 from utils.ha import HA
 from utils.access import Access
+from common.validate_body import body_checked
 
 class Rack():
     """
@@ -130,6 +131,7 @@ class Rack():
             rack['devices'] = [d for d in rack['devices'] if d['name'] in readable.get(d['type'], set())]
 
 
+    @body_checked('rack', lists=('devices',))
     def update_rack(self, name=None, request_data=None):
         """
         This method will create or update a rack.

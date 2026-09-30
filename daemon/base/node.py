@@ -46,6 +46,7 @@ from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
 from utils.access import Access
+from common.validate_body import body_checked
 
 # The named things a node points at, and whether a supplied value may be empty.
 # True means: cannot be empty if supplied. False means: can only be empty or correct
@@ -787,6 +788,7 @@ class Node():
             message = f"Profile {profile} assigned to node {name}." if assign else f"Profile {profile} removed from node {name}."
         return status, message
 
+    @body_checked('node', lists=('interfaces',))
     def update_node(self, name=None, request_data=None):
         """
         This method will return update requested node.
@@ -806,6 +808,9 @@ class Node():
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
+            for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
+                if item in data:
+                    data[item] = Helper().make_text(data[item])
             # Validate a disklayout the operator is SETTING here, at store time,
             # before it can reach a node. This is the daemon half of the
             # two-location check (the node's Go validator is the other): a sound
@@ -879,7 +884,7 @@ class Node():
                 data['profiles'] = Profile().to_profile_ids(data['profiles'].replace(' ', ','))
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
-                    if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
+                    if data[item]+'.py' not in boot_plugins['boot']['provision']:
                         return False, f'Invalid request: provisioning plugin {data[item]} does not exist'
             if 'ipxe_kernel' in data and data['ipxe_kernel']:
                 data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()
@@ -980,6 +985,7 @@ class Node():
                 else:
                     data['scripts'] = None
 
+            has_routes = 'routes' in data
             node_routes = data.pop('routes', None)
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)
@@ -1006,7 +1012,7 @@ class Node():
                     if nodeid and 'groupid' in data and data['groupid']:
                         Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
 
-                if node_routes is not None:
+                if has_routes:
                     Route().reconcile('node', nodeid, node_routes)
 
                 if interfaces:
@@ -1059,6 +1065,7 @@ class Node():
         return status, response
 
 
+    @body_checked('node', lists=('interfaces',))
     def clone_node(self, name=None, request_data=None):
         """This method will clone a node."""
         data = {}

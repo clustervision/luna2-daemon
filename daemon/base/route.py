@@ -208,8 +208,8 @@ class Route():
         """
         if tableref not in self.COUPLE_TABLES or not tablerefid:
             return
-        if isinstance(names, str):
-            names = names.split(',')
+        if not isinstance(names, list):
+            names = Helper().make_text(names).split(',')
         wanted = set()
         for name in names or []:
             name = name.strip()

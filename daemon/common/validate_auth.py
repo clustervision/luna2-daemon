@@ -148,6 +148,9 @@ def _verb_value():
     if not field or not found or field not in found:
         return None
     value = found[field]
+    if pattern == 'namelist' and isinstance(value, list) and all(isinstance(item, str) for item in value):
+        # the CLI sends a comma-separated list as a JSON list; it is written the way a string would be
+        value = ', '.join(value)
     return value if isinstance(value, str) and re.match(REG_EXP[pattern]['regexp'], value) else '?'
 
 

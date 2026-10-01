@@ -316,6 +316,8 @@ def test_chmod_chgrp_and_chown_say_what_they_were_asked_to_set(trail, db, world)
     assert ' changed=access value=750' in post('/config/node/node001/_chmod', {'access': '750'})
     assert ' changed=usergroups value="+intel, -amd"' in post('/config/node/node001/_chgrp', {'usergroups': '+intel, -amd'})
     assert ' changed=owners value=dave' in post('/config/node/node001/_chown', {'owners': 'dave'})
+    assert ' changed=usergroups value="intel, amd"' in post('/config/node/node001/_chgrp', {'usergroups': ['intel', 'amd']})
+    assert ' changed=owners value=? ' in post('/config/node/node001/_chown', {'owners': ['dave', 'x outcome=allowed']}) + ' '
     from utils.helper import Helper
     outsider = db.insert('user', Helper().make_rows({'username': 'eve', 'source': 'local', 'enabled': '1', 'admin': '0', 'delegate': '0'}))
     line = post('/config/node/node001/_chown', {'owners': 'eve'}, userid=outsider)

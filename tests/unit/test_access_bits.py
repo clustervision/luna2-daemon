@@ -324,6 +324,25 @@ def test_an_unknown_name_in_a_list_is_refused_not_dropped(client, world):
     assert code == 400 and 'nowhere is not known' in body['message']
 
 
+@pytest.mark.parametrize('verb, field', [('_chgrp', 'usergroups'), ('_chown', 'owners')])
+@pytest.mark.parametrize('empty', ['', []])
+def test_an_empty_list_is_refused_and_changes_nothing(client, world, db, verb, field, empty):
+    before = db.get_record(table='node', where="name = 'node001'")[0][field]
+    code, body = client.as_(0).post(f'/config/node/node001/{verb}', _body('node', 'node001', **{field: empty}))
+    assert code == 400 and 'the list is empty' in body['message']
+    assert db.get_record(table='node', where="name = 'node001'")[0][field] == before
+
+
+def test_every_usergroup_and_owner_still_comes_off_one_by_one(client, world, db):
+    root = client.as_(0)
+    assert root.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))[0] == 204
+    for name in ('-intel', '-other'):
+        assert root.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups=name))[0] == 204
+    assert root.post('/config/node/node001/_chown', _body('node', 'node001', owners='-alice'))[0] == 204
+    node = db.get_record(table='node', where="name = 'node001'")[0]
+    assert not node['usergroups'] and not node['owners'], 'no usergroup listed, owned by rootus'
+
+
 # ── modes ───────────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize('octal, text', [('750', 'rwxr-x---'), ('644', 'rw-r--r--'), ('770', 'rwxrwx---'),

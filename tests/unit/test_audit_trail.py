@@ -153,7 +153,7 @@ def test_a_refusal_names_the_missing_bit_and_the_class(trail, db, world):
     assert line.startswith('AUDIT ') is False and 'AUDIT user=dave id=' in line
     assert 'action="POST /config/node/node001"' in line and 'object="node node001"' in line
     assert 'outcome=refused code=403' in line
-    assert 'detail="changing node node001 is not permitted: you may read it (reader role)"' in line
+    assert 'detail="changing or removing node node001 is not permitted: you may read it (reader role)"' in line
 
 
 def test_a_plain_read_leaves_no_line_and_a_power_status_is_a_read(trail, db, world):

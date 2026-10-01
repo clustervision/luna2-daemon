@@ -87,7 +87,7 @@ COLUMNS = ('owners', 'usergroups', 'access')
 # for /config/profiles and /config/otherdev. Children aliased to a parent keep their own body.
 BODY_KEYS = {table: segment for segment, table in ALIAS.items() if table in GOVERNED and segment not in CHILDREN}
 # the bits in words, for every message a person can meet: r is read, w is change, x is operate
-ACTION = {'r': 'reading', 'w': 'changing', 'x': 'operating'}
+ACTION = {'r': 'reading', 'w': 'changing or removing', 'x': 'operating'}
 MAY = {'r': 'read', 'w': 'change', 'x': 'operate'}
 
 # Departments that create their own objects, and what they may create: with a role of

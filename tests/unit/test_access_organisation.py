@@ -573,4 +573,4 @@ def test_the_tester_operates_two_nodes_and_cannot_reconfigure_them(client, world
     tom = client.as_(world.ids['tom'])
     assert tom.get('/control/action/power/node001/_reset')[0] == 200
     code, body = tom.post('/config/node/node001', _body('node', 'node001', kerneloptions='x'))
-    assert code == 403 and 'changing node node001 is not permitted: you may read and operate it (operator role)' in body['message']
+    assert code == 403 and 'changing or removing node node001 is not permitted: you may read and operate it (operator role)' in body['message']

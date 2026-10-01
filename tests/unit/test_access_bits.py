@@ -155,7 +155,7 @@ def test_the_object_caps_the_team_below_a_managers_role(client, world):
     assert me.get('/config/node/node001')[0] == 200
     code, body = me.post('/config/node/node001')
     assert code == 403
-    assert body['message'] == 'changing node node001 is not permitted: you may read and operate it (manager role)'
+    assert body['message'] == 'changing or removing node node001 is not permitted: you may read and operate it (manager role)'
     assert me.get('/control/action/power/node001/_off')[0] == 200
 
 
@@ -164,7 +164,9 @@ def test_an_operator_powers_and_does_not_change(client, world):
     assert me.get('/control/action/power/node001/_off')[0] == 200
     assert me.get('/control/action/power/node001/_status')[0] == 200
     assert me.post('/config/node/node001')[0] == 403
-    assert me.get('/config/node/node001/_delete')[0] == 403
+    code, body = me.get('/config/node/node001/_delete')
+    assert code == 403
+    assert body['message'] == 'changing or removing node node001 is not permitted: you may read and operate it (operator role)'
 
 
 def test_a_reader_looks_and_nothing_else(client, world):

@@ -237,6 +237,27 @@ def test_logins_and_login_refusals_are_recorded(trail, db, world, monkeypatch):
     assert any('outcome=refused code=401' in line and 'Incorrect password' in line for line in lines)
 
 
+def test_identity_lines_name_the_user_usergroup_or_map_entry(trail, db, world):
+    """The identity tables are rootus routes; their lines still say which row was changed. A map
+    entry is named by its key from the body, and a key that could write a line of its own is ?."""
+    from routes.config_user import user_blueprint
+    from routes.config_usergroup import usergroup_blueprint
+    app = Flask(__name__)
+    app.register_blueprint(user_blueprint)
+    app.register_blueprint(usergroup_blueprint)
+
+    def post(path, body):
+        app.test_client().post(path, headers={'x-access-tokens': _token(0)}, data=json.dumps(body), content_type='application/json')
+        return _lines(trail)[-1]
+    assert 'object="user carol"' in post('/config/user/carol', {'config': {'user': {'carol': {'password': 'x'}}}})
+    assert 'object="usergroup chem"' in post('/config/usergroup/chem', {'config': {'usergroup': {'chem': {}}}})
+    entry = {'source': 'ldap', 'external_group': 'CN=hpc users,OU=groups', 'usergroup': 'chem', 'role': 'reader'}
+    assert 'object="usergroupmap ldap:CN=hpc users,OU=groups"' in post('/config/usergroupmap', {'config': {'usergroupmap': entry}})
+    forged = dict(entry, external_group='x\nAUDIT user=root outcome=allowed')
+    line = post('/config/usergroupmap', {'config': {'usergroupmap': forged}})
+    assert 'object="usergroupmap ?"' in line and 'AUDIT user=root' not in line
+
+
 def test_no_password_and_no_secret_content_reaches_the_trail(trail, db, world):
     """A scenario that sets a password and writes a secret; then the whole file is searched."""
     from routes.auth import auth_blueprint

@@ -89,6 +89,17 @@ SUFFIX_OVERRIDES = {'_clone', '_osgrab', '_ospush', '_biosgrab', '_biospush', '_
 KINDS = ('open', 'self', 'rootus', 'provision', 'dynamic', 'membership', 'object', 'override')
 
 
+def _rootus(entity, args):
+    """
+    A rootus requirement for an identity table; the name from the path, when there is one,
+    is only for the audit line, as the check does not read it.
+    """
+    found = {'kind': 'rootus', 'entity': entity}
+    if args.get('name'):
+        found['name'] = args['name']
+    return found
+
+
 def requirement(rule=None, method=None, args=None, declared=None):
     """
     Input - a Flask rule, the method, the path arguments of the request, and what the
@@ -126,12 +137,12 @@ def requirement(rule=None, method=None, args=None, declared=None):
         # the generic chmod, chgrp and chown routes name the entity and the object in the path
         entity = args.get('entity') or entity
     if entity in ROOTUS_ENTITIES:
-        return {'kind': 'rootus', 'entity': entity}
+        return _rootus(entity, args)
     if entity == 'usergroup':
         if 'members' in parts:
             return {'kind': 'membership', 'entity': 'usergroup', 'name': args.get('name'),
                     'bit': 'r' if method == 'GET' else 'w'}
-        return {'kind': 'rootus', 'entity': entity}
+        return _rootus(entity, args)
     if entity == 'secrets' and len(parts) > 2 and parts[2] == 'cluster':
         # clustersecrets is the named exception: cluster is readable by everyone, its secrets are not
         return {'kind': 'rootus', 'entity': 'clustersecrets'}

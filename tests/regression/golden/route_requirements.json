@@ -365,11 +365,13 @@
  },
  "GET /config/osgroup/<string:name>": {
   "entity": "osgroup",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "GET /config/osgroup/<string:name>/_delete": {
   "entity": "osgroup",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "GET /config/osimage": {
   "bit": "r",
@@ -437,11 +439,13 @@
  },
  "GET /config/osuser/<string:name>": {
   "entity": "osuser",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "GET /config/osuser/<string:name>/_delete": {
   "entity": "osuser",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "GET /config/otherdev": {
   "bit": "r",
@@ -712,7 +716,8 @@
  },
  "GET /config/user/<string:name>": {
   "entity": "user",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "GET /config/user/<string:name>/_access": {
   "entity": "config",
@@ -720,7 +725,8 @@
  },
  "GET /config/user/<string:name>/_delete": {
   "entity": "user",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "GET /config/usergroup": {
   "entity": "usergroup",
@@ -728,7 +734,8 @@
  },
  "GET /config/usergroup/<string:name>": {
   "entity": "usergroup",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "GET /config/usergroup/<string:name>/_access": {
   "entity": "config",
@@ -736,7 +743,8 @@
  },
  "GET /config/usergroup/<string:name>/_delete": {
   "entity": "usergroup",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "GET /config/usergroup/<string:name>/members": {
   "bit": "r",
@@ -1175,7 +1183,8 @@
  },
  "POST /config/osgroup/<string:name>": {
   "entity": "osgroup",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "POST /config/osimage/<string:name>": {
   "bit": "w",
@@ -1206,7 +1215,8 @@
  },
  "POST /config/osuser/<string:name>": {
   "entity": "osuser",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "POST /config/otherdev/<string:name>": {
   "bit": "w",
@@ -1348,11 +1358,13 @@
  },
  "POST /config/user/<string:name>": {
   "entity": "user",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "POST /config/usergroup/<string:name>": {
   "entity": "usergroup",
-  "kind": "rootus"
+  "kind": "rootus",
+  "name": "<name>"
  },
  "POST /config/usergroup/<string:name>/members": {
   "bit": "w",

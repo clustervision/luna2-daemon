@@ -106,9 +106,26 @@ def _audit(outcome, code, detail=None):
     only the id. Never the body.
     """
     caller = getattr(g, 'caller', None) or {}
+    requirement = getattr(g, 'requirement', None)
+    if requirement and requirement.get('entity') == 'usergroupmap' and not requirement.get('name'):
+        requirement = dict(requirement, name=_map_entry())
     Audit().record(userid=getattr(g, 'userid', None), username=caller.get('username'), source=caller.get('source'),
-                   method=request.method, path=request.path, requirement=getattr(g, 'requirement', None),
+                   method=request.method, path=request.path, requirement=requirement,
                    outcome=outcome, code=code, detail=detail, changed=_changed(), value=_verb_value())
+
+
+def _map_entry():
+    """
+    A map entry has no name in its path: its key is source and external_group in the body.
+    A directory group name is not input-filtered, so the key is written only when it holds
+    no quote and no control character, so a body cannot write a line of its own; else ?.
+    """
+    try:
+        body = request.get_json(force=True, silent=True)['config']['usergroupmap']
+        key = f"{body['source']}:{body['external_group']}"
+    except (KeyError, TypeError, AttributeError):
+        return None
+    return key if re.fullmatch(r'[^\x00-\x1f\x7f"]{1,256}', key) else '?'
 
 
 def _object_body():

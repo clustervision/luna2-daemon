@@ -416,6 +416,8 @@ def config_osimage_kernel_post(name=None):
         access_code=200
         if len(returned)==3:
             request_id=returned[2]
+            if hastate is True:
+                Journal().queue_source_sync(name,request_id)
             response = {"message": response, "request_id": request_id}
         else:
             access_code = 204

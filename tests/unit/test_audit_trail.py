@@ -8,7 +8,7 @@ import os
 import types
 
 import pytest
-from flask import Blueprint, Flask
+from flask import Blueprint, Flask, request
 from jwt import encode
 
 from cases.route_requirements_cases import app as _routes_app, fake_args as _fake_args, token_layer as _token_layer
@@ -235,6 +235,27 @@ def test_logins_and_login_refusals_are_recorded(trail, db, world, monkeypatch):
     lines = _lines(trail)
     assert any('outcome=login code=201' in line and 'user=dave' in line and 'source=local' in line for line in lines)
     assert any('outcome=refused code=401' in line and 'Incorrect password' in line for line in lines)
+
+
+def test_an_allowed_write_lists_what_was_sent_even_when_the_view_edits_the_body(trail, db, world):
+    """A base class edits the parsed body in place (interfaces taken out, names swapped for ids);
+    the line after the view still names the fields the caller sent."""
+    from common.validate_auth import token_required
+
+    def view(**_):
+        found = request.get_json()['config']['node']['node001']
+        del found['interfaces']
+        found['groupid'] = found.pop('group')
+        return json.dumps({}), 204
+    stub = Blueprint('stub', __name__)
+    stub.add_url_rule('/config/node/<string:name>', endpoint='node', methods=['POST'], view_func=token_required(view))
+    app = Flask(__name__)
+    app.register_blueprint(stub)
+    body = {'config': {'node': {'node001': {'group': 'compute', 'interfaces': [{'interface': 'BOOTIF'}]}}}}
+    app.test_client().post('/config/node/node001', headers={'x-access-tokens': _token(0)},
+                           data=json.dumps(body), content_type='application/json')
+    line = _lines(trail)[-1]
+    assert 'outcome=allowed' in line and ' changed=group,interfaces' in line, line
 
 
 def test_identity_lines_name_the_user_usergroup_or_map_entry(trail, db, world):

@@ -90,6 +90,8 @@ def token_required(function=None, *, requires=None):
             refused = _refused()
             if refused:
                 return refused
+            # the view may edit the parsed body in place; the trail records what was sent
+            g.sent = (_changed(), _verb_value())
             return _audited(function(**kwargs))
         decorator.requires = requires
         return decorator
@@ -109,9 +111,10 @@ def _audit(outcome, code, detail=None):
     requirement = getattr(g, 'requirement', None)
     if requirement and requirement.get('entity') == 'usergroupmap' and not requirement.get('name'):
         requirement = dict(requirement, name=_map_entry())
+    changed, value = getattr(g, 'sent', None) or (_changed(), _verb_value())
     Audit().record(userid=getattr(g, 'userid', None), username=caller.get('username'), source=caller.get('source'),
                    method=request.method, path=request.path, requirement=requirement,
-                   outcome=outcome, code=code, detail=detail, changed=_changed(), value=_verb_value())
+                   outcome=outcome, code=code, detail=detail, changed=changed, value=value)
 
 
 def _map_entry():

@@ -233,7 +233,7 @@ def test_logins_and_login_refusals_are_recorded(trail, db, world, monkeypatch):
     assert app.test_client().post('/token', data=json.dumps({'username': 'dave', 'password': 'hunter2'}), content_type='application/json').status_code == 201
     assert app.test_client().post('/token', data=json.dumps({'username': 'dave', 'password': 'wrong'}), content_type='application/json').status_code == 401
     lines = _lines(trail)
-    assert any('outcome=login code=201' in line and 'user=dave' in line for line in lines)
+    assert any('outcome=login code=201' in line and 'user=dave' in line and 'source=local' in line for line in lines)
     assert any('outcome=refused code=401' in line and 'Incorrect password' in line for line in lines)
 
 

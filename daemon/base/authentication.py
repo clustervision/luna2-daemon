@@ -87,7 +87,10 @@ class Authentication():
                                 message = f'Authentication token generated, Token {jwt_token}'
                                 self.logger.debug(message)
                                 status = True
-                                Audit().record(userid=user_id, username=on_behalf_of or username, method='POST', path='/token',
+                                # the source the chain just recorded on the user row, so the line says how they got in
+                                user = Database().get_record(select=['source'], table='user', where=f"id = '{user_id}'")
+                                Audit().record(userid=user_id, username=on_behalf_of or username,
+                                               source=user[0]['source'] if user else None, method='POST', path='/token',
                                                outcome='delegated' if on_behalf_of else 'login', code=201,
                                                detail=f'by {username}' if on_behalf_of else None)
                             else:

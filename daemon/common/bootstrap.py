@@ -361,7 +361,7 @@ def bootstrap(bootstrapfile=None):
     defaultserver_ip=None
     if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
         defaultserver_ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
-    domain_search, forwardserver_ip=None, None
+    domain_search, forwardserver_ip, install_mode=None, None, None
     bind_legacy=0
     if 'CLUSTER' in BOOTSTRAP.keys():
         if 'DOMAIN_SEARCH' in BOOTSTRAP['CLUSTER']:
@@ -374,6 +374,7 @@ def bootstrap(bootstrapfile=None):
             forwardserver_ip=forwardserver_ip.replace(',,',',')
         if 'BIND_LEGACY' in BOOTSTRAP['CLUSTER']:
             bind_legacy=1 if BOOTSTRAP['CLUSTER']['BIND_LEGACY'] in is_true else 0
+        install_mode=default_install_mode(BOOTSTRAP['CLUSTER'])
     default_cluster = [
             {'column': 'name', 'value': 'mycluster'},
             {'column': 'technical_contacts', 'value': 'root@localhost'},
@@ -391,6 +392,8 @@ def bootstrap(bootstrapfile=None):
             {'column': 'domain_search', 'value': domain_search},
             {'column': 'ntp_server', 'value': defaultserver_ip}
         ]
+    if install_mode:
+        default_cluster.append({'column': 'install_mode', 'value': install_mode})
     Database().insert('cluster', default_cluster)
     cluster = Database().get_record(table='cluster')
     clusterid = cluster[0]['id']
@@ -691,6 +694,22 @@ def bootstrap(bootstrapfile=None):
     new_bootstrapfile = f'/trinity/local/luna/daemon/config/bootstrap-{current_time}.ini'
     os.rename(bootstrapfile, new_bootstrapfile)
     return True
+
+
+def default_install_mode(section=None):
+    """
+    The cluster-wide install_mode from an optional INSTALL_MODE in [CLUSTER]. Only a
+    fresh cluster is bootstrapped, so an existing one keeps its value; absent means
+    unset, which nodes and groups resolve to legacy.
+    """
+    mode = str((section or {}).get('INSTALL_MODE') or '').strip().lower()
+    if not mode:
+        return None
+    if mode not in ['auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'legacy']:
+        LOGGER.error(f'[CLUSTER] INSTALL_MODE {mode} is not one of auto, sync, full, local, '
+                     'memboot, sanitize or legacy; install_mode left unset (legacy)')
+        return None
+    return mode
 
 
 def default_redfishsetup(parser=None):

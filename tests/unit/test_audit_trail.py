@@ -8,7 +8,7 @@ import os
 import types
 
 import pytest
-from flask import Blueprint, Flask
+from flask import Blueprint, Flask, request
 from jwt import encode
 
 from cases.route_requirements_cases import app as _routes_app, fake_args as _fake_args, token_layer as _token_layer
@@ -153,7 +153,7 @@ def test_a_refusal_names_the_missing_bit_and_the_class(trail, db, world):
     assert line.startswith('AUDIT ') is False and 'AUDIT user=dave id=' in line
     assert 'action="POST /config/node/node001"' in line and 'object="node node001"' in line
     assert 'outcome=refused code=403' in line
-    assert 'detail="changing node node001 is not permitted: you may read it (reader role)"' in line
+    assert 'detail="changing or removing node node001 is not permitted: you may read it (reader role)"' in line
 
 
 def test_a_plain_read_leaves_no_line_and_a_power_status_is_a_read(trail, db, world):
@@ -233,8 +233,50 @@ def test_logins_and_login_refusals_are_recorded(trail, db, world, monkeypatch):
     assert app.test_client().post('/token', data=json.dumps({'username': 'dave', 'password': 'hunter2'}), content_type='application/json').status_code == 201
     assert app.test_client().post('/token', data=json.dumps({'username': 'dave', 'password': 'wrong'}), content_type='application/json').status_code == 401
     lines = _lines(trail)
-    assert any('outcome=login code=201' in line and 'user=dave' in line for line in lines)
+    assert any('outcome=login code=201' in line and 'user=dave' in line and 'source=local' in line for line in lines)
     assert any('outcome=refused code=401' in line and 'Incorrect password' in line for line in lines)
+
+
+def test_an_allowed_write_lists_what_was_sent_even_when_the_view_edits_the_body(trail, db, world):
+    """A base class edits the parsed body in place (interfaces taken out, names swapped for ids);
+    the line after the view still names the fields the caller sent."""
+    from common.validate_auth import token_required
+
+    def view(**_):
+        found = request.get_json()['config']['node']['node001']
+        del found['interfaces']
+        found['groupid'] = found.pop('group')
+        return json.dumps({}), 204
+    stub = Blueprint('stub', __name__)
+    stub.add_url_rule('/config/node/<string:name>', endpoint='node', methods=['POST'], view_func=token_required(view))
+    app = Flask(__name__)
+    app.register_blueprint(stub)
+    body = {'config': {'node': {'node001': {'group': 'compute', 'interfaces': [{'interface': 'BOOTIF'}]}}}}
+    app.test_client().post('/config/node/node001', headers={'x-access-tokens': _token(0)},
+                           data=json.dumps(body), content_type='application/json')
+    line = _lines(trail)[-1]
+    assert 'outcome=allowed' in line and ' changed=group,interfaces' in line, line
+
+
+def test_identity_lines_name_the_user_usergroup_or_map_entry(trail, db, world):
+    """The identity tables are rootus routes; their lines still say which row was changed. A map
+    entry is named by its key from the body, and a key that could write a line of its own is ?."""
+    from routes.config_user import user_blueprint
+    from routes.config_usergroup import usergroup_blueprint
+    app = Flask(__name__)
+    app.register_blueprint(user_blueprint)
+    app.register_blueprint(usergroup_blueprint)
+
+    def post(path, body):
+        app.test_client().post(path, headers={'x-access-tokens': _token(0)}, data=json.dumps(body), content_type='application/json')
+        return _lines(trail)[-1]
+    assert 'object="user carol"' in post('/config/user/carol', {'config': {'user': {'carol': {'password': 'x'}}}})
+    assert 'object="usergroup chem"' in post('/config/usergroup/chem', {'config': {'usergroup': {'chem': {}}}})
+    entry = {'source': 'ldap', 'external_group': 'CN=hpc users,OU=groups', 'usergroup': 'chem', 'role': 'reader'}
+    assert 'object="usergroupmap ldap:CN=hpc users,OU=groups"' in post('/config/usergroupmap', {'config': {'usergroupmap': entry}})
+    forged = dict(entry, external_group='x\nAUDIT user=root outcome=allowed')
+    line = post('/config/usergroupmap', {'config': {'usergroupmap': forged}})
+    assert 'object="usergroupmap ?"' in line and 'AUDIT user=root' not in line
 
 
 def test_no_password_and_no_secret_content_reaches_the_trail(trail, db, world):
@@ -316,6 +358,8 @@ def test_chmod_chgrp_and_chown_say_what_they_were_asked_to_set(trail, db, world)
     assert ' changed=access value=750' in post('/config/node/node001/_chmod', {'access': '750'})
     assert ' changed=usergroups value="+intel, -amd"' in post('/config/node/node001/_chgrp', {'usergroups': '+intel, -amd'})
     assert ' changed=owners value=dave' in post('/config/node/node001/_chown', {'owners': 'dave'})
+    assert ' changed=usergroups value="intel, amd"' in post('/config/node/node001/_chgrp', {'usergroups': ['intel', 'amd']})
+    assert ' changed=owners value=? ' in post('/config/node/node001/_chown', {'owners': ['dave', 'x outcome=allowed']}) + ' '
     from utils.helper import Helper
     outsider = db.insert('user', Helper().make_rows({'username': 'eve', 'source': 'local', 'enabled': '1', 'admin': '0', 'delegate': '0'}))
     line = post('/config/node/node001/_chown', {'owners': 'eve'}, userid=outsider)
@@ -328,7 +372,7 @@ def test_chmod_chgrp_and_chown_say_what_they_were_asked_to_set(trail, db, world)
     assert ' changed=access,comment' in line and ' value=' not in line and 'SECRET-LOOKING' not in line
 
 
-def test_the_trail_does_not_reach_the_daemon_log_at_info(trail, db, world, caplog):
+def test_the_trail_does_not_reach_the_daemon_log_at_info(trail, db, world):
     """Found live: a child logger propagates to the parent's handlers whatever its level, so
     every audit line landed in the daemon log at info as well. The daemon log gets the
     debug copy only."""
@@ -342,11 +386,19 @@ def test_the_trail_does_not_reach_the_daemon_log_at_info(trail, db, world, caplo
         return json.dumps({}), 200
     app = Flask(__name__)
     app.register_blueprint(stub)
-    with caplog.at_level(logging.INFO, logger='luna2-daemon'):
+    # a handler on the daemon logger itself: caplog also attaches to non-propagating loggers
+    # since pytest 9.1, so it would see the trail's own records
+    seen = []
+    handler = logging.Handler(logging.INFO)
+    handler.emit = seen.append
+    daemon = logging.getLogger('luna2-daemon')
+    daemon.addHandler(handler)
+    try:
         app.test_client().post('/config/node/node001', headers={'x-access-tokens': _token(0)}, data='{}', content_type='application/json')
+    finally:
+        daemon.removeHandler(handler)
     assert len(_lines(trail)) == 1
-    assert not [r for r in caplog.records if 'AUDIT ' in r.getMessage() and r.levelno >= logging.INFO], \
-        'audit lines must not propagate into the daemon log at info'
+    assert not [r for r in seen if 'AUDIT ' in r.getMessage()], 'audit lines must not propagate into the daemon log at info'
 
 
 def test_the_writer_takes_no_body():

@@ -87,7 +87,7 @@ COLUMNS = ('owners', 'usergroups', 'access')
 # for /config/profiles and /config/otherdev. Children aliased to a parent keep their own body.
 BODY_KEYS = {table: segment for segment, table in ALIAS.items() if table in GOVERNED and segment not in CHILDREN}
 # the bits in words, for every message a person can meet: r is read, w is change, x is operate
-ACTION = {'r': 'reading', 'w': 'changing', 'x': 'operating'}
+ACTION = {'r': 'reading', 'w': 'changing or removing', 'x': 'operating'}
 MAY = {'r': 'read', 'w': 'change', 'x': 'operate'}
 
 # Departments that create their own objects, and what they may create: with a role of
@@ -844,9 +844,13 @@ class Access():
         """
         Input - the stored ids, the request's names (a list or csv, +name adds, -name removes,
                 a bare name replaces the whole list), and a name-to-id resolver
-        Output - the new id list, or raises AccessRefused 400 for an unknown name
+        Output - the new id list, or raises AccessRefused 400 for an unknown name or no name
         """
         names = wanted if isinstance(wanted, list) else [n.strip() for n in str(wanted or '').split(',') if n.strip()]
+        if not names:
+            # an empty list would replace nothing and still answer as done; taking the last
+            # name off is -name, so a list emptied by accident cannot strip an object
+            raise AccessRefused(400, 'Invalid request: the list is empty; name what to set, +name to add or -name to remove')
         result = list(current)
         replace = [n for n in names if not n.startswith(('+', '-'))]
         if replace:

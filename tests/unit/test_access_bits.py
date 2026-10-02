@@ -155,7 +155,7 @@ def test_the_object_caps_the_team_below_a_managers_role(client, world):
     assert me.get('/config/node/node001')[0] == 200
     code, body = me.post('/config/node/node001')
     assert code == 403
-    assert body['message'] == 'changing node node001 is not permitted: you may read and operate it (manager role)'
+    assert body['message'] == 'changing or removing node node001 is not permitted: you may read and operate it (manager role)'
     assert me.get('/control/action/power/node001/_off')[0] == 200
 
 
@@ -164,7 +164,9 @@ def test_an_operator_powers_and_does_not_change(client, world):
     assert me.get('/control/action/power/node001/_off')[0] == 200
     assert me.get('/control/action/power/node001/_status')[0] == 200
     assert me.post('/config/node/node001')[0] == 403
-    assert me.get('/config/node/node001/_delete')[0] == 403
+    code, body = me.get('/config/node/node001/_delete')
+    assert code == 403
+    assert body['message'] == 'changing or removing node node001 is not permitted: you may read and operate it (operator role)'
 
 
 def test_a_reader_looks_and_nothing_else(client, world):
@@ -322,6 +324,25 @@ def test_an_unknown_name_in_a_list_is_refused_not_dropped(client, world):
     alice = client.as_(world.ids['alice'])
     code, body = alice.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+nowhere'))
     assert code == 400 and 'nowhere is not known' in body['message']
+
+
+@pytest.mark.parametrize('verb, field', [('_chgrp', 'usergroups'), ('_chown', 'owners')])
+@pytest.mark.parametrize('empty', ['', []])
+def test_an_empty_list_is_refused_and_changes_nothing(client, world, db, verb, field, empty):
+    before = db.get_record(table='node', where="name = 'node001'")[0][field]
+    code, body = client.as_(0).post(f'/config/node/node001/{verb}', _body('node', 'node001', **{field: empty}))
+    assert code == 400 and 'the list is empty' in body['message']
+    assert db.get_record(table='node', where="name = 'node001'")[0][field] == before
+
+
+def test_every_usergroup_and_owner_still_comes_off_one_by_one(client, world, db):
+    root = client.as_(0)
+    assert root.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups='+other'))[0] == 204
+    for name in ('-intel', '-other'):
+        assert root.post('/config/node/node001/_chgrp', _body('node', 'node001', usergroups=name))[0] == 204
+    assert root.post('/config/node/node001/_chown', _body('node', 'node001', owners='-alice'))[0] == 204
+    node = db.get_record(table='node', where="name = 'node001'")[0]
+    assert not node['usergroups'] and not node['owners'], 'no usergroup listed, owned by rootus'
 
 
 # ── modes ───────────────────────────────────────────────────────────────────

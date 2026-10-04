@@ -198,3 +198,28 @@ def test_an_unresolvable_record_also_holds_the_queue(tmp_path):
     assert 'NoSuchClass.no_such_method' in left, (
         "an unresolvable record was dropped rather than holding the queue."
     )
+
+
+def test_a_refused_forwarded_osimage_call_reports_its_code(tmp_path, monkeypatch):
+    """TRIX-2150: a standby forwards a pack to the master and follows the answer through the
+    status stream. The base method refuses it, and the refusal must carry its code, or the
+    caller reads the message and then a finished pack."""
+    import utils.journal as J
+    from utils.database import Database
+    from utils.dbstructure import DBStructure
+
+    class OSImage:
+        def pack(self, name):
+            return False, f'OS image {name} does not exist'
+
+    journal = _journal_db(tmp_path)
+    Database().create('status', DBStructure().get_database_table_structure('status'))
+    monkeypatch.setitem(vars(J), 'OSImage', OSImage)
+    _queue('OSImage.pack', 'nope', '2026-01-01 00:00:00')
+
+    journal.handle_requests()
+
+    rows = Database().get_record(table='status') or []
+    refusal = [r for r in rows if 'does not exist' in r['message']]
+    assert refusal, 'the refusal never reached the status stream'
+    assert refusal[0]['status'] == 404, 'the refusal travels as a success and the caller reads it as one'

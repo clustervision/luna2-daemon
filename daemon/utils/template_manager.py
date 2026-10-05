@@ -79,10 +79,9 @@ class TemplateManager(object):
                     self.logger.debug(f"found plugins.{root}.{one}{leveltwo}")
                     return root + '/' + one + leveltwo + '.templ'
                 elif one in subtree.keys():
-                    if leveltwo and leveltwo in subtree[one]:
-                        template = leveltwo.rsplit('.', 1)
-                        self.logger.debug(f"found plugins.{root}.{one}.{template[0]}")
-                        return root + '/' + one + '/' + template[0] + '.templ'
+                    if leveltwo and f'{leveltwo}.templ' in subtree[one]:
+                        self.logger.debug(f"found plugins.{root}.{one}.{leveltwo}")
+                        return root + '/' + one + '/' + leveltwo + '.templ'
                     elif 'default.templ' in subtree[one]:
                         self.logger.debug(f"found plugins.{root}.{one}.default")
                         return root + '/' + one + '/default.templ'

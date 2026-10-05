@@ -373,3 +373,25 @@ def test_the_access_routes_answer_the_user_rootus_and_admin_only(seeded):
     assert code == 403 and 'rootus and admin' in body['message']
     code, body = get('/config/usergroup/intel/_access', 0)
     assert code == 200 and body['config']['usergroup']['intel']['access']['node']['node001']['reader'] == 'r--'
+
+
+# ----------------------------------------------- a failed member join answers, never raises (TRIX-2134)
+
+def test_a_failed_member_join_answers_instead_of_raising(seeded, monkeypatch):
+    """Both reads behind the member listing answer None when the query fails. That is a failure
+    to report, not an empty list to add to the other read."""
+    from utils.database import Database
+    from utils.helper import Helper
+    from utils.model import Model
+    monkeypatch.setattr(Database, 'get_record_join', lambda self, *a, **k: None)
+    status, response = Model().get_member(name='ipmi', table='bmcsetup', table_cap='BMC setup')
+    assert status is False
+    assert 'ipmi' in response and 'could not be read' in response, response
+    assert Helper().get_access_code(status, response) == 500, 'a read failure is a server error, not a 404'
+
+
+def test_an_empty_membership_still_answers_as_before(seeded):
+    from utils.model import Model
+    status, response = Model().get_member(name='ipmi', table='bmcsetup', table_cap='BMC setup')
+    assert status is False
+    assert response == 'BMC setup ipmi is not have any member node'

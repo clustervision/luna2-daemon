@@ -102,6 +102,10 @@ class Model():
             )
             where = f"{table}id ='{record_id}'"
             get_record_node = Database().get_record(select=['name'], table='node', where=where)
+            # None is a failed query, logged by the database layer; an empty list is no member
+            if get_group_node is None or get_record_node is None:
+                self.logger.error(f'member listing of {table_cap} {name} could not be read')
+                return False, f'Internal error: {table_cap} {name} members could not be read'
             list_nodes = get_group_node + get_record_node
             if list_nodes:
                 for node in list_nodes:

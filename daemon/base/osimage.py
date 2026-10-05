@@ -31,6 +31,7 @@ __status__      = 'Development'
 
 import os
 import re
+import signal
 from time import sleep, time
 from os import getpid, path
 from random import randint
@@ -887,9 +888,12 @@ class OSImage():
         return status, response
 
 
+    # how long a cancelled worker gets to stop on SIGTERM before it is killed
+    CANCEL_GRACE_SECONDS = 5
+
     def cancel_pack(self, name=None):
         """
-        Cancel an in-flight pack for an image: signal the owning worker's (isolated) process group so
+        Cancel an in-flight pack for an image: stop the owning worker's (isolated) process group so
         its dracut/tar children die with it, then abort the chain - EOF the waiting client and remove
         its tasks. The signal only ever reaches a worker positively identified by its stamped pid and
         start-time; a reused or vital pid is refused by Helper().safe_kill_worker. Local and transient,
@@ -905,7 +909,15 @@ class OSImage():
         chain_tasks = Database().get_record(table='queue', where=f"request_id='{request_id}'")
         self.logger.warning(f"cancel_pack: cancelling osimage {name} chain {request_id} "
                             f"(worker pid {owner_pid}); {len(chain_tasks or [])} task(s) to clear")
-        signalled = Helper().safe_kill_worker(owner_pid, owner_started)
+        # SIGTERM lets the worker's finally unmount dev, proc and sys; SIGKILL never would
+        signalled = Helper().safe_kill_worker(owner_pid, owner_started, signal.SIGTERM)
+        deadline = time() + self.CANCEL_GRACE_SECONDS
+        while signalled and Helper().pid_alive(owner_pid, owner_started) and time() < deadline:
+            sleep(0.2)
+        if signalled and Helper().pid_alive(owner_pid, owner_started):
+            Helper().safe_kill_worker(owner_pid, owner_started, signal.SIGKILL)
+            self.logger.error(f"cancel_pack: worker {owner_pid} killed after ignoring SIGTERM; "
+                              f"host mounts may remain under osimage {name}, check findmnt")
         self.logger.warning(f"cancel_pack: worker for osimage {name} "
                             f"{'stopped' if signalled else 'was already gone'} (pid {owner_pid})")
         # abort the chain either way - the kill was delivered, or the worker was already gone.

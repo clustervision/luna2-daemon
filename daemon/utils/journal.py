@@ -264,7 +264,8 @@ class Journal():
                                     # something went wrong. we have to inform the remote host
                                     if not request_id:
                                         request_id=str(time()) + str(randint(1001, 9999)) + str(getpid())
-                                    Status().add_message(request_id, "luna", message)
+                                    Status().add_message(request_id, "luna", message,
+                                                         status=Helper().get_access_code(status_, message))
                                     Status().add_message(request_id, "luna", "EOF")
                                         
                                 if record['misc'] and request_id:

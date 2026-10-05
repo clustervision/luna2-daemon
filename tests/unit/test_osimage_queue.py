@@ -264,3 +264,37 @@ def test_pack_of_an_unknown_image_queues_nothing(db):
     assert ok is False
     assert 'does not exist' in str(message)
     assert not db.get_record(table='queue'), "nothing was queued for an image that does not exist"
+
+
+
+# ------------------------------------------------- cancel lets the worker unmount (TRIX-2210)
+
+def _cancel_signals(monkeypatch, worker_survives_term):
+    """cancel_pack with the kill and the liveness check stubbed: which signals does it send?"""
+    import signal
+    from utils.helper import Helper
+    sent = []
+    monkeypatch.setattr(Helper, 'safe_kill_worker', lambda self, pid, started, sig=signal.SIGKILL: sent.append(sig) or True)
+    monkeypatch.setattr(Helper, 'pid_alive', lambda self, pid, started=None: worker_survives_term)
+    return sent
+
+
+def test_cancel_sends_sigterm_and_leaves_a_stopping_worker_alone(db, monkeypatch):
+    """A worker that stops on SIGTERM runs its own finally, which takes the host's dev, proc and
+    sys out of the image tree. Cancel must not follow up with SIGKILL."""
+    import signal
+    sent = _cancel_signals(monkeypatch, worker_survives_term=False)
+    _add(db, request_id='T', param='imgT', status='in progress', owner_pid=4242, owner_started='1')
+    assert _base_osimage().cancel_pack('imgT')[0] is True
+    assert sent == [signal.SIGTERM], f"got {sent}"
+
+
+def test_cancel_kills_a_worker_that_outlives_the_grace(db, monkeypatch):
+    """A worker still there after the grace is killed, as before."""
+    import signal
+    from base.osimage import OSImage
+    monkeypatch.setattr(OSImage, 'CANCEL_GRACE_SECONDS', 0.3, raising=False)
+    sent = _cancel_signals(monkeypatch, worker_survives_term=True)
+    _add(db, request_id='K', param='imgK', status='in progress', owner_pid=4242, owner_started='1')
+    assert _base_osimage().cancel_pack('imgK')[0] is True
+    assert sent == [signal.SIGTERM, signal.SIGKILL], f"got {sent}"

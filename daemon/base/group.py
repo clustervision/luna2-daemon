@@ -356,8 +356,8 @@ class Group():
                 response['config']['group'][name]['members'] = nodes
                 status=True
             else:
-                self.logger.error(f'Group {name} is not have any member node.')
-                response = f'Group {name} is not have any member node'
+                self.logger.error(f'Group {name} has no member node.')
+                response = f'Group {name} has no member node'
                 status=False
         else:
             self.logger.error(f'Group {name} is not available.')

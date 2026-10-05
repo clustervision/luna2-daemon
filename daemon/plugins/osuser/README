@@ -1,0 +1,13 @@
+# OSUSER PLUGIN - the OS user and group backend behind /config/osuser and /config/osgroup
+#
+#        eight defined methods are mandatory, each returns <True|False>,<message|dict>:
+#        - list_users
+#        - get_user(name)
+#        - update_user(name, **fields)
+#        - delete_user(name)
+#        - list_groups
+#        - get_group(name)
+#        - update_group(name, **fields)
+#        - delete_group(name)
+#
+# Loaded by name, plugins/osuser/obol.py. There is no search path.

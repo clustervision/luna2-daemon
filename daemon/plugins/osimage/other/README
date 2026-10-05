@@ -1,0 +1,7 @@
+# CLEANUP PLUGIN - files no image refers to any more
+#
+#        one defined method is mandatory:
+#        - cleanup   removes one file from the files path. returns <True|False>,"message"
+#
+# Loaded by name, plugins/osimage/other/cleanup.py, from the housekeeper once an
+# image's old kernel, ramdisk or image file has been replaced. No search path.

@@ -1,0 +1,12 @@
+# FILESYSTEM PLUGIN - where an image lives on disk
+#
+#        four defined methods are mandatory, each returns <True|False>,"message":
+#        - getpath   the directory of an image, or of one of its tags; the message is the path
+#        - clone     copies one image directory onto another
+#        - extract   unpacks an image file into an image directory
+#        - sync      pulls an image directory from the other controller
+
+# Plugin selection:
+#
+# the name set as IMAGE_FILESYSTEM under [PLUGINS] in luna.ini,
+# e.g. plugins/osimage/filesystem/default.py. There is no search path.

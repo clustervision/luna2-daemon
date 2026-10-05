@@ -116,8 +116,8 @@ class Model():
                 self.logger.debug(f'Provided all {table_cap} members for nodes {nodes}.')
                 status=True
             else:
-                self.logger.error(f'{table_cap} {name} is not have any member node.')
-                response = f'{table_cap} {name} is not have any member node'
+                self.logger.error(f'{table_cap} {name} has no member node.')
+                response = f'{table_cap} {name} has no member node'
                 status=False
         else:
             self.logger.error(f'{table_cap} {name} is not available.')

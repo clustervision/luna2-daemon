@@ -394,4 +394,4 @@ def test_an_empty_membership_still_answers_as_before(seeded):
     from utils.model import Model
     status, response = Model().get_member(name='ipmi', table='bmcsetup', table_cap='BMC setup')
     assert status is False
-    assert response == 'BMC setup ipmi is not have any member node'
+    assert response == 'BMC setup ipmi has no member node'

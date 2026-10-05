@@ -81,15 +81,17 @@ def config_dns(name=None):
 
 
 @dns_blueprint.route('/config/dns/<string:network>/<string:name>/_delete', methods=['GET'])
+@dns_blueprint.route('/config/dns/<string:network>/<string:name>/<string:ipaddress>/_delete', methods=['GET'])
 @token_required
 @validate_name
-def delete_dns(name=None,network=None):
+def delete_dns(name=None,network=None,ipaddress=None):
     """
-    This api deletes an additional dns entry.
+    This api deletes an additional dns entry: one address of the name, or the whole name.
     """
     access_code = 404
-    status, response = Journal().add_request(function="DNS.delete_dns", object=name, param=network)
+    payload = {'ipaddress': ipaddress} if ipaddress else None
+    status, response = Journal().add_request(function="DNS.delete_dns", object=name, param=network, payload=payload)
     if status is True:
-        status, response = DNS().delete_dns(name,network)
+        status, response = DNS().delete_dns(name,network,payload)
         access_code = Helper().get_access_code(status, response)
     return {'message': response}, access_code

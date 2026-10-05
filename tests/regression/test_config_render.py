@@ -813,6 +813,19 @@ def test_dns_configure_renders_zone_and_named_conf(config_env, seeded):
 
 
 @pytest.mark.regression
+def test_dns_round_robin_name_renders_one_record_per_address(config_env, seeded):
+    """TRIX-2097: a DNS entry name with several addresses gives one A line per address; a
+    name-keyed record would keep only the last one."""
+    from utils.config import Config
+    _insert("dns", host="svc", ipaddress="10.141.1.1", networkid=seeded["netid"])
+    _insert("dns", host="svc", ipaddress="10.141.1.2", networkid=seeded["netid"])
+    assert Config().dns_configure() is True
+    zone = open(os.path.join(config_env, f"{NETWORK}.luna.zone"), encoding="utf-8").read()
+    assert "svc                    IN A 10.141.1.1" in zone
+    assert "svc                    IN A 10.141.1.2" in zone
+
+
+@pytest.mark.regression
 def test_dns_switch_interfaces_resolve_as_switch_dash_interface(config_env, seeded):
     """A switch's own IP keeps its bare <switch> name; each switch interface with an IP on a
     network resolves as <switch>-<interface> (so interfaces on the same zone do not collide);

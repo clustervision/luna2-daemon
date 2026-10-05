@@ -146,6 +146,12 @@
   "kind": "object",
   "name": "<name>"
  },
+ "GET /config/dns/<string:network>/<string:name>/<string:ipaddress>/_delete": {
+  "bit": "w",
+  "entity": "network",
+  "kind": "object",
+  "name": "<name>"
+ },
  "GET /config/dns/<string:network>/<string:name>/_delete": {
   "bit": "w",
   "entity": "network",

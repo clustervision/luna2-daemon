@@ -1247,7 +1247,10 @@ class Helper(object):
         access_code=404
         if status is True:
             access_code=201
-            if 'update' in response or 'remove' in response or 'delete' in response:
+            # a 204 carries no body, so an answer with something to say stays a 201
+            if 'warning' in response or 'note' in response:
+                access_code=201
+            elif 'update' in response or 'remove' in response or 'delete' in response:
                 access_code=204
         else:
             if 'nvalid request' in response or 'ad request' in response or ' invalid ' in response:

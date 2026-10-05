@@ -163,6 +163,41 @@ def test_network_prefers_distribution_and_osrelease_over_distribution(plugin_tre
     assert load('redhat', '9') == 'redhat9'
 
 
+def test_network_picks_the_release_file_inside_the_distribution_directory(plugin_tree):
+    """README order 1, directory form: plugins/boot/network/redhat/9.py beats redhat/default.py.
+
+    The candidate list holds filenames and the release arrives bare, so a lookup that forgets
+    the extension never matches and the directory's default is served instead. Nothing reports
+    it: default.py is a valid answer.
+    """
+    load = plugin_tree('boot/network', {'redhat/9': 'redhat-9', 'redhat/default': 'redhat-dir',
+                                        'default': 'default'})
+    assert load('redhat', '9') == 'redhat-9'
+
+
+def test_bmc_picks_the_model_file_inside_the_vendor_directory(plugin_tree):
+    """The same form on a list caller: plugins/boot/bmc/supermicro/x13.py.
+
+    A vendor the shipped tree has no flat file for: a real supermicro.py beside the temp
+    directory would be imported instead of it, which is Python's rule, not the loader's.
+    """
+    load = plugin_tree('boot/bmc', {'supermicro/x13': 'model', 'supermicro/default': 'vendor',
+                                    'default': 'default'})
+    assert load(['node001', 'compute', 'supermicro'], 'x13') == 'model'
+
+
+def test_template_picks_the_release_file_inside_the_distribution_directory(tmp_path):
+    """Templates resolve with the same shape, so redhat/9.templ has to be found the same way."""
+    from utils.template_manager import TemplateManager
+    for name in ('redhat/9.templ', 'redhat/default.templ', 'default.templ'):
+        path = tmp_path / 'boot' / 'network' / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('')
+    found = TemplateManager().find_from_path(startpath=str(tmp_path / 'boot'),
+                                             root='boot/network', levelone='redhat', leveltwo='9')
+    assert found == 'boot/network/redhat/9.templ'
+
+
 def test_network_falls_back_to_the_distribution_directory_default(plugin_tree):
     """README order 2, directory form: plugins/boot/network/redhat/default.py."""
     load = plugin_tree('boot/network', {'redhat/default': 'redhat-dir', 'default': 'default'})

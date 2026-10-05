@@ -158,7 +158,7 @@ class Firmware():
         if not imagefile:
             return ''
         _, port = FirmwarePush().file_port()
-        return (f'; stage {imagefile} in {CONSTANT["FILES"]["IMAGE_FILES"]} on the active '
+        return (f'; note: stage {imagefile} in {CONSTANT["FILES"]["IMAGE_FILES"]} on the active '
                 f'controller. BMCs fetch it from the controller over port {port}, so the '
                 'interface facing the BMC network must be in the firewall\'s trusted zone')
 

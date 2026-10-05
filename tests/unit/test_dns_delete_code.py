@@ -43,3 +43,31 @@ def test_an_existing_entry_is_removed_with_204(delete):
 def test_a_missing_entry_or_network_is_a_404(delete, network, host):
     assert delete(network, host) == 404
     assert len(Database().get_record(table='dns')) == 1
+
+
+# ------------------------------------------------ remove one address, or the name (TRIX-2097)
+
+@pytest.fixture(name='two')
+def two_fixture(sqlite_db, monkeypatch):
+    from common.constant import CONSTANT
+    monkeypatch.setattr('base.dns.Service', FakeService)
+    networkid = Database().insert('network', Helper().make_rows({'name': 'cluster', 'network': '10.141.0.0', 'subnet': '16'}))
+    for ip in ('10.141.1.1', '10.141.1.2'):
+        Database().insert('dns', Helper().make_rows({'host': 'svc', 'ipaddress': ip, 'networkid': networkid}))
+    client = routes_app().test_client()
+    token = encode({'id': 0}, CONSTANT['API']['SECRET_KEY'], 'HS256')
+    return lambda path: client.get(f'/config/dns/cluster/svc{path}/_delete', headers={'x-access-tokens': token}).status_code
+
+
+def _ips():
+    return sorted(row['ipaddress'] for row in Database().get_record(table='dns') or [])
+
+
+def test_remove_with_an_address_takes_that_one_only(two):
+    assert two('/10.141.1.1') == 204
+    assert _ips() == ['10.141.1.2']
+
+
+def test_remove_without_an_address_takes_the_whole_name(two):
+    assert two('') == 204
+    assert _ips() == []

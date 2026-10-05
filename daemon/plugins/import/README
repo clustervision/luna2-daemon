@@ -1,0 +1,8 @@
+# IMPORT PLUGIN - a data set the import API accepts
+#
+#        one defined method is mandatory:
+#        - Import(json_data)   returns <True|False>,"message"
+#
+# Loaded by the name the API was asked for, e.g. plugins/import/prometheus_rules.py,
+# and only when that name is listed in ALLOWED_IMPORTERS under [PLUGINS] in
+# luna.ini. There is no search path and no default.

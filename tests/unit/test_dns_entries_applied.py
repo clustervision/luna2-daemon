@@ -64,3 +64,25 @@ def test_nothing_applied_is_refused_and_does_not_reload(post, entries):
     code, message = post(entries)
     assert code == 400, (code, message)
     assert dns_rows() == [] and not reloads()
+
+
+# ------------------------------------------------ one name, several addresses (TRIX-2097)
+
+def test_a_second_address_for_a_name_is_kept_beside_the_first(post):
+    assert post([{'host': 'svc', 'ipaddress': '10.141.1.1'}])[0] in (201, 204)
+    assert post([{'host': 'svc', 'ipaddress': '10.141.1.2'}])[0] in (201, 204)
+    assert sorted(dns_rows()) == [('svc', '10.141.1.1'), ('svc', '10.141.1.2')], 'round-robin: two rows, not an overwrite'
+    assert post([{'host': 'svc', 'ipaddress': '10.141.1.2'}])[0] in (201, 204)
+    assert sorted(dns_rows()) == [('svc', '10.141.1.1'), ('svc', '10.141.1.2')], 'the same pair twice is still one row'
+
+
+def test_replace_leaves_the_name_with_that_address_only(post):
+    post([{'host': 'svc', 'ipaddress': '10.141.1.1'}, {'host': 'svc', 'ipaddress': '10.141.1.2'}])
+    assert post([{'host': 'svc', 'ipaddress': '10.141.1.9', 'replace': True}])[0] in (201, 204)
+    assert dns_rows() == [('svc', '10.141.1.9')]
+
+
+def test_an_ipv6_address_lands_in_its_own_column(post):
+    assert post([{'host': 'svc6', 'ipaddress': 'fd00::10'}])[0] in (201, 204)
+    rows = Database().get_record(table='dns', where="host='svc6'")
+    assert rows and rows[0]['ipaddress_ipv6'] == 'fd00::10' and not rows[0]['ipaddress']

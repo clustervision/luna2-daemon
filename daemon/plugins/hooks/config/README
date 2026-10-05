@@ -1,0 +1,24 @@
+# CONFIG HOOKS - run after the configuration changed
+#
+#        node.py, called after a node is created, changed, cloned or removed:
+#        - postcreate(name, group)
+#        - postupdate(name, group)
+#        - rename(name, newname)
+#        - delete(name)
+#        - bulk(fullset)       the whole node and group set, from the housekeeper
+#
+#        group.py, the same for a group, with the member nodes instead of a group:
+#        - postcreate(name, nodes)
+#        - postupdate(name, nodes)
+#        - rename(name, newname)
+#        - delete(name)
+#        - bulk(fullset)
+#
+#        dns.py, called while the DNS zones are rendered:
+#        - nsupdate(host, ipaddress, zone, ttl, key_name, key_secret, key_hmac)
+#                              for a node that takes its address from a DHCP pool
+#        - notify(master, slaves, key)
+#
+#        each returns <True|False>,"message"
+#
+# Loaded by name, plugins/hooks/config/node.py, group.py and dns.py. No search path.

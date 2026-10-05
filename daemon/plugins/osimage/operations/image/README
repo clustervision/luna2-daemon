@@ -1,14 +1,15 @@
-# OSIMAGE PLUGIN
+# OSIMAGE PLUGIN - packing an image
 #
-#        three defined methods are mandatory:
+#        two defined methods are mandatory:
 #        - pack   returns kernel_file_name,ramdisk_file_name upon success
 #        - build  returns image_file_name upon success
-#        - cleanup
+#
+#        one defined variable is mandatory:
+#        - systemroot   where the installer mounts the image on the node
 
 # Plugin selection based on the following search path and priority:
 #
-# 1 distribution + osrelease, e.g. plugins/osimage/redhat/el9.py
-# 2 distribution              e.g. plugins/osimage/redhat/default.py  or  plugins/osimage/redhat.py
-# 3 default                   e.g. plugins/osimage/default.py
-#
-#
+# 1 distribution + osrelease  e.g. plugins/osimage/operations/image/redhat9.py
+#                                  or plugins/osimage/operations/image/redhat/9.py
+# 2 distribution              e.g. plugins/osimage/operations/image/redhat/default.py  or  redhat.py
+# 3 default                   e.g. plugins/osimage/operations/image/default.py

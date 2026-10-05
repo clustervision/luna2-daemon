@@ -250,6 +250,19 @@ class OSImage():
         return status, response
 
 
+    def path_warning(self, data=None):
+        """
+        A path set by hand that is not there on this controller is worth a word, never a
+        refusal: lexport registers an image under a path that must not exist, on purpose.
+        """
+        given = (data or {}).get('path')
+        if not given:
+            return ''
+        full = str(given) if str(given).startswith('/') else f'{self.image_directory}/{given}'
+        if path.isdir(full):
+            return ''
+        return f'; warning: path {full} does not exist on this controller'
+
     @body_checked('osimage')
     def update_osimage(self, name=None, request_data=None):
         """
@@ -340,13 +353,13 @@ class OSImage():
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
                     Database().update('osimage', row, where)
-                    response = f'OS Image {name} updated'
+                    response = f'OS Image {name} updated' + self.path_warning(data)
                     status=True
                 if create:
                     data['name'] = name
                     row = Helper().make_rows(data)
                     Database().insert('osimage', Access().created_row('osimage', row))
-                    response = f'OS Image {name} created'
+                    response = f'OS Image {name} created' + self.path_warning(data)
                     status=True
             else:
                 response = 'Invalid request: Columns are incorrect'

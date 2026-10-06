@@ -45,7 +45,7 @@ import json
 # now accepts is not falsely rejected here).
 _ALLOWED_TOP = {"version", "sets", "comment"}
 _ALLOWED_SET = {
-    "name", "role", "selection", "raid", "count", "spares",
+    "name", "role", "selection", "raid", "count", "spares", "bootloader",
     "match", "devices", "save", "persistent", "origin", "volumes", "comment",
 }
 _ALLOWED_MATCH = {"tags", "min_size", "max_size", "model"}
@@ -61,6 +61,10 @@ _SELECTIONS = {"discover", "manual"}
 _FILESYSTEMS = {"vfat", "xfs", "ext4", "swap"}
 _PROVIDERS = {"partition", "lvm"}
 _RAID_LEVELS = {"none", "0", "1", "5", "6", "10"}
+# Where the node puts the TrinityX entries in the UEFI boot order, or `none` for
+# no bootloader at all. The node normalises the spelling: grub/yes/true (and
+# boolean true) mean first, no/false (and boolean false) mean none. Absent = last.
+_BOOTLOADERS = {"first", "grub", "yes", "true", "last", "no", "false", "none"}
 
 SCHEMA_VERSION = 2
 
@@ -121,6 +125,17 @@ def _validate_set(a_set, idx):
     if raid not in _RAID_LEVELS:
         raise DisklayoutInvalid(
             f"config_validation: {label}.raid unsupported: '{raid}' (allowed: none, 0, 1, 5, 6, 10)")
+
+    if "bootloader" in a_set:
+        if role != "os":
+            raise DisklayoutInvalid(
+                f"config_validation: {label}.bootloader is valid on the os set only")
+        bootloader = a_set["bootloader"]
+        if not isinstance(bootloader, bool) and not (
+                isinstance(bootloader, str) and bootloader in _BOOTLOADERS):
+            raise DisklayoutInvalid(
+                f"config_validation: {label}.bootloader unsupported: '{bootloader}' "
+                "(allowed: first, grub, yes, true, last, no, false, none)")
 
     for key in ("count", "spares"):
         if key in a_set and not isinstance(a_set[key], int):

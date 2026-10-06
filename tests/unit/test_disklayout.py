@@ -127,6 +127,34 @@ def test_missing_volume_field():
     _rejects(doc, "mountpoint is required")
 
 
+def test_bootloader_accepts_every_spelling():
+    for value in ("first", "grub", "yes", "true", "last", "no", "false", "none", True, False):
+        doc = json.loads(json.dumps(VALID)); doc["sets"][0]["bootloader"] = value
+        disklayout.validate(json.dumps(doc))
+
+
+def test_bad_bootloader():
+    doc = json.loads(json.dumps(VALID)); doc["sets"][0]["bootloader"] = "xyzzy"
+    _rejects(doc, "bootloader unsupported: 'xyzzy' "
+                  "(allowed: first, grub, yes, true, last, no, false, none)")
+
+
+def test_null_bootloader_rejected():
+    """A key present with no value must not pass as absent: the default it would
+    then silently take is not what the operator was trying to set."""
+    doc = json.loads(json.dumps(VALID)); doc["sets"][0]["bootloader"] = None
+    _rejects(doc, "bootloader unsupported")
+
+
+def test_bootloader_on_data_set_rejected():
+    doc = json.loads(json.dumps(VALID))
+    doc["sets"].append({
+        "name": "scratch", "role": "data", "selection": "discover", "raid": "none",
+        "bootloader": "none", "volumes": [],
+    })
+    _rejects(doc, "bootloader is valid on the os set only")
+
+
 def test_device_not_dev():
     doc = json.loads(json.dumps(VALID))
     doc["sets"][0]["selection"] = "manual"; doc["sets"][0]["devices"] = ["sda"]

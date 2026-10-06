@@ -73,3 +73,16 @@ def test_only_a_known_mode_is_taken(value, expected):
     from common.bootstrap import default_install_mode
     assert default_install_mode({'INSTALL_MODE': value}) == expected
     assert default_install_mode({}) is None
+
+
+@pytest.mark.parametrize('line, seeded', [
+    ('', True), ('INSTALL_MODE = legacy', True),
+    ('INSTALL_MODE = memboot', False), ('INSTALL_MODE = auto', False), ('INSTALL_MODE = sanitize', False)])
+def test_the_compute_group_gets_the_tmpfs_scripts_only_for_legacy(sqlite_db, tmp_path, monkeypatch, line, seeded):
+    """TRIX-2196: lpart mounts its own root and writes its own fstab, so a group that
+    starts in an lpart mode carries no legacy part/post scripts to run before it."""
+    bootstrapped(sqlite_db, tmp_path, monkeypatch, line)
+    group = Database().get_record(table='group', where="name = 'compute-group'")[0]
+    assert bool(group['partscript']) is seeded
+    assert bool(group['postscript']) is seeded
+    assert not group['prescript']

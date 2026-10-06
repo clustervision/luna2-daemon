@@ -72,6 +72,9 @@ class Cluster():
                 cluster[0][item] = Helper().make_bool(cluster[0][item],empty_is_none=True)
             if not cluster[0]['bind_legacy']:
                 cluster[0]['dnssec_enable'] = 'N/A'
+            elif cluster[0]['dnssec_enable'] is False:
+                # named.conf carries no dnssec-validation once dnssec-enable is no
+                cluster[0]['dnssec_validation'] = 'N/A'
 
             response = {'config': {'cluster': cluster[0] }}
             controllers = Database().get_record_join(

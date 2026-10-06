@@ -1050,3 +1050,38 @@ def test_a_network_with_a_stored_controller_address_is_left_exactly_alone(
     ib_zone = open(os.path.join(config_env, f"{IB_NETWORK}.luna.zone"),
                    encoding="utf-8").read()
     assert f"controller                    IN A {IB_CONTROLLER_IP}" in ib_zone
+
+
+def _dnssec_directives(named_conf):
+    """The dnssec lines BIND will read: the commented examples in the template are not them."""
+    return [line.strip() for line in open(named_conf, encoding="utf-8")
+            if line.strip().startswith("dnssec-")]
+
+
+@pytest.mark.regression
+@pytest.mark.parametrize("legacy, enable, validation, expected", [
+    # unset, whether it is stored NULL or as the empty string an older daemon wrote, renders nothing
+    (0, None, None, []),
+    (0, "", "", []),
+    (1, "", "", []),
+    (1, 1, "", ["dnssec-enable yes;"]),
+    # a value that was set renders as set
+    (0, None, 0, ["dnssec-validation no;"]),
+    (0, None, 1, ["dnssec-validation yes;"]),
+    (0, 1, 1, ["dnssec-validation yes;"]),
+    (1, 0, 1, ["dnssec-enable no;"]),
+    (1, 1, 1, ["dnssec-enable yes;", "dnssec-validation yes;"]),
+    (1, 1, 0, ["dnssec-enable yes;", "dnssec-validation no;"]),
+])
+def test_dns_renders_dnssec_only_as_set(config_env, seeded, legacy, enable, validation, expected):
+    """TRIX-2230: named.conf carries a dnssec directive only for a value that was set, the same
+    reading luna cluster show gives it."""
+    from utils.config import Config
+    from utils.database import Database
+
+    Database().update("cluster", [{"column": "bind_legacy", "value": legacy},
+                                  {"column": "dnssec_enable", "value": enable},
+                                  {"column": "dnssec_validation", "value": validation}],
+                      [{"column": "name", "value": "mycluster"}])
+    assert Config().dns_configure() is True
+    assert _dnssec_directives(os.path.join(config_env, "named.conf")) == expected

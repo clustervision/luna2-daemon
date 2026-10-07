@@ -287,6 +287,7 @@ def provision_token_required(function=None, *, node_in_payload=None, only=None, 
                 refused = _refused()
                 if refused:
                     return refused
+                g.sent = (_changed(), _verb_value())
                 return _audited(function(**kwargs))
             # a node reports on itself; who owns it and who may reach it is not the node's to say
             allowed, code, message = Access().provision_body(g.requirement)

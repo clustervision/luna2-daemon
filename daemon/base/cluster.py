@@ -36,6 +36,7 @@ from utils.log import Log
 from utils.database import Database
 from utils.service import Service
 from utils.helper import Helper
+from utils.installmode import cluster_warning
 from utils.tables import Tables
 from utils.controller import Controller
 from utils.mounts import validate_b64 as validate_mounts, MountsInvalid, upsert_entry, remove_entry, document_from_b64, request_entry_path
@@ -72,6 +73,9 @@ class Cluster():
                 cluster[0][item] = Helper().make_bool(cluster[0][item],empty_is_none=True)
             if not cluster[0]['bind_legacy']:
                 cluster[0]['dnssec_enable'] = 'N/A'
+            elif cluster[0]['dnssec_enable'] is False:
+                # named.conf carries no dnssec-validation once dnssec-enable is no
+                cluster[0]['dnssec_validation'] = 'N/A'
 
             response = {'config': {'cluster': cluster[0] }}
             controllers = Database().get_record_join(
@@ -395,6 +399,8 @@ class Cluster():
                         if mounts_changed:
                             Service().queue('mounts', 'render')
                         response = 'Cluster updated'
+                        if 'install_mode' in data:
+                            response += cluster_warning(cluster[0]['install_mode'], data['install_mode'])
                     elif len(controller_ips) > 0:
                         response = 'Controllers updated'
                     else:

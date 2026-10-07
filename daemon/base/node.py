@@ -40,6 +40,7 @@ from utils.config import Config
 from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
+from utils.installmode import node_warning
 from utils.monitor import Monitor
 from base.interface import Interface
 from base.profile import Profile
@@ -994,7 +995,7 @@ class Node():
                     where = [{"column": "id", "value": nodeid}]
                     row = Helper().make_rows(data)
                     Database().update('node', row, where)
-                    response = f'Node {name} updated successfully'
+                    response = f'Node {name} updated successfully' + node_warning(node[0], data)
                     status = True
                     if nodeid and 'groupid' in data and node and len(node)>0 and 'groupid' in node[0]:
                         Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'], oldgroupid=node[0]['groupid'])

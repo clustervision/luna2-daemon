@@ -47,6 +47,8 @@ class Network():
     """
     This class is responsible for all operations for network.
     """
+    # the per-distro interface templates know these two, in lower case, and no other
+    NETWORK_TYPES = ['ethernet', 'infiniband']
 
     def __init__(self):
         """
@@ -373,6 +375,10 @@ class Network():
                 default_zone=data['zone']
             elif create is True:
                 data['zone']="internal"
+            if data.get('type') and data['type'] not in self.NETWORK_TYPES:
+                status=False
+                ret_msg = 'Invalid request: Incorrect type. Must be either ethernet or infiniband'
+                return status, ret_msg
             if 'gateway' in data:
                 if data['gateway'] == "":
                     data['gateway'] = None

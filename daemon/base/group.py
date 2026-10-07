@@ -40,6 +40,7 @@ from utils.log import Log
 from utils.config import Config
 from utils.queue import Queue
 from utils.helper import Helper
+from utils.installmode import group_warning
 from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
@@ -622,6 +623,16 @@ class Group():
             if 'osimage' in data:
                 data['osimagetagid'] = "default"
 
+            if create:
+                mode = data.get('install_mode')
+                if not mode:
+                    cluster = Database().get_record(table='cluster')
+                    mode = cluster[0]['install_mode'] if cluster else None
+                if mode and mode != 'legacy':
+                    # the diskless part/post are the classic installer's; lpart mounts the root
+                    # and writes fstab itself, and runs whatever a group carries before it
+                    items['partscript'], items['postscript'] = '', ''
+
             for key, value in items.items():
                 if key in data:
                     data[key] = data[key]
@@ -691,7 +702,7 @@ class Group():
                     row = Helper().make_rows(data)
                     # a change of the routes alone leaves no column to write
                     if not row or Database().update('group', row, where):
-                        response = f'Group {name} updated successfully'
+                        response = f'Group {name} updated successfully' + group_warning(group[0], data)
                         status=True
                 elif create:
                     data['name'] = name

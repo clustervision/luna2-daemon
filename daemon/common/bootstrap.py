@@ -555,10 +555,13 @@ def bootstrap(bootstrapfile=None):
             {'column': 'domain', 'value': 'cluster'},
             {'column': 'netboot', 'value': '1'},
             {'column': 'bootmenu', 'value': '0'},
-            {'column': 'osimageid', 'value': osimage},
-            {'column': 'partscript', 'value': "bW91bnQgLW8gbXBvbD1pbnRlcmxlYXZlIC10IHRtcGZzIHRtcGZzIC9zeXNyb290Cg=="},
-            {'column': 'postscript', 'value': "ZWNobyAndG1wZnMgLyB0bXBmcyBtcG9sPWludGVybGVhdmUgMCAwJyA+PiAvc3lzcm9vdC9ldGMvZnN0YWIK"}
+            {'column': 'osimageid', 'value': osimage}
         ]
+    if install_mode in (None, 'legacy'):
+        # the classic installer's diskless root. lpart mounts its own and writes its own fstab
+        default_group += [
+            {'column': 'partscript', 'value': "bW91bnQgLW8gbXBvbD1pbnRlcmxlYXZlIC10IHRtcGZzIHRtcGZzIC9zeXNyb290Cg=="},
+            {'column': 'postscript', 'value': "ZWNobyAndG1wZnMgLyB0bXBmcyBtcG9sPWludGVybGVhdmUgMCAwJyA+PiAvc3lzcm9vdC9ldGMvZnN0YWIK"}]
     if default_redfishsetup()[0]:
         # the default profile is row 1, the way the bmcsetup one is; the flag is
         # what lets Luna create its accounts on the nodes' BMCs

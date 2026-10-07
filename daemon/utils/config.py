@@ -1081,13 +1081,16 @@ class Config(object):
         controller_network = controller[0]['networkname']
         if 'forwardserver_ip' in cluster[0] and cluster[0]['forwardserver_ip']:
             forwarder = cluster[0]['forwardserver_ip'].split(',')
-        bind_legacy = bool(cluster[0].get('bind_legacy'))
+        # read the way cluster show reads them: an older daemon stored a cleared value as ''
+        bind_legacy = bool(Helper().make_bool(cluster[0].get('bind_legacy'), empty_is_none=True))
+        enable = Helper().make_bool(cluster[0].get('dnssec_enable'), empty_is_none=True)
+        validation = Helper().make_bool(cluster[0].get('dnssec_validation'), empty_is_none=True)
         dnssec_enable = None
         dnssec_validation = None
-        if bind_legacy and cluster[0].get('dnssec_enable') is not None:
-            dnssec_enable = 'yes' if cluster[0]['dnssec_enable'] else 'no'
-        if cluster[0].get('dnssec_validation') is not None and dnssec_enable != 'no':
-            dnssec_validation = 'yes' if cluster[0]['dnssec_validation'] else 'no'
+        if bind_legacy and enable is not None:
+            dnssec_enable = 'yes' if enable else 'no'
+        if validation is not None and dnssec_enable != 'no':
+            dnssec_validation = 'yes' if validation else 'no'
         self.logger.info(f"bind_legacy: {bind_legacy}, dnssec_enable: {dnssec_enable}, dnssec validation: {dnssec_validation}")
         networks = Database().get_record(table='network')
         if networks:

@@ -1777,6 +1777,16 @@ class Boot():
                     # clearly, the user wants something that has no interface involvement. fallback to '', but not None
                     data['domain_search'] = ['']
 
+            for name, iface in list(data['interfaces'].items()):
+                if iface.get('vlanid') and 'vlan_parent' not in iface:
+                    # NetworkManager needs a vlan on its own interface as a profile of its own; netplan
+                    # renders both from this entry and skips the copy
+                    parent = name if iface['type'] == 'bond' else (iface['macaddress'] or name)
+                    data['interfaces'][f"{name}.{iface['vlanid']}"] = dict(
+                        iface, type='vlan', vlan_parent=parent, macaddress=None, split_from=name)
+                    if iface['type'] == 'vlan':
+                        iface['type'] = 'ethernet'
+
             Route().resolve_for_node(data['interfaces'], data.get('nodeid'), data.get('provision_interface'))
 
         # needed for generating network config templates on server side

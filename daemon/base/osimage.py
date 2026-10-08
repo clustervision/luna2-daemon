@@ -44,6 +44,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.queue import Queue
 from utils.helper import Helper
+from utils.kernels import kernels_in_image
 from utils.hashes import Hashes
 from utils.model import Model
 from utils.database import Database
@@ -1020,6 +1021,24 @@ class OSImage():
         return status, response
 
 
+    def kernel_is_in_image(self, name=None, image=None, kernelversion=None):
+        """
+        A registered kernel has to exist in the image tree, or a typo is stored as a fact
+        and only the pack, much later, fails. A tree that is not on this controller cannot
+        be checked; it is said so, and the registration goes through.
+        """
+        image_path = image.get('path') or os.path.join(self.image_directory, name)
+        if not os.path.isdir(image_path):
+            self.logger.warning(f"osimage {name}: tree {image_path} is not on this controller, "
+                                f"kernel {kernelversion} registered unchecked")
+            return True, ''
+        kernels = kernels_in_image(image_path)
+        if kernelversion not in kernels:
+            listed = ', '.join(kernels) if kernels else 'no kernel at all'
+            return False, (f"Invalid request: kernel {kernelversion} is not in osimage {name}, "
+                           f"which carries {listed}")
+        return True, ''
+
     def change_kernel(self, name=None, request_data=None):
         """
         This method will change the kernel of an image and pack again that image.
@@ -1040,6 +1059,10 @@ class OSImage():
                 osimage_columns = Database().get_columns('osimage')
                 column_check = Helper().compare_list(data, osimage_columns)
                 if column_check:
+                    if data.get('kernelversion'):
+                        status, response = self.kernel_is_in_image(name, image[0], data['kernelversion'])
+                        if status is False:
+                            return status, response
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
                     img_id = Database().update('osimage', row, where)

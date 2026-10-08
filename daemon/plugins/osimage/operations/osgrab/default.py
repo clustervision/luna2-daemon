@@ -32,6 +32,7 @@ __status__      = 'Development'
 
 from utils.log import Log
 from utils.helper import Helper
+from utils.kernels import newest_kernel
 
 
 class Plugin():
@@ -84,11 +85,12 @@ class Plugin():
                 message=message[1]
             return False,f"{message}. See /tmp/osgrab.out for details"
 
-        # not entirely accurate but good enough
-        kernel_version, stderr = Helper().runcommand(f"ls -tr {image_path}/lib/modules/|tail -n1")
-        kernel_version=kernel_version.strip()
-        kernel_version=kernel_version.decode('utf-8')
-        self.logger.debug(f"{kernel_version} {stderr}")
+        kernel_version, kernels = newest_kernel(image_path)
+        self.logger.debug(f"kernels in {image_path}: {kernels}, registering {kernel_version}")
+        message = "Success. See /tmp/osgrab.out for details"
+        if len(kernels) > 1:
+            message += (f"; the image carries {len(kernels)} kernels ({', '.join(kernels)}), "
+                        f"the newest, {kernel_version}, is registered")
         if kernel_version:
-            return True, "Success. See /tmp/osgrab.out for details", kernel_version
-        return True, "Success. See /tmp/osgrab.out for details"
+            return True, message, kernel_version
+        return True, message

@@ -45,6 +45,7 @@ from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
 from utils.helper import Helper
+from utils.kernels import kernel_state_warning
 from utils.hashes import Hashes
 from utils.status import Status
 from utils.queue import Queue
@@ -372,6 +373,11 @@ class OsImage(object):
 
                 #------------------------------------------------------
                 self.pending_cleanup(image_path,request_id)
+                warning = kernel_state_warning(image_path, kernel_version)
+                if warning:
+                    self.logger.warning(f"osimage {osimage}: {warning}")
+                    Status().add_message(request_id=request_id, username_initiator="luna",
+                                         message=f"osimage {osimage}: {warning}")
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"assembling kernel and ramdisk for osimage {osimage}")
                 response=os_image_plugin().pack(

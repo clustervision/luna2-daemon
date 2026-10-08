@@ -813,6 +813,47 @@ def test_dns_configure_renders_zone_and_named_conf(config_env, seeded):
 
 
 @pytest.mark.regression
+def test_an_ipv6_host_on_a_network_without_an_ipv6_prefix_does_not_break_the_build(config_env, seeded, caplog):
+    """TRIX-2249: the reverse pointer needs the network's IPv6 prefix; without one the build
+    used to raise per host, caught and logged as an error on every rebuild. The forward
+    record still renders and the error is gone; a warning names the host instead."""
+    import logging
+    from utils.config import Config
+    from utils.database import Database
+    Database().update("ipaddress", [{"column": "ipaddress_ipv6", "value": "fd00:141::5"}],
+                      [{"column": "ipaddress", "value": NODE_IP}])
+    with caplog.at_level(logging.WARNING, logger='luna2-daemon'):
+        assert Config().dns_configure() is True
+    zone = open(os.path.join(config_env, f"{NETWORK}.luna.zone"), encoding="utf-8").read()
+    assert "node001                    IN AAAA fd00:141::5" in zone
+    assert "creating DNS zone encountered problems" not in caplog.text
+    assert "no IPv6 prefix, no PTR" in caplog.text
+
+
+@pytest.mark.regression
+def test_an_ipv6_only_network_builds_its_zones_without_an_ipv4_prefix(config_env, seeded, caplog):
+    """A network may carry only IPv6. Its hosts have no IPv4 address, so the IPv4 branch is
+    never entered, and the IPv6 reverse zone comes from the network's IPv6 prefix."""
+    import logging
+    from utils.config import Config
+    from utils.database import Database
+    _insert("network", name="v6only", network_ipv6="fd00:6::", subnet_ipv6="64", zone="v6only")
+    netid = Database().get_record(table="network", where='name="v6only"')[0]["id"]
+    nid = Database().get_record(table="node", where='name="node001"')[0]["id"]
+    _insert("nodeinterface", nodeid=nid, interface="ib0")
+    ifid = Database().get_record(table="nodeinterface", where=f'nodeid={nid} AND interface="ib0"')[0]["id"]
+    _insert("ipaddress", ipaddress_ipv6="fd00:6::10", tableref="nodeinterface", tablerefid=ifid, networkid=netid)
+    with caplog.at_level(logging.WARNING, logger='luna2-daemon'):
+        assert Config().dns_configure() is True
+    zone = open(os.path.join(config_env, "v6only.luna.zone"), encoding="utf-8").read()
+    assert "node001                    IN AAAA fd00:6::10" in zone
+    reverse = [f for f in os.listdir(config_env) if f.endswith("ip6.arpa.luna.zone")]
+    assert reverse, "the IPv6 reverse zone for the prefix is rendered"
+    assert "creating DNS zone encountered problems" not in caplog.text
+    assert "no IPv6 prefix" not in caplog.text
+
+
+@pytest.mark.regression
 def test_dns_round_robin_name_renders_one_record_per_address(config_env, seeded):
     """TRIX-2097: a DNS entry name with several addresses gives one A line per address; a
     name-keyed record would keep only the last one."""

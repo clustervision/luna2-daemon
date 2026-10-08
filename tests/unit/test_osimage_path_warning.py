@@ -69,3 +69,11 @@ def test_an_existing_path_and_a_change_without_a_path_answer_as_before(client, t
     assert created.status_code == 201 and 'warning' not in created.get_json()['message']
     changed = _post(client, 'img', {'comment': 'x'})
     assert changed.status_code == 204, 'no warning, nothing to say: 204 as today'
+
+
+def test_a_data_answer_is_not_a_message():
+    """The table routes hand the whole table to get_access_code, not a sentence: a dict must
+    not raise, and must map as it always did, a 201 for a body with nothing to say."""
+    from utils.helper import Helper
+    assert Helper().get_access_code(True, {'config': {'osimage': {'compute': {}}}}) == 201
+    assert Helper().get_access_code(True, [{'name': 'compute'}]) == 201

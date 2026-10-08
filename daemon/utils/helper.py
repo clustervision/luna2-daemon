@@ -1247,8 +1247,9 @@ class Helper(object):
         access_code=404
         if status is True:
             access_code=201
-            # a 204 carries no body, so an explicitly labelled warning or note stays a 201
-            labelled = response.lower()
+            # a 204 carries no body, so an explicitly labelled warning or note stays a 201.
+            # the table routes answer with the data itself, not a message
+            labelled = response.lower() if isinstance(response, str) else ''
             if 'warning: ' in labelled or 'note: ' in labelled:
                 access_code=201
             elif 'update' in response or 'remove' in response or 'delete' in response:

@@ -932,7 +932,11 @@ class OSImage():
         if signalled and Helper().pid_alive(owner_pid, owner_started):
             killed = Helper().safe_kill_worker(owner_pid, owner_started, signal.SIGKILL)
             if killed:
-                cleanup_ok, cleanup_message = OsImager().cleanup_image_mounts(name)
+                try:
+                    cleanup_ok, cleanup_message = OsImager().cleanup_image_mounts(name)
+                except Exception as exp:
+                    cleanup_ok = False
+                    cleanup_message = f"could not inspect or clean image mounts: {exp}"
                 if not cleanup_ok:
                     cleanup_failure = cleanup_message
                     self.logger.error(f"cancel_pack: worker {owner_pid} was killed, but "

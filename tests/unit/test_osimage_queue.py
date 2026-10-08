@@ -325,6 +325,28 @@ def test_cancel_reports_failed_mount_cleanup_after_sigkill(db, monkeypatch):
     assert not db.get_record(table='queue', where="request_id='F'"), "cancelled chain is still cleared"
 
 
+def test_cancel_clears_chain_when_mount_discovery_raises(db, monkeypatch):
+    """A findmnt or JSON error must not strand a dead worker's unfinished queue chain."""
+    from base.osimage import OSImage
+    from utils.osimage import OsImage
+    monkeypatch.setattr(OSImage, 'CANCEL_GRACE_SECONDS', 0, raising=False)
+
+    def cleanup_raises(_self, _name):
+        raise RuntimeError('findmnt failed')
+
+    monkeypatch.setattr(OsImage, 'cleanup_image_mounts', cleanup_raises)
+    _cancel_signals(monkeypatch, worker_survives_term=True)
+    _add(db, request_id='E', param='imgE', status='in progress', owner_pid=4242, owner_started='1')
+    _add(db, request_id='E', param='imgE', task='build_osimage', status='queued')
+
+    ok, message = _base_osimage().cancel_pack('imgE')
+
+    assert ok is False
+    assert 'could not inspect or clean image mounts: findmnt failed' in message
+    assert not db.get_record(table='queue', where="request_id='E'"), "cancelled chain is cleared"
+    assert db.get_record(table='status', where="request_id='E' AND message='EOF'"), "client EOF'd"
+
+
 def test_mount_targets_below_are_deepest_first(tmp_path, monkeypatch):
     """Core cleanup uses findmnt and keeps nested and stacked mount targets."""
     from utils.osimage import OsImage

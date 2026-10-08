@@ -109,7 +109,11 @@ class OsImage(object):
             if not image_directory or image_directory == '/':
                 return False, f"unsafe relative path for osimage {osimage}: {image_path}"
             image_path = os.path.join(image_directory, image_path)
-        image_path = os.path.realpath(image_path)
+        return self.cleanup_mounts_below(image_path)
+
+    def cleanup_mounts_below(self, image_path):
+        """Lazy-unmount every host mount at or below a path, deepest first, until none is left."""
+        image_path = os.path.realpath(str(image_path))
         if image_path == '/':
             return False, f"refusing to clean mounts below unsafe osimage path {image_path}"
 
@@ -123,16 +127,28 @@ class OsImage(object):
                                         capture_output=True, text=True, check=False)
                 if result.returncode:
                     failed.append(target)
-                    self.logger.error(f"cancel cleanup could not unmount {target}: "
+                    self.logger.error(f"mount cleanup could not unmount {target}: "
                                       f"{result.stderr.strip() or result.stdout.strip()}")
                 else:
-                    self.logger.warning(f"cancel cleanup lazy-unmounted {target}")
+                    self.logger.warning(f"mount cleanup lazy-unmounted {target}")
             remaining = self._mount_targets_below(image_path)
             if remaining and (failed or remaining == targets):
                 return False, f"mounts remain below {image_path}: {', '.join(remaining)}"
             targets = remaining
 
         return True, f"no mounts remain below {image_path}"
+
+    def remove_image_path(self, image_path):
+        """Delete an image tree once nothing is mounted below it. A leftover bind of the
+        host's dev, proc or sys would otherwise be deleted straight through."""
+        status, message = self.cleanup_mounts_below(image_path)
+        if status is not True:
+            return False, f"not removing {image_path}: {message}"
+        try:
+            shutil.rmtree(image_path)
+        except Exception as exp:
+            return False, f"while deleting {image_path} i encountered: {exp}"
+        return True, f"removed {image_path}"
 
     # ---------------------------------------------------------------------------
 

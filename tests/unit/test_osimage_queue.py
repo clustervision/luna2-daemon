@@ -411,3 +411,52 @@ def test_cleanup_image_mounts_lazy_unmounts_until_empty(db, tmp_path, monkeypatc
         ['/usr/bin/umount', '--lazy', '--', f"{image}/dev"],
         ['/usr/bin/umount', '--lazy', '--', f"{image}/dev"],
     ]
+
+
+def test_remove_image_path_refuses_while_something_stays_mounted(tmp_path, monkeypatch):
+    """A delete must not walk into a host filesystem still bound inside the image tree."""
+    from utils.osimage import OsImage
+    import utils.osimage as module
+    image = tmp_path / 'img'
+    image.mkdir()
+    stuck = [f"{image}/dev"]
+    removed = []
+    monkeypatch.setattr(OsImage, '_mount_targets_below', staticmethod(lambda _path: list(stuck)))
+    monkeypatch.setattr('utils.osimage.subprocess.run', lambda *_a, **_k: type(
+        'Result', (), {'returncode': 32, 'stdout': '', 'stderr': 'target is busy'})())
+    monkeypatch.setattr(module.shutil, 'rmtree', lambda path: removed.append(path))
+
+    ok, message = _reaper().remove_image_path(str(image))
+
+    assert ok is False and 'not removing' in message and f"{image}/dev" in message
+    assert removed == [], "rmtree ran through a live mount"
+
+
+def test_remove_image_path_unmounts_and_then_deletes(tmp_path, monkeypatch):
+    """The normal delete: whatever is still mounted comes off first, then the tree goes."""
+    from utils.osimage import OsImage
+    import utils.osimage as module
+    image = tmp_path / 'img'
+    image.mkdir()
+    passes = [[f"{image}/proc"], []]
+    calls, removed = [], []
+    monkeypatch.setattr(OsImage, '_mount_targets_below', staticmethod(lambda _path: passes.pop(0)))
+    monkeypatch.setattr('utils.osimage.subprocess.run', lambda command, **_k: calls.append(command) or type(
+        'Result', (), {'returncode': 0, 'stdout': '', 'stderr': ''})())
+    monkeypatch.setattr(module.shutil, 'rmtree', lambda path: removed.append(path))
+
+    ok, message = _reaper().remove_image_path(str(image))
+
+    assert ok is True, message
+    assert calls == [['/usr/bin/umount', '--lazy', '--', f"{image}/proc"]]
+    assert removed == [str(image)]
+
+
+def test_the_housekeeper_deletes_an_image_path_only_through_the_guarded_remover():
+    """remove_osimage_path must not call rmtree itself; the guard lives in remove_image_path."""
+    import inspect
+    from utils.housekeeper import Housekeeper
+    source = inspect.getsource(Housekeeper.tasks_mother)
+    case = source.split("case 'remove_osimage_path':")[1].split('case ')[0]
+    assert 'remove_image_path(' in case
+    assert 'rmtree' not in case

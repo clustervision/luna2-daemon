@@ -378,6 +378,20 @@ def test_a_profile_with_no_enabled_value_is_enabled(db):
     assert Profile().is_enabled(row) is True
 
 
+@pytest.mark.parametrize('value', ['', None, 'maybe', 2, [], {}])
+def test_an_explicit_enabled_value_must_be_boolean(db, value):
+    """Legacy NULL rows stay enabled, but a request may set only true or false."""
+    from base.profile import Profile
+    Profile().update_profile('p', _make('p', enabled=True))
+
+    status, message = Profile().update_profile('p', _make('p', enabled=value))
+
+    assert status is False
+    assert message == 'Invalid request: enabled must be true or false'
+    row = db.get_record(table='profile', where='name = "p"')[0]
+    assert Profile().is_enabled(row) is True
+
+
 def test_disabled_profile_travels_as_a_name_only(db, seed):
     """It must not simply vanish: the applier reclaims a path by finding it in its
     manifest and not in the payload, so silence would revert exactly the files that

@@ -1247,8 +1247,9 @@ class Helper(object):
         access_code=404
         if status is True:
             access_code=201
-            # a 204 carries no body, so an answer with something to say stays a 201
-            if 'warning' in response or 'note' in response:
+            # a 204 carries no body, so an explicitly labelled warning or note stays a 201
+            labelled = response.lower()
+            if 'warning: ' in labelled or 'note: ' in labelled:
                 access_code=201
             elif 'update' in response or 'remove' in response or 'delete' in response:
                 access_code=204

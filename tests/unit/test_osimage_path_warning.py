@@ -38,6 +38,19 @@ def test_a_warning_keeps_the_body_a_204_would_drop():
     assert Helper().get_access_code(True, 'OS Image x updated; warning: path /nope does not exist on this controller') == 201
     assert Helper().get_access_code(True, 'OS Image x created') == 201
     assert Helper().get_access_code(True, 'Firmware catalog x updated; note: stage it on the active controller') == 201
+    assert Helper().get_access_code(True, 'Secret x updated. Warning: owner is not resolvable') == 201
+
+
+@pytest.mark.parametrize('message', [
+    'Group notebooks removed',
+    'Group warning-team removed',
+    'Group release-note removed',
+    'Group x updated with warning text',
+    'Group x deleted with note text',
+])
+def test_words_that_contain_warning_or_note_do_not_keep_a_success_body(message):
+    from utils.helper import Helper
+    assert Helper().get_access_code(True, message) == 204
 
 
 def test_a_missing_path_is_reported_on_create_and_on_change(client, tmp_path):

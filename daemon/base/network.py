@@ -880,7 +880,8 @@ class Network():
         # device can be node, controller, switch, otherdevices. Remember nodeinterface table.
         status=False
         taken = []
-        network_id = Database().id_by_name('network', name)
+        network_row = Database().get_record(table='network', where=f"name = '{name}'")
+        network_id = network_row[0]['id'] if network_row else None
         if network_id:
             where = f"networkid = '{network_id}'"
             ip_list = Database().get_record(table='ipaddress', where=where)
@@ -916,6 +917,10 @@ class Network():
                             for kind in {t['_kind'] for t in taken}}
                 taken = [{'ipaddress': t['ipaddress'], 'device': t['device']}
                          for t in taken if t['device'] in readable[t['_kind']]]
+            # the network's own addresses are taken too: whoever may ask about the network may see them
+            taken += [{'ipaddress': address, 'device': what}
+                      for what, address in Helper().network_service_addresses(network_row[0])]
+            if taken:
                 response = {'config': {'network': {name: {'taken': taken} } } }
                 status=True
             else:

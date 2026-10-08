@@ -409,6 +409,37 @@ class Helper(object):
             self.logger.error(f'Invalid subnet: {ipaddr}, Exception is {exp}.')
         return False
 
+    def network_service_addresses(self, network=None, ipversion='ipv4'):
+        """
+        The addresses a network keeps for itself: its gateway, and its nameserver and NTP
+        server when those sit inside the network. Nothing may hand them to a node, so they
+        count as taken wherever the network's taken addresses are asked for.
+        Output - [(what, address), ...] for the asked family, in a fixed order
+        """
+        if ipversion == 'ipv6':
+            prefix, subnet = network.get('network_ipv6'), network.get('subnet_ipv6')
+            candidates = [('gateway', network.get('gateway_ipv6')), ('nameserver', network.get('nameserver_ip_ipv6')),
+                          ('ntp', network.get('ntp_server'))]
+        else:
+            prefix, subnet = network.get('network'), network.get('subnet')
+            candidates = [('gateway', network.get('gateway')), ('nameserver', network.get('nameserver_ip')),
+                          ('ntp', network.get('ntp_server'))]
+        if not prefix or not subnet:
+            return []
+        try:
+            inside = ipaddress.ip_network(f"{prefix}/{subnet}", strict=False)
+        except ValueError:
+            return []
+        found = []
+        for what, value in candidates:
+            try:
+                address = ipaddress.ip_address(str(value).strip())
+            except ValueError:
+                continue
+            if address in inside:
+                found.append((what, str(address)))
+        return found
+
     def check_ip_exist(self, data=None):
         """
         check if IP is valid or not

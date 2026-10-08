@@ -2601,5 +2601,8 @@ class Config(object):
         if reserved_details:
             for each in reserved_details:
                 ips.append(each['ipaddress'])
+        network_row = Database().get_record(table='network', where=f"name = '{network}'")
+        if network_row:
+            ips += [address for _, address in Helper().network_service_addresses(network_row[0], ipversion)]
         return ips
 

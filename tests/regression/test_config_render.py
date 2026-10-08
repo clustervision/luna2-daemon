@@ -879,9 +879,12 @@ def test_get_all_occupied_ips_from_network(config_env, seeded):
 
     ips = Config().get_all_occupied_ips_from_network(NETWORK)
     # 254 range IPs + the controller and node addresses assigned in this network
-    assert len(ips) == 256
+    # + the network's own nameserver and NTP server, the same address here, once for each
+    # (TRIX-2237): auto-assignment must skip what the network keeps for itself
+    assert len(ips) == 258
     assert NODE_IP in ips
     assert CONTROLLER_IP in ips
+    assert ips.count("10.141.0.1") == 2
 
 
 # --- TRIX-1946: a per-network zone publishes the controller's address ON that network ---

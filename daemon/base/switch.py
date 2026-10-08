@@ -155,6 +155,8 @@ class Switch():
                     del data['newswitchname']
                 update = True
             else:
+                if 'newswitchname' in data:
+                    return False, f'Switch {name} not present in database for rename'
                 create = True
 
             for key, value in items.items():

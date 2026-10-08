@@ -281,6 +281,8 @@ class Network():
                         del data['newnetname']
                 update = True
             else:
+                if 'newnetname' in data:
+                    return False, f'Network {name} not present in database for rename'
                 create = True
  
             # ---------------------- parse incoming data -------------------

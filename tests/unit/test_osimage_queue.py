@@ -216,10 +216,13 @@ def test_cancel_pack_aborts_a_dead_worker_chain(db):
     assert db.get_record(table='status', where="request_id='P' AND message='EOF'"), "client EOF'd"
 
 
-def test_cancel_pack_kills_a_live_in_progress_worker(db, helper):
+def test_cancel_pack_kills_a_live_in_progress_worker(db, helper, monkeypatch):
     """The primary case: a running pack is cancelled by actually killing its live worker."""
     import subprocess
     import time
+    from utils.osimage import OsImage
+    monkeypatch.setattr(OsImage, 'cleanup_image_mounts',
+                        lambda self, name: (True, 'no mounts remain'))
     worker = subprocess.Popen(['sleep', '30'], start_new_session=True)   # a live session leader
     try:
         started = helper.proc_start_time(worker.pid)
@@ -290,11 +293,99 @@ def test_cancel_sends_sigterm_and_leaves_a_stopping_worker_alone(db, monkeypatch
 
 
 def test_cancel_kills_a_worker_that_outlives_the_grace(db, monkeypatch):
-    """A worker still there after the grace is killed, as before."""
+    """A worker still there after the grace is killed, then daemon core cleans its mounts."""
     import signal
     from base.osimage import OSImage
+    from utils.osimage import OsImage
+    cleaned = []
     monkeypatch.setattr(OSImage, 'CANCEL_GRACE_SECONDS', 0.3, raising=False)
+    monkeypatch.setattr(OsImage, 'cleanup_image_mounts',
+                        lambda self, name: cleaned.append(name) or (True, 'no mounts remain'))
     sent = _cancel_signals(monkeypatch, worker_survives_term=True)
     _add(db, request_id='K', param='imgK', status='in progress', owner_pid=4242, owner_started='1')
     assert _base_osimage().cancel_pack('imgK')[0] is True
     assert sent == [signal.SIGTERM, signal.SIGKILL], f"got {sent}"
+    assert cleaned == ['imgK']
+
+
+def test_cancel_reports_failed_mount_cleanup_after_sigkill(db, monkeypatch):
+    """Do not claim a safe cancel when core cannot clear mounts left by the killed plugin."""
+    from base.osimage import OSImage
+    from utils.osimage import OsImage
+    monkeypatch.setattr(OSImage, 'CANCEL_GRACE_SECONDS', 0, raising=False)
+    monkeypatch.setattr(OsImage, 'cleanup_image_mounts',
+                        lambda self, name: (False, '/images/imgF/sys'))
+    _cancel_signals(monkeypatch, worker_survives_term=True)
+    _add(db, request_id='F', param='imgF', status='in progress', owner_pid=4242, owner_started='1')
+
+    ok, message = _base_osimage().cancel_pack('imgF')
+
+    assert ok is False
+    assert 'mount cleanup failed' in message
+    assert not db.get_record(table='queue', where="request_id='F'"), "cancelled chain is still cleared"
+
+
+def test_mount_targets_below_are_deepest_first(tmp_path, monkeypatch):
+    """Core cleanup uses findmnt and keeps nested and stacked mount targets."""
+    from utils.osimage import OsImage
+    import json
+    image = tmp_path / 'image'
+    image.mkdir()
+    output = {'filesystems': [
+        {'target': f'{image}/dev'},
+        {'target': f'{image}/sys'},
+        {'target': f'{image}/sys/firmware/efi/efivars'},
+        {'target': f'{image}/dev'},
+        {'target': '/unrelated'},
+    ]}
+
+    def run(command, **_kwargs):
+        assert command == ['/usr/bin/findmnt', '--list', '--json', '--output', 'TARGET']
+        return type('Result', (), {
+            'returncode': 0, 'stdout': json.dumps(output), 'stderr': ''})()
+
+    monkeypatch.setattr('utils.osimage.subprocess.run', run)
+    targets = OsImage._mount_targets_below(str(image))
+
+    assert targets[0] == f"{image}/sys/firmware/efi/efivars"
+    assert targets.count(f"{image}/dev") == 2
+    assert '/unrelated' not in targets
+
+
+def test_cleanup_image_mounts_lazy_unmounts_until_empty(db, tmp_path, monkeypatch):
+    """A SIGKILL fallback detaches all nested and stacked mounts, deepest first."""
+    from utils.dbstructure import DBStructure
+    from utils.osimage import OsImage
+    from utils.helper import Helper
+    import common.constant as constant
+
+    db.create('osimage', DBStructure().get_database_table_structure('osimage'))
+    image = tmp_path / 'img'
+    image.mkdir()
+    db.insert('osimage', Helper().make_rows({'name': 'img', 'path': str(image)}))
+    original_directory = constant.CONSTANT['FILES']['IMAGE_DIRECTORY']
+    constant.CONSTANT['FILES']['IMAGE_DIRECTORY'] = str(tmp_path)
+    passes = [[f"{image}/sys/efi", f"{image}/sys", f"{image}/dev", f"{image}/dev"], []]
+    seen = []
+
+    def targets(_path):
+        return passes.pop(0)
+
+    def run(command, **_kwargs):
+        seen.append(command)
+        return type('Result', (), {'returncode': 0, 'stdout': '', 'stderr': ''})()
+
+    monkeypatch.setattr(OsImage, '_mount_targets_below', staticmethod(targets))
+    monkeypatch.setattr('utils.osimage.subprocess.run', run)
+    try:
+        ok, message = _reaper().cleanup_image_mounts('img')
+    finally:
+        constant.CONSTANT['FILES']['IMAGE_DIRECTORY'] = original_directory
+
+    assert ok is True, message
+    assert seen == [
+        ['/usr/bin/umount', '--lazy', '--', f"{image}/sys/efi"],
+        ['/usr/bin/umount', '--lazy', '--', f"{image}/sys"],
+        ['/usr/bin/umount', '--lazy', '--', f"{image}/dev"],
+        ['/usr/bin/umount', '--lazy', '--', f"{image}/dev"],
+    ]

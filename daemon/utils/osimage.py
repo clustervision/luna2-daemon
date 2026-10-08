@@ -33,8 +33,10 @@ __status__      = 'Development'
 import re
 import os
 import sys
+import json
 import signal
 import shutil
+import subprocess
 import threading
 from time import sleep
 import concurrent.futures
@@ -69,6 +71,68 @@ class OsImage(object):
     def _signal_stop(self, signum, frame):
         self.logger.warning(f"osimage_mother received signal {signum}, requesting graceful stop")
         self._stop_requested = True
+
+    @staticmethod
+    def _mount_targets_below(image_path: str) -> list[str]:
+        """Return every mount target at or below image_path, deepest first."""
+        result = subprocess.run(['/usr/bin/findmnt', '--list', '--json', '--output', 'TARGET'],
+                                capture_output=True, text=True, check=False)
+        if result.returncode:
+            raise RuntimeError(result.stderr.strip() or 'findmnt failed')
+
+        image_path = os.path.realpath(image_path)
+        prefix = image_path.rstrip('/') + '/'
+        targets = [entry['target'] for entry in json.loads(result.stdout)['filesystems']
+                   if entry['target'] == image_path or entry['target'].startswith(prefix)]
+        return sorted(targets, key=lambda target: (target.count('/'), len(target)), reverse=True)
+
+    def cleanup_image_mounts(self, osimage):
+        """Lazy-unmount every host mount below an image after its worker needed SIGKILL."""
+        image = Database().get_record(table='osimage', where=f"name='{osimage}'")
+        if not image:
+            return False, f"osimage {osimage} no longer exists; cannot determine its path"
+
+        image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+        image_path = image[0].get('path')
+        if not image_path:
+            filesystem_plugin = 'default'
+            if CONSTANT['PLUGINS'].get('IMAGE_FILESYSTEM'):
+                filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+            plugin = Helper().plugin_load(self.osimage_plugins, 'osimage/filesystem', filesystem_plugin)
+            status, image_path = plugin().getpath(image_directory=image_directory,
+                                                   osimage=image[0]['name'], tag=None)
+            if status is not True:
+                return False, f"cannot determine path for osimage {osimage}"
+
+        image_path = str(image_path)
+        if not os.path.isabs(image_path):
+            if not image_directory or image_directory == '/':
+                return False, f"unsafe relative path for osimage {osimage}: {image_path}"
+            image_path = os.path.join(image_directory, image_path)
+        image_path = os.path.realpath(image_path)
+        if image_path == '/':
+            return False, f"refusing to clean mounts below unsafe osimage path {image_path}"
+
+        # Stacked mounts can reveal another mount at the same target. Re-read the mount
+        # table until a pass makes no progress, rather than assuming one umount is enough.
+        targets = self._mount_targets_below(image_path)
+        while targets:
+            failed = []
+            for target in targets:
+                result = subprocess.run(['/usr/bin/umount', '--lazy', '--', target],
+                                        capture_output=True, text=True, check=False)
+                if result.returncode:
+                    failed.append(target)
+                    self.logger.error(f"cancel cleanup could not unmount {target}: "
+                                      f"{result.stderr.strip() or result.stdout.strip()}")
+                else:
+                    self.logger.warning(f"cancel cleanup lazy-unmounted {target}")
+            remaining = self._mount_targets_below(image_path)
+            if remaining and (failed or remaining == targets):
+                return False, f"mounts remain below {image_path}: {', '.join(remaining)}"
+            targets = remaining
+
+        return True, f"no mounts remain below {image_path}"
 
     # ---------------------------------------------------------------------------
 

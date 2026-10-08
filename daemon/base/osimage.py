@@ -922,15 +922,24 @@ class OSImage():
         chain_tasks = Database().get_record(table='queue', where=f"request_id='{request_id}'")
         self.logger.warning(f"cancel_pack: cancelling osimage {name} chain {request_id} "
                             f"(worker pid {owner_pid}); {len(chain_tasks or [])} task(s) to clear")
-        # SIGTERM lets the worker's finally unmount dev, proc and sys; SIGKILL never would
+        # SIGTERM lets a cooperative worker clean up. If SIGKILL is needed, daemon core
+        # removes every mount below the image without relying on the selected plugin.
         signalled = Helper().safe_kill_worker(owner_pid, owner_started, signal.SIGTERM)
         deadline = time() + self.CANCEL_GRACE_SECONDS
         while signalled and Helper().pid_alive(owner_pid, owner_started) and time() < deadline:
             sleep(0.2)
+        cleanup_failure = None
         if signalled and Helper().pid_alive(owner_pid, owner_started):
-            Helper().safe_kill_worker(owner_pid, owner_started, signal.SIGKILL)
-            self.logger.error(f"cancel_pack: worker {owner_pid} killed after ignoring SIGTERM; "
-                              f"host mounts may remain under osimage {name}, check findmnt")
+            killed = Helper().safe_kill_worker(owner_pid, owner_started, signal.SIGKILL)
+            if killed:
+                cleanup_ok, cleanup_message = OsImager().cleanup_image_mounts(name)
+                if not cleanup_ok:
+                    cleanup_failure = cleanup_message
+                    self.logger.error(f"cancel_pack: worker {owner_pid} was killed, but "
+                                      f"mount cleanup failed: {cleanup_message}")
+                else:
+                    self.logger.warning(f"cancel_pack: worker {owner_pid} killed after ignoring "
+                                        f"SIGTERM; {cleanup_message}")
         self.logger.warning(f"cancel_pack: worker for osimage {name} "
                             f"{'stopped' if signalled else 'was already gone'} (pid {owner_pid})")
         # abort the chain either way - the kill was delivered, or the worker was already gone.
@@ -944,6 +953,8 @@ class OSImage():
         detail = "worker stopped" if signalled else "worker already gone"
         self.logger.warning(f"cancel_pack for osimage {name}: {detail} (pid {owner_pid}); "
                             f"chain cleared ({len(chain_tasks or [])} task(s)), client EOF'd")
+        if cleanup_failure:
+            return False, f"pack worker killed but mount cleanup failed: {cleanup_failure}"
         return True, f"cancelled pack for osimage {name} ({detail})"
 
 

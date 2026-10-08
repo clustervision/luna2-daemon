@@ -91,13 +91,17 @@ def group_warning(old=None, data=None):
 
 def node_warning(old=None, data=None):
     """old is the node row before the update; a node inherits from its group, then the cluster."""
-    if 'install_mode' not in (data or {}):
+    data = data or {}
+    if 'install_mode' not in data and 'groupid' not in data:
         return ''
     cluster = _cluster_mode()
-    group = _group(data.get('groupid', old.get('groupid')))
-    merged = {key: data.get(key, old.get(key)) or group.get(key) for key in SCRIPTS + ('scripts',)}
-    return warning(old.get('install_mode') or group.get('install_mode') or cluster,
-                   data['install_mode'] or group.get('install_mode') or cluster, leftovers(merged))
+    old_group = _group(old.get('groupid'))
+    new_group = _group(data.get('groupid', old.get('groupid')))
+    merged = {key: data.get(key, old.get(key)) or new_group.get(key)
+              for key in SCRIPTS + ('scripts',)}
+    return warning(old.get('install_mode') or old_group.get('install_mode') or cluster,
+                   data.get('install_mode', old.get('install_mode')) or
+                   new_group.get('install_mode') or cluster, leftovers(merged))
 
 
 def cluster_warning(old_mode=None, new_mode=None):

@@ -323,9 +323,9 @@ class Plugin():
     def redfish_boot_status(self, device=None, username=None, password=None):
         redfish = self.client(device=device, username=username, password=password,
                               timeout=self.BOOT_OVERRIDE_TIMEOUT)
-        status, _, system_data = redfish.system()
+        status, reason, system_data = redfish.system()
         if not status:
-            return False, system_data
+            return False, reason
         boot = system_data.get('Boot')
         if not isinstance(boot, dict):
             return False, 'this system exposes no boot override'
@@ -356,9 +356,9 @@ class Plugin():
         return False, 'No supported Redfish identify property found'
 
     def log_service_paths(self, redfish=None):
-        status, _, manager_data = redfish.manager()
+        status, reason, manager_data = redfish.manager()
         if not status:
-            return False, manager_data
+            return False, reason
         services_path = manager_data.get('LogServices', {}).get('@odata.id')
         if not services_path:
             return False, 'LogServices collection missing from manager resource'

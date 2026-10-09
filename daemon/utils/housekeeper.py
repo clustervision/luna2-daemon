@@ -34,7 +34,6 @@ import concurrent.futures
 from time import sleep
 import os
 import sys
-import shutil
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
@@ -128,10 +127,9 @@ class Housekeeper(object):
                                 if first and len(first) > 2 and first.startswith('/'):
                                     if os.path.exists(first):
                                         self.logger.info(f"Removing path {first}")
-                                        try:
-                                            shutil.rmtree(first)
-                                        except Exception as exp:
-                                            self.logger.error(f"while deleting {first} i encountered: {exp}")
+                                        returned=OsImage().remove_image_path(first)
+                                        if returned[0] is False:
+                                            self.logger.error(f"remove_osimage_path: {returned[1]}")
                                     else:
                                         self.logger.error(f"Path {first} does not exist. Cannot remove")
                                 else:

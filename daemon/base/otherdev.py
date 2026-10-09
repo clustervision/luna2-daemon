@@ -102,6 +102,8 @@ class OtherDev():
                     del data['newotherdevname']
                 update = True
             else:
+                if 'newotherdevname' in data:
+                    return False, f'{self.table_cap} {name} not present in database for rename'
                 create = True
             device_columns = Database().get_columns(self.table)
             ipaddress, network = None, None

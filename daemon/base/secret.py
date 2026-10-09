@@ -139,24 +139,14 @@ class Secret():
                 status=False
             if clustersecrets:
                 # secrets stack: cluster secrets apply to every node, on top of - not
-                # instead of - the group and node ones. this section comes first so a
-                # node or group secret sharing a path is written later and wins.
+                # instead of - the group and node ones. the installer writes the sections
+                # in this order, so on a shared path the last one wins: cluster, group, node.
                 response['config']['secrets']['cluster'] = []
                 for secret in clustersecrets:
                     del secret['clusterid']
                     del secret['id']
                     self.readable(secret)
                     response['config']['secrets']['cluster'].append(secret)
-            if nodesecrets:
-                response['config']['secrets']['node'] = {}
-                for node in nodesecrets:
-                    nodename = Database().name_by_id('node', node['nodeid'])
-                    if nodename not in response['config']['secrets']['node']:
-                        response['config']['secrets']['node'][nodename] = []
-                    del node['nodeid']
-                    del node['id']
-                    self.readable(node)
-                    response['config']['secrets']['node'][nodename].append(node)
             if groupsecrets:
                 response['config']['secrets']['group'] = {}
                 for group in groupsecrets:
@@ -167,6 +157,16 @@ class Secret():
                     del group['id']
                     self.readable(group)
                     response['config']['secrets']['group'][groupname].append(group)
+            if nodesecrets:
+                response['config']['secrets']['node'] = {}
+                for node in nodesecrets:
+                    nodename = Database().name_by_id('node', node['nodeid'])
+                    if nodename not in response['config']['secrets']['node']:
+                        response['config']['secrets']['node'][nodename] = []
+                    del node['nodeid']
+                    del node['id']
+                    self.readable(node)
+                    response['config']['secrets']['node'][nodename].append(node)
         else:
             self.logger.error(f'Node {name} is not available.')
             response = f'Node {name} is not available'

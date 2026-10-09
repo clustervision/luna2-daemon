@@ -85,6 +85,46 @@ def test_a_node_leaving_legacy_names_what_it_inherits(db):
     assert 'warning' in response and 'partscript' in response and code == 201
 
 
+def test_a_node_moving_from_a_legacy_to_an_lpart_group_warns(db):
+    from base.node import Node
+    from utils.helper import Helper
+    memboot = db.insert('group', Helper().make_rows({
+        'name': 'memboot', 'osimageid': 1, 'install_mode': 'memboot'}))
+    db.update('node', Helper().make_rows({'partscript': PART}),
+              [{'column': 'name', 'value': 'node001'}])
+
+    code, response = _answer(*Node().update_node(
+        name='node001', request_data={'config': {'node': {'node001': {'group': 'memboot'}}}}))
+
+    assert "warning: install_mode legacy -> memboot" in response
+    assert 'partscript' in response and code == 201
+    assert db.get_record(table='node', where='name = "node001"')[0]['groupid'] == memboot
+
+
+def test_a_node_moving_between_lpart_groups_is_quiet(db):
+    from base.node import Node
+    from utils.helper import Helper
+    auto = db.insert('group', Helper().make_rows({
+        'name': 'auto', 'osimageid': 1, 'install_mode': 'auto'}))
+    memboot = db.insert('group', Helper().make_rows({
+        'name': 'memboot', 'osimageid': 1, 'install_mode': 'memboot'}))
+    db.update('node', Helper().make_rows({'groupid': auto, 'partscript': PART}),
+              [{'column': 'name', 'value': 'node001'}])
+
+    code, response = _answer(*Node().update_node(
+        name='node001', request_data={'config': {'node': {'node001': {'group': 'memboot'}}}}))
+
+    assert 'warning' not in response and code == 204
+    assert db.get_record(table='node', where='name = "node001"')[0]['groupid'] == memboot
+
+
+def test_an_unrelated_node_change_is_quiet(db):
+    from base.node import Node
+    code, response = _answer(*Node().update_node(
+        name='node001', request_data={'config': {'node': {'node001': {'comment': 'unchanged mode'}}}}))
+    assert 'warning' not in response and code == 204
+
+
 def test_a_cluster_leaving_legacy_names_the_groups_that_follow_it(db):
     from base.cluster import Cluster
     from unittest.mock import patch

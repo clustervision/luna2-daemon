@@ -1294,9 +1294,15 @@ class Config(object):
                             ipaddress = host['ipaddress_ipv6']
                             self.logger.debug(f"DNS -- IPv6: host {host['host']}, AAAA ip [{host['ipaddress_ipv6']}]")
                             # ----- all reverse pointer PTR below
-                            rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
-                            rev_ipv6 = rev_ipv6.split('.')
-                            rev_ipv6 = '.'.join(rev_ipv6[16:])
+                            rev_ipv6 = ''
+                            if nwk['network_ipv6']:
+                                rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
+                                rev_ipv6 = rev_ipv6.split('.')
+                                rev_ipv6 = '.'.join(rev_ipv6[16:])
+                            else:
+                                # no prefix, no reverse zone: the forward record still stands
+                                self.logger.warning(f"DNS -- IPv6: host {host['host']} has {host['ipaddress_ipv6']} "
+                                                    f"but network {networkname} has no IPv6 prefix, no PTR for it")
                             if rev_ipv6:
                                 ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
                                 ipv6_list = ipv6_rev.split('.')
@@ -2601,5 +2607,8 @@ class Config(object):
         if reserved_details:
             for each in reserved_details:
                 ips.append(each['ipaddress'])
+        network_row = Database().get_record(table='network', where=f"name = '{network}'")
+        if network_row:
+            ips += [address for _, address in Helper().network_service_addresses(network_row[0], ipversion)]
         return ips
 

@@ -39,7 +39,7 @@ from base.route import Route
 from utils.config import Config
 from utils.service import Service
 from utils.controller import Controller
-from utils.access import Access
+from utils.access import Access, CHILDREN
 from common.validate_body import body_checked
 
 
@@ -281,6 +281,8 @@ class Network():
                         del data['newnetname']
                 update = True
             else:
+                if 'newnetname' in data:
+                    return False, f'Network {name} not present in database for rename'
                 create = True
  
             # ---------------------- parse incoming data -------------------
@@ -880,20 +882,25 @@ class Network():
         # device can be node, controller, switch, otherdevices. Remember nodeinterface table.
         status=False
         taken = []
-        network_id = Database().id_by_name('network', name)
+        network_row = Database().get_record(table='network', where=f"name = '{name}'")
+        network_id = network_row[0]['id'] if network_row else None
         if network_id:
             where = f"networkid = '{network_id}'"
             ip_list = Database().get_record(table='ipaddress', where=where)
             if ip_list:
                 for each in ip_list:
                     kind = each['tableref']
-                    if 'interface' in each['tableref']:
-                        tablerefid = each['tablerefid']
-                        where = f"id = '{tablerefid}'"
-                        nodeid = Database().get_record(table='nodeinterface', where=where)
-                        nodeid = nodeid[0]['nodeid']
-                        device_name = Database().name_by_id('node', nodeid)
-                        kind = 'node'
+                    if each['tableref'] in CHILDREN:
+                        # an interface row: a node or a switch can hold several addresses,
+                        # each through its own interface, and the device is the parent
+                        kind, column = CHILDREN[each['tableref']]
+                        owner = Database().get_record(table=each['tableref'], where=f"id = '{each['tablerefid']}'")
+                        if not owner:
+                            self.logger.warning(f"network {name}: address {each['ipaddress']} points at "
+                                                f"{each['tableref']} {each['tablerefid']}, which no longer "
+                                                f"exists; not listed")
+                            continue
+                        device_name = Database().name_by_id(kind, owner[0][column])
                     elif 'controller' in each['tableref']:
                         tablerefid = each['tablerefid']
                         where = f"id = '{tablerefid}'"
@@ -912,10 +919,14 @@ class Network():
                             for kind in {t['_kind'] for t in taken}}
                 taken = [{'ipaddress': t['ipaddress'], 'device': t['device']}
                          for t in taken if t['device'] in readable[t['_kind']]]
+            # the network's own addresses are taken too: whoever may ask about the network may see them
+            taken += [{'ipaddress': address, 'device': what}
+                      for what, address in Helper().network_service_addresses(network_row[0])]
+            if taken:
                 response = {'config': {'network': {name: {'taken': taken} } } }
                 status=True
             else:
-                response = 'Invalid request: All IP Address are free on Network {name}. None is Taken'
+                response = f'Invalid request: All IP Address are free on Network {name}. None is Taken'
                 status=False
         else:
             response = f'Network {name} not present in database'

@@ -122,6 +122,8 @@ class Firmware():
             return False, f'Invalid request: {reason}'
         record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
+            if 'newfirmwarename' in data:
+                return False, f'{self.table_cap} {name} not present in database for rename'
             missing = [field for field in ('manufacturer', 'model', 'component', 'version')
                        if not data.get(field)]
             if missing:

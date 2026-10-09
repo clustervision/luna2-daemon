@@ -129,7 +129,12 @@ class NodeInventory():
         readable = set(Access().visible_names('node', {record['name'] for record in records}))
         for record in records:
             name = record.pop('name')
-            if name in readable:
+            if name not in readable:
+                continue
+            # one row per node: the installer's snapshot always carries the summary, where a
+            # BMC may publish none; the two also count differently (threads against physical
+            # cores), so the BMC snapshot stands in only when the node has nothing else
+            if name not in config or record['source'] == self.default_source:
                 config[name] = record
         response = {'config': {'node': dict(sorted(config.items()))}}
         status = True

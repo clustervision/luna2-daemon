@@ -167,6 +167,11 @@ class Profile():
             column_check = Helper().compare_list(data, profile_columns)
             if not column_check:
                 return False, 'Invalid request: Supplied columns do not match the requirements'
+            if 'enabled' in data:
+                enabled = Helper().make_bool(data['enabled'])
+                if not isinstance(enabled, bool):
+                    return False, 'Invalid request: enabled must be true or false'
+                data['enabled'] = enabled
             if newprofilename:
                 if not profile:
                     # the caller asked to rename something. Telling them it cannot be

@@ -142,19 +142,22 @@ def test_nm_bond_without_address_does_not_fall_back_to_dhcp(db, distribution, os
     assert any(l.startswith('address1=') for l in keyfile(files['vlan300'][1])['ipv4'])
 
 
-@pytest.mark.parametrize('interfaces,parent,vlan_id', [
-    (BOND_SELF_VLAN, 'bond0', 100),
-    (BOND_SELF_VLAN_BY_NAME, 'bond0', 100),
-    (NIC_SELF_VLAN, 'eth1', 200),
-    (BARE_BOND_AND_VLAN, 'vlan300', 300),
+@pytest.mark.parametrize('interfaces,parent,device,vlan_id', [
+    (BOND_SELF_VLAN, 'bond0', 'bond0.100', 100),
+    (BOND_SELF_VLAN_BY_NAME, 'bond0', 'bond0.100', 100),
+    (NIC_SELF_VLAN, 'eth1', 'eth1.200', 200),
+    (BARE_BOND_AND_VLAN, 'vlan300', 'vlan300', 300),
 ])
-def test_netplan_puts_the_address_on_the_vlan(db, interfaces, parent, vlan_id):
-    """One file per Luna interface; the address belongs to the vlan device, never to its parent."""
+def test_netplan_puts_the_address_on_the_vlan(db, interfaces, parent, device, vlan_id):
+    """
+    One file per Luna interface; the address belongs to the vlan device, never to its
+    parent, and the vlan device carries the same name NetworkManager would give it.
+    """
     seed(db, 'ubuntu', '24', interfaces)
     files = rendered_files('ubuntu', '24')
     assert 'netplan' in files[parent][0]
     network = netplan(files[parent][1])['network']
-    vlan = network['vlans']['vlan_IFACE']
+    vlan = network['vlans'][device]
     assert vlan['id'] == vlan_id
     assert vlan['addresses'] and vlan['addresses'][0].startswith('10.141.0.')
     for kind in ('bonds', 'ethernets'):
@@ -169,6 +172,29 @@ def test_netplan_bond_without_address_renders_an_empty_list(db):
     seed(db, 'ubuntu', '24', BARE_BOND_AND_VLAN)
     bond = netplan(rendered_files('ubuntu', '24')['bond0'][1])['network']['bonds']['IFACE']
     assert bond['addresses'] == []
+
+
+LONG_NIC_VLAN = [({'interface': 'enp175s0f0np0', 'vlanid': '300', 'macaddress': 'aa:bb:cc:dd:ee:02'}, '10.141.0.10')]
+
+
+@pytest.mark.parametrize('distribution,osrelease', NM_DISTRIBUTIONS)
+def test_nm_vlan_on_a_long_nic_name_fits_the_kernel_limit(db, distribution, osrelease):
+    """enp175s0f0np0.300 is 17 characters and NetworkManager refuses it; the device becomes vlan300."""
+    seed(db, distribution, osrelease, LONG_NIC_VLAN)
+    files = rendered_files(distribution, osrelease)
+    assert 'enp175s0f0np0.300' not in files
+    tagged = keyfile(files['vlan300'][1])
+    assert 'type=vlan' in tagged['connection'] and 'id=300' in tagged['vlan']
+    assert 'parent=${parent_name}' in tagged['vlan']
+    assert any(l.startswith('address1=10.141.0.10/') for l in tagged['ipv4'])
+    assert 'method=disabled' in keyfile(files['enp175s0f0np0'][1])['ipv4']
+
+
+def test_netplan_vlan_on_a_long_nic_name_fits_the_kernel_limit(db):
+    """netplan hands the key to networkd as the device name, so it follows the same rule."""
+    seed(db, 'ubuntu', '24', LONG_NIC_VLAN)
+    vlans = netplan(rendered_files('ubuntu', '24')['enp175s0f0np0'][1])['network']['vlans']
+    assert list(vlans) == ['vlan300'] and vlans['vlan300']['id'] == 300
 
 
 BOOTIF_BOND = [({'interface': 'BOOTIF', 'bond_mode': '802.3ad', 'bond_slaves': 'BOOTIF,ens2'}, '10.141.0.8')]
@@ -217,7 +243,7 @@ def test_netplan_bootif_in_a_bond(db, interfaces, has_vlan):
     network = netplan(rendered_files('ubuntu', '24')['bond0'][1])['network']
     assert network['bonds']['IFACE']['interfaces'] == ['ens1', 'ens2']
     if has_vlan:
-        assert network['vlans']['vlan_IFACE']['addresses'][0].startswith('10.141.0.9/')
+        assert network['vlans']['bond0.400']['addresses'][0].startswith('10.141.0.9/')
         assert not network['bonds']['IFACE'].get('addresses')
     else:
         assert 'vlans' not in network
@@ -256,8 +282,8 @@ def test_netplan_untagged_parent_and_tagged_child_both_carry_their_address(db, k
     stanza = parent['bonds' if kind == 'bond' else 'ethernets']['IFACE']
     assert stanza['addresses'][0].startswith('10.141.0.10/') and 'vlans' not in parent
     child = netplan(files['second02'][1])['network']
-    assert child['vlans']['vlan_IFACE']['link'] == 'PARENT'
-    assert child['vlans']['vlan_IFACE']['addresses'][0].startswith('10.141.0.11/')
+    assert child['vlans']['second02']['link'] == 'PARENT'
+    assert child['vlans']['second02']['addresses'][0].startswith('10.141.0.11/')
 
 
 TWO_NETWORKS = {
@@ -278,7 +304,7 @@ def test_untagged_and_tagged_on_two_networks(db, distribution, osrelease, kind):
         parent = netplan(files['prime01'][1])['network']
         assert parent['bonds' if kind == 'bond' else 'ethernets']['IFACE']['addresses'] == ['10.141.0.1/16']
         assert 'vlans' not in parent
-        vlan = netplan(files['second02'][1])['network']['vlans']['vlan_IFACE']
+        vlan = netplan(files['second02'][1])['network']['vlans']['second02']
         assert vlan['id'] == 500 and vlan['link'] == 'PARENT' and vlan['addresses'] == ['10.142.0.1/16']
     else:
         parent, tagged = keyfile(files['prime01'][1]), keyfile(files['second02'][1])

@@ -1782,8 +1782,13 @@ class Boot():
                     # NetworkManager needs a vlan on its own interface as a profile of its own; netplan
                     # renders both from this entry and skips the copy
                     parent = name if iface['type'] == 'bond' else (iface['macaddress'] or name)
-                    data['interfaces'][f"{name}.{iface['vlanid']}"] = dict(
+                    device = f"{name}.{iface['vlanid']}"
+                    if len(device) > 15:
+                        # the kernel caps a device name at 15 characters
+                        device = f"vlan{iface['vlanid']}"
+                    data['interfaces'][device] = dict(
                         iface, type='vlan', vlan_parent=parent, macaddress=None, split_from=name)
+                    iface['vlan_device'] = device
                     if iface['type'] == 'vlan':
                         iface['type'] = 'ethernet'
 

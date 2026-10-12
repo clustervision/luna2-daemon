@@ -63,7 +63,7 @@ $(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] 
 {%- endif %}
 {%- if LUNA_INTERFACES[interface]['vlanid'] %}
   vlans:
-    vlan_${interface_name}:
+    {{ LUNA_INTERFACES[interface]['vlan_device']|default(interface, true) }}:
       id: {{ LUNA_INTERFACES[interface]['vlanid'] }}
   {%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
       link: ${parent_name}

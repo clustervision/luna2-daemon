@@ -62,7 +62,7 @@ class DNS():
             response = {'config': {'dns': {name: [] }}}
             data=[]
             for host in dns:
-                response['config']['dns'][name].append({ "host": host['host'], "ipaddress": host['ipaddress'] })
+                response['config']['dns'][name].append({ "host": host['host'], "ipaddress": host['ipaddress'] or host['ipaddress_ipv6'] })
         else:
             network = Database().get_record(table="network", where=f"name='{name}'")
             if not network:

@@ -65,7 +65,7 @@ def _rejects_raw(raw, needle):
 
 
 def test_not_object():
-    _rejects_raw("[1,2,3]", "must be an object")
+    _rejects_raw("[1,2,3]", "cannot unmarshal array")
 
 
 def test_bad_version():
@@ -114,12 +114,12 @@ def test_bad_fs():
 
 def test_reserved_fs_tmpfs_rejected():
     doc = json.loads(json.dumps(VALID)); doc["sets"][0]["volumes"][1]["fs"] = "tmpfs"
-    _rejects(doc, "fs unsupported")  # reserved on the node -> sound to reject here
+    _rejects(doc, "fs=tmpfs is reserved")  # reserved on the node -> sound to reject here
 
 
 def test_bad_provider():
     doc = json.loads(json.dumps(VALID)); doc["sets"][0]["volumes"][1]["provider"] = "memory"
-    _rejects(doc, "provider unsupported")
+    _rejects(doc, "provider=memory is reserved")
 
 
 def test_missing_volume_field():

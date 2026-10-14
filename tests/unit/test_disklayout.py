@@ -294,6 +294,23 @@ def test_vfat_on_lvm():
     _rejects(doc, "lvm volume fs must be xfs, ext4, or swap")
 
 
+def test_allow_degraded_on_a_redundant_set_accepts():
+    for value in (True, False):
+        doc = _raid1(); doc["sets"][0]["allow_degraded"] = value
+        disklayout.validate(json.dumps(doc))
+
+
+def test_allow_degraded_on_a_set_without_redundancy():
+    for raid in ("none", "0"):
+        doc = _raid1(); doc["sets"][1]["raid"] = raid; doc["sets"][1]["allow_degraded"] = True
+        _rejects(doc, "allow_degraded is valid on a redundant raid set only")
+
+
+def test_allow_degraded_must_be_a_boolean():
+    doc = _raid1(); doc["sets"][0]["allow_degraded"] = "true"
+    _rejects(doc, "allow_degraded must be true or false")
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

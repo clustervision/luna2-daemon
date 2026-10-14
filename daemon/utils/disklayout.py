@@ -49,6 +49,7 @@ _ALLOWED_TOP = {"version", "sets", "comment"}
 _ALLOWED_SET = {
     "name", "role", "selection", "raid", "count", "spares", "bootloader",
     "match", "devices", "save", "persistent", "origin", "volumes", "comment",
+    "allow_degraded",  # ahead of the node: an lpart that predates it refuses the key
 }
 _ALLOWED_MATCH = {"tags", "min_size", "max_size", "model"}
 _ALLOWED_ORIGIN = {"from", "at", "by", "host"}
@@ -63,6 +64,7 @@ _SELECTIONS = {"discover", "manual"}
 _FILESYSTEMS = {"vfat", "xfs", "ext4", "swap"}
 _PROVIDERS = {"partition", "lvm"}
 _RAID_LEVELS = {"none", "0", "1", "5", "6", "10"}
+_REDUNDANT_RAID_LEVELS = {"1", "5", "6", "10"}
 # Where the node puts the TrinityX entries in the UEFI boot order, or `none` for
 # no bootloader at all. The node normalises the spelling: grub/yes/true (and
 # boolean true) mean first, no/false (and boolean false) mean none. Absent = last.
@@ -160,6 +162,14 @@ def _validate_set(a_set, idx):
             raise DisklayoutInvalid(
                 f"config_validation: {label}.bootloader unsupported: '{bootloader}' "
                 "(allowed: first, grub, yes, true, last, no, false, none)")
+
+    if "allow_degraded" in a_set:
+        if not isinstance(a_set["allow_degraded"], bool):
+            raise DisklayoutInvalid(f"config_validation: {label}.allow_degraded must be true or false")
+        if raid not in _REDUNDANT_RAID_LEVELS:
+            raise DisklayoutInvalid(
+                f"config_validation: {label}.allow_degraded is valid on a redundant raid set only "
+                "(raid 1, 5, 6 or 10)")
 
     for key in ("count", "spares"):
         if key in a_set and not isinstance(a_set[key], int):

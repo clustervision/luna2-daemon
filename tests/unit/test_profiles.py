@@ -564,6 +564,21 @@ def test_a_finished_install_does_not_block_delivery(db, seed):
         assert bool(reason) is blocked, f'{state} gave {reason!r}'
 
 
+def test_a_stopped_install_is_skipped_as_having_no_os(db, seed):
+    """A parked or sanitized node has no OS to deliver to, and is not installing:
+    nothing follows until someone acts, so the reason must not say it will finish."""
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    from utils.dbstructure import DBStructure
+    db.create('monitor', DBStructure().get_database_table_structure('monitor'))
+    for state in ('install.degraded', 'install.refused', 'install.fatal', 'install.sanitized'):
+        db.delete_row('monitor', [{"column": "tablerefid", "value": seed['nodeid']}])
+        db.insert('monitor', Helper().make_rows(
+            {'tableref': 'node', 'tablerefid': seed['nodeid'], 'state': state}))
+        reason = ProfileSync().skip_reason('node001')
+        assert reason == f'it has no installed OS ({state})', f'{state} gave {reason!r}'
+
+
 def test_a_node_with_no_profiles_still_gets_a_payload(db, seed):
     """The most important delivery of all: unassigning the last profile is exactly when
     the node has to be told, so it can put back what the profile displaced. Treating an

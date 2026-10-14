@@ -27,13 +27,15 @@ with a clear message, instead of only failing later on the node.
 
 DESIGN INVARIANT -- soundness (no false rejections): every rule here mirrors a
 Go rule exactly, so anything this rejects the node would also reject
-(daemon-reject => node-reject). It deliberately does NOT replicate the deep
-topology rules (raid member-count maths, the OS-set ESP/root requirement,
-cross-set device exclusivity): those are rarely mis-authored and the node stays
-authoritative for them. Keeping the subset shallow keeps it low-drift -- it
-depends only on the stable grammar (allowed keys, required fields, enums), not
-on the evolving topology logic. The soundness invariant is regression-tested
-against the shared layout corpus (daemon-reject => Go-reject on every file).
+(daemon-reject => node-reject). Beyond the grammar it carries only the basic
+structural rules that every lpart version in the field refuses alike: one os
+set, a device in one set, save/persistent/devices against the selection, the
+os set's raid level and single root, direct partitions and 100% sizes, and
+mountpoint/fs/provider combinations. It deliberately does NOT replicate rules
+that differ between lpart versions or are being relaxed (raid member counts
+with spares, the os set's drive count, the ESP requirement, size grammar, name
+and device-path rules): the node stays authoritative for those. When lpart
+relaxes a rule that is mirrored here, this module drops it in step.
 
 Stdlib-only and side-effect-free so it can be unit-tested in isolation.
 """
@@ -47,6 +49,7 @@ _ALLOWED_TOP = {"version", "sets", "comment"}
 _ALLOWED_SET = {
     "name", "role", "selection", "raid", "count", "spares", "bootloader",
     "match", "devices", "save", "persistent", "origin", "volumes", "comment",
+    "allow_degraded",  # ahead of the node: an lpart that predates it refuses the key
 }
 _ALLOWED_MATCH = {"tags", "min_size", "max_size", "model"}
 _ALLOWED_ORIGIN = {"from", "at", "by", "host"}
@@ -61,6 +64,7 @@ _SELECTIONS = {"discover", "manual"}
 _FILESYSTEMS = {"vfat", "xfs", "ext4", "swap"}
 _PROVIDERS = {"partition", "lvm"}
 _RAID_LEVELS = {"none", "0", "1", "5", "6", "10"}
+_REDUNDANT_RAID_LEVELS = {"1", "5", "6", "10"}
 # Where the node puts the TrinityX entries in the UEFI boot order, or `none` for
 # no bootloader at all. The node normalises the spelling: grub/yes/true (and
 # boolean true) mean first, no/false (and boolean false) mean none. Absent = last.
@@ -91,7 +95,7 @@ def _validate_volume(vol, label):
         raise DisklayoutInvalid(f"config_validation: {label} must be an object")
     _unknown_key(vol, _ALLOWED_VOLUME, label)
     _require_str(vol, "name", label)
-    _require_str(vol, "mountpoint", label)
+    mountpoint = _require_str(vol, "mountpoint", label)
     fs = _require_str(vol, "fs", label)
     if fs not in _FILESYSTEMS:
         raise DisklayoutInvalid(
@@ -100,6 +104,18 @@ def _validate_volume(vol, label):
     if provider not in _PROVIDERS:
         raise DisklayoutInvalid(
             f"config_validation: {label}.provider unsupported: '{provider}' (allowed: partition, lvm)")
+    if mountpoint != "swap" and not mountpoint.startswith("/"):
+        raise DisklayoutInvalid(
+            f"config_validation: {label}.mountpoint must be an absolute path or swap, got: {mountpoint}")
+    if provider == "partition" and vol.get("size") in (None, ""):
+        raise DisklayoutInvalid(f"config_validation: {label}.size is required for provider=partition")
+    if provider == "lvm" and fs == "vfat":
+        raise DisklayoutInvalid(
+            f"config_validation: {label}: lvm volume fs must be xfs, ext4, or swap, got: {fs}")
+    if mountpoint == "swap" and fs != "swap":
+        raise DisklayoutInvalid(f"config_validation: {label}: mountpoint=swap requires fs=swap")
+    if fs == "swap" and mountpoint != "swap":
+        raise DisklayoutInvalid(f"config_validation: {label}: fs=swap requires mountpoint=swap")
 
 
 def _validate_set(a_set, idx):
@@ -121,10 +137,20 @@ def _validate_set(a_set, idx):
     if selection not in _SELECTIONS:
         raise DisklayoutInvalid(
             f"config_validation: {label}.selection unsupported: '{selection}' (allowed: discover, manual)")
+    if a_set.get("save") is True and selection != "discover":
+        raise DisklayoutInvalid(f"config_validation: {label}.save is only valid on a selection=discover set")
+    if a_set.get("persistent") is True and selection != "manual":
+        raise DisklayoutInvalid(
+            f"config_validation: {label}: persistent=true requires selection=manual -- a hands-off "
+            "guarantee needs pinned devices (use save:true to pin a discovered layout first)")
     raid = _require_str(a_set, "raid", label)
     if raid not in _RAID_LEVELS:
         raise DisklayoutInvalid(
             f"config_validation: {label}.raid unsupported: '{raid}' (allowed: none, 0, 1, 5, 6, 10)")
+    if role == "os" and raid in ("5", "6"):
+        raise DisklayoutInvalid(
+            f"config_validation: {label}: raid={raid} is not supported for the OS set -- the OS uses "
+            f"raid none/1/0/10 (parity RAID cannot boot degraded); raid{raid} remains available for data sets")
 
     if "bootloader" in a_set:
         if role != "os":
@@ -137,9 +163,19 @@ def _validate_set(a_set, idx):
                 f"config_validation: {label}.bootloader unsupported: '{bootloader}' "
                 "(allowed: first, grub, yes, true, last, no, false, none)")
 
+    if "allow_degraded" in a_set:
+        if not isinstance(a_set["allow_degraded"], bool):
+            raise DisklayoutInvalid(f"config_validation: {label}.allow_degraded must be true or false")
+        if raid not in _REDUNDANT_RAID_LEVELS:
+            raise DisklayoutInvalid(
+                f"config_validation: {label}.allow_degraded is valid on a redundant raid set only "
+                "(raid 1, 5, 6 or 10)")
+
     for key in ("count", "spares"):
         if key in a_set and not isinstance(a_set[key], int):
             raise DisklayoutInvalid(f"config_validation: {label}.{key} must be a whole number")
+    if a_set.get("spares", 0) < 0:
+        raise DisklayoutInvalid(f"config_validation: {label}.spares must be >= 0, got: {a_set['spares']}")
 
     devices = a_set.get("devices")
     if devices is not None:
@@ -148,12 +184,41 @@ def _validate_set(a_set, idx):
         for dev in devices:
             if not isinstance(dev, str) or not dev.startswith("/dev/"):
                 raise DisklayoutInvalid(f"config_validation: device path must start with /dev/: {dev}")
+    if selection == "manual" and not devices:
+        raise DisklayoutInvalid(f"config_validation: {label}.devices[] is required for selection=manual")
 
     volumes = a_set.get("volumes")
     if not isinstance(volumes, list):
         raise DisklayoutInvalid(f"config_validation: {label}.volumes must be a list")
+    if not volumes:
+        raise DisklayoutInvalid(f"config_validation: {label}.volumes[] must be non-empty")
     for vidx, vol in enumerate(volumes):
         _validate_volume(vol, f"{label}.volumes[{vidx}]")
+    _validate_set_volumes(volumes, role, raid, label)
+
+
+def _validate_set_volumes(volumes, role, raid, label):
+    lvm_rest = sum(1 for v in volumes if v["provider"] == "lvm" and v.get("size") == "100%")
+    direct = [v for v in volumes
+              if v["provider"] == "partition" and v["mountpoint"] not in ("/boot", "/boot/efi")]
+    if direct:
+        direct_rest = sum(1 for v in direct if v.get("size") == "100%")
+        if raid != "none":
+            raise DisklayoutInvalid(f"config_validation: {label}: direct partition volumes require raid=none")
+        if direct_rest > 1:
+            raise DisklayoutInvalid(
+                f"config_validation: {label}: at most one direct partition volume may use size=100%")
+        if direct_rest and lvm_rest:
+            raise DisklayoutInvalid(
+                f"config_validation: {label}: direct partition size=100% cannot be mixed with lvm volumes in the same set")
+    if lvm_rest > 1:
+        raise DisklayoutInvalid(f"config_validation: {label}: at most one lvm volume per set may use size=100%")
+    if role == "os":
+        roots = sum(1 for v in volumes if v["mountpoint"] == "/")
+        if roots != 1:
+            raise DisklayoutInvalid(
+                f"config_validation: {label}: an os set must have exactly one root volume "
+                f"(mountpoint=/ provider=partition|lvm), found: {roots}")
 
 
 def validate(raw):
@@ -179,5 +244,16 @@ def validate(raw):
         raise DisklayoutInvalid("config_validation: sets must be an array")
     if len(sets) == 0:
         raise DisklayoutInvalid("config_validation: sets[] must be non-empty")
+    os_sets = sum(1 for a_set in sets if isinstance(a_set, dict) and a_set.get("role") == "os")
+    if os_sets > 1:
+        raise DisklayoutInvalid(f"config_validation: at most one set may have role=os, found: {os_sets}")
     for idx, a_set in enumerate(sets):
         _validate_set(a_set, idx)
+    owner = {}
+    for a_set in sets:
+        for dev in a_set.get("devices") or []:
+            if dev in owner:
+                raise DisklayoutInvalid(
+                    f"config_validation: device {dev} appears in both set '{owner[dev]}' and set "
+                    f"'{a_set['name']}' -- a device may belong to exactly one set")
+            owner[dev] = a_set["name"]

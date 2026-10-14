@@ -64,11 +64,15 @@ class Monitor(object):
                 "install.image",
                 "install.finalizing",
                 "install.success",
-                "install.booted"
+                "install.booted",
+                "install.sanitized"
             ],
             500: [
                 "install.finalizing",
-                "install.error"
+                "install.error",
+                "install.degraded",
+                "install.refused",
+                "install.fatal"
             ]
         }
 

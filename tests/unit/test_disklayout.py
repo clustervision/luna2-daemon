@@ -306,6 +306,22 @@ def test_allow_degraded_on_a_set_without_redundancy():
         _rejects(doc, "allow_degraded is valid on a redundant raid set only")
 
 
+def test_include_san_on_a_discover_set_accepts():
+    for value in (True, False):
+        doc = json.loads(json.dumps(VALID)); doc["sets"][0]["include_san"] = value
+        disklayout.validate(json.dumps(doc))
+
+
+def test_include_san_on_a_manual_set():
+    doc = _raid1(); doc["sets"][1]["include_san"] = True
+    _rejects(doc, "include_san is only valid on a selection=discover set")
+
+
+def test_include_san_must_be_a_boolean():
+    doc = json.loads(json.dumps(VALID)); doc["sets"][0]["include_san"] = "true"
+    _rejects(doc, "include_san must be true or false")
+
+
 def test_allow_degraded_must_be_a_boolean():
     doc = _raid1(); doc["sets"][0]["allow_degraded"] = "true"
     _rejects(doc, "allow_degraded must be true or false")

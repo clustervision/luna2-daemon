@@ -992,9 +992,10 @@ class Node():
             columns_check = Helper().compare_list(data, node_columns)
             if columns_check:
                 if update:
-                    where = [{"column": "id", "value": nodeid}]
-                    row = Helper().make_rows(data)
-                    Database().update('node', row, where)
+                    # an update of interfaces or routes alone has no node column to write
+                    if data:
+                        where = [{"column": "id", "value": nodeid}]
+                        Database().update('node', Helper().make_rows(data), where)
                     response = f'Node {name} updated successfully' + node_warning(node[0], data)
                     status = True
                     if nodeid and 'groupid' in data and node and len(node)>0 and 'groupid' in node[0]:

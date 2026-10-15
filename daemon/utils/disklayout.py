@@ -50,6 +50,7 @@ _ALLOWED_SET = {
     "name", "role", "selection", "raid", "count", "spares", "bootloader",
     "match", "devices", "save", "persistent", "origin", "volumes", "comment",
     "allow_degraded",  # ahead of the node: an lpart that predates it refuses the key
+    "include_san",  # ahead of the node, likewise
 }
 _ALLOWED_MATCH = {"tags", "min_size", "max_size", "model"}
 _ALLOWED_ORIGIN = {"from", "at", "by", "host"}
@@ -139,6 +140,12 @@ def _validate_set(a_set, idx):
             f"config_validation: {label}.selection unsupported: '{selection}' (allowed: discover, manual)")
     if a_set.get("save") is True and selection != "discover":
         raise DisklayoutInvalid(f"config_validation: {label}.save is only valid on a selection=discover set")
+    if "include_san" in a_set:
+        if not isinstance(a_set["include_san"], bool):
+            raise DisklayoutInvalid(f"config_validation: {label}.include_san must be true or false")
+        if a_set["include_san"] and selection != "discover":
+            raise DisklayoutInvalid(
+                f"config_validation: {label}.include_san is only valid on a selection=discover set")
     if a_set.get("persistent") is True and selection != "manual":
         raise DisklayoutInvalid(
             f"config_validation: {label}: persistent=true requires selection=manual -- a hands-off "

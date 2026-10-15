@@ -14,6 +14,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>
 
+# ==========================================================================
+# DEPRECATED - the trix-daemon (trixd) does this now.
+#
+# trixd's prometheus plugin serves the service discovery targets from its
+# own render: GET /api/v1/prometheus/renders/targets.
+#
+# Both are live for the whole transition period and act on the same targets,
+# so either may be used; anything new should call trixd. This file is removed
+# under TRIX-2278, and not before November 2027.
+# ==========================================================================
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 

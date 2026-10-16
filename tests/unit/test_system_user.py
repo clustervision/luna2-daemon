@@ -9,6 +9,13 @@ import os
 
 DAEMON = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'daemon'))
 PRESENTER = os.path.join('utils', 'request.py')
+# Both daemons read a token out of the same header name, so the two meanings of
+# x-access-tokens land in the same search. This one is a token trixd minted, for trixd's
+# own account out of trixd.ini, presented to trixd - nothing to do with Luna's user 0 or
+# with Luna's access bits, so the sweep above does not have to know it. Named here one
+# file at a time rather than exempting a directory, so a third presenter still has to
+# come past this test and say which daemon it is talking to.
+TRIXD_PRESENTER = os.path.join('plugins', 'addons', 'trixd.py')
 
 
 def _python_files():
@@ -34,17 +41,18 @@ def _builds_token_header(tree):
     return False
 
 
-def test_the_request_helper_is_the_only_presenter_of_a_token():
+def test_the_request_helper_is_the_only_presenter_of_a_token_to_luna():
     presenters = []
     for path in _python_files():
         with open(path, encoding='utf-8') as source:
             tree = ast.parse(source.read(), filename=path)
         if _builds_token_header(tree):
             presenters.append(os.path.relpath(path, DAEMON))
-    assert presenters == [PRESENTER], (
-        f"files that build an x-access-tokens header: {presenters}. Every peer call goes through "
-        "utils/request.py as the configuration-file account; a new presenter is an internal caller "
-        "the system-user sweep on TRIX-2085 does not know.")
+    assert sorted(presenters) == sorted([PRESENTER, TRIXD_PRESENTER]), (
+        f"files that build an x-access-tokens header: {sorted(presenters)}. Every call to a Luna "
+        "peer goes through utils/request.py as the configuration-file account; a new presenter is "
+        "an internal caller the system-user sweep on TRIX-2085 does not know. If the new one "
+        "presents to trixd rather than to Luna, name it beside TRIXD_PRESENTER and say so.")
 
 
 def test_the_request_helper_logs_in_as_the_configuration_file_account():

@@ -29,30 +29,38 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-#import os
-#import pwd
-#import sys
 from utils.log import Log
 import subprocess
-#from utils.helper import Helper
 
+# One try each: config-genders is installed on every controller while config-slurm is
+# installed only where Slurm is the workload manager, so importing them together loses
+# genders on a cluster that runs something else.
 try:
     from trinityx_config_slurm import Generate as Slurm
+except Exception:
+    Slurm = None
+
+try:
     from trinityx_config_genders import Generate
-    use_new_config_method = True
-except Exception as exp:
-    use_new_config_method = False
+except Exception:
+    Generate = None
 
 try:
     from trinityx_config_slinky import Generate as Slinky
-except Exception as exp:
+except Exception:
     Slinky = None
+
+# The trix-daemon beside this controller, where there is one. A controller without it
+# carries on exactly as before.
+try:
+    from plugins.addons.trixd import notify as trixd_notify
+except Exception:
+    trixd_notify = None
 
 class Plugin():
     """
     Class for running custom scripts during node create/update actions
     """
-    SCRIPTS_PATH = "/trinity/local/sbin"
 
     def __init__(self):
         """
@@ -67,62 +75,39 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
+    def tell_trixd(self, event=None, payload=None):
+        """
+        Hand a change to the trix-daemon, which decides for itself what to do with it.
+        Returns whether it was told; never raises, and never holds up the write.
+        """
+        if trixd_notify is None:
+            return False
+        return trixd_notify(event, payload)
+
+    # ---------------------------------------------------------------------------
+
     def postcreate(self, name=None, group=None):
-        processes = []
-        return_code = 0
+        told = self.tell_trixd('luna.node.update', {'name': name, 'group': group or ''})
         if not group:
             return False, "No group given"
-        if not use_new_config_method:
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
-            return True, "Config files written"
-        else:
-            return False, "Error writing config files"
+        return True, "trixd notified" if told else "Nothing to notify"
 
     # ---------------------------------------------------------------------------
 
     def postupdate(self, name=None, group=None):
-        processes = []
-        return_code = 0
+        told = self.tell_trixd('luna.node.update', {'name': name, 'group': group or ''})
         if not group:
             return False, "No group given"
-        if not use_new_config_method:
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
-            return True, "Config files written"
-        else:
-            return False, "Error writing config files"
+        return True, "trixd notified" if told else "Nothing to notify"
 
     # ---------------------------------------------------------------------------
 
     def rename(self, name=None, newname=None):
         processes = []
         return_code = 0
+        # The old and the new name together, which nothing can recover afterwards.
+        self.tell_trixd('luna.node.update', {'name': name, 'newnodename': newname})
         processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
-        if not use_new_config_method:
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode
@@ -141,11 +126,8 @@ class Plugin():
     def delete(self, name=None):
         processes = []
         return_code = 0
+        self.tell_trixd('luna.node.delete', {'name': name})
         processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
-        if not use_new_config_method:
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode
@@ -167,23 +149,30 @@ class Plugin():
         This function is called through queue and will typically be called only after a massive
         node operation like cloning a big number of nodes.
         """
-        if use_new_config_method:
-            returns = []
+        if Slurm is None and Generate is None:
+            self.logger.error("No configuration generator is installed here: neither "
+                              "trinityx-config-slurm nor trinityx-config-genders could be "
+                              "imported, so this controller writes neither file")
+            return False, "No configuration generator installed"
+
+        returns = []
+        if Slurm:
             returns.append(Slurm().all_configs(fullset))
+        if Generate:
             returns.append(Generate().Genders(fullset))
-            if Slinky:
-                returns.append(Slinky().all_configs(fullset))
-            if (min(returns)):
-                reconf = subprocess.run(["/usr/bin/scontrol", "reconfigure"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                if reconf.returncode != 0:
-                    self.logger.error(f"Could not reconfigure slurm: {reconf.stderr.decode()}")
-                    return False, f"Could not reconfigure slurm: {reconf.stderr.decode()}"
-                self.logger.info("Config files written")
-                return True, "Config files written"
-            else:
-                self.logger.error("Error writing config files")
-                return False, "Error writing config files"
-        else:
-            return True, "No config change required"
+        if Slinky:
+            returns.append(Slinky().all_configs(fullset))
+        if not min(returns):
+            self.logger.error("Error writing config files")
+            return False, "Error writing config files"
+        # Only where Slurm is actually the workload manager; elsewhere there is no
+        # controller to reconfigure and asking for one is an error on every write.
+        if Slurm:
+            reconf = subprocess.run(["/usr/bin/scontrol", "reconfigure"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if reconf.returncode != 0:
+                self.logger.error(f"Could not reconfigure slurm: {reconf.stderr.decode()}")
+                return False, f"Could not reconfigure slurm: {reconf.stderr.decode()}"
+        self.logger.info("Config files written")
+        return True, "Config files written"
 
     # ---------------------------------------------------------------------------

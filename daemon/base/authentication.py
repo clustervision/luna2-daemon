@@ -257,6 +257,14 @@ class Authentication():
         else:
             forward_data={}
             if 'username' in request_data:
+                if request_data['username'] != CONSTANT['API']['USERNAME']:
+                    # a node signs in as the configuration-file account, never as a person:
+                    # the authentication chain is not consulted here, whatever the body names
+                    message = f"Username {request_data['username']} is not the configuration-file account"
+                    self.logger.warning(f'TPM auth for {nodename} refused: {message}')
+                    Audit().record(username=request_data['username'], method='POST', path=f'/tpm/{nodename}',
+                                   outcome='refused', code=401, detail=message)
+                    return False, message
                 forward_data['username']=request_data['username']
             if 'password' in request_data:
                 forward_data['password']=request_data['password']

@@ -245,7 +245,14 @@ class Service(object):
                 service=details['param']
 
                 if action and service:
-                    Queue().update_task_status_in_queue(next_id,'in progress')
+                    if request_id == '__internal__':
+                        # internal requests made in the meantime fold into this run; an admin's own request does not wait
+                        sleep(5)
+                    if not Queue().claim_task(next_id):
+                        # another service_mother took it and drains the rest
+                        return
+                    # off the queue before the render reads the DB, so a change made meanwhile queues its own run
+                    Queue().remove_task_from_queue(next_id)
                     Status().add_message(request_id=request_id, username_initiator="luna",
                                          message=f"{action} service {service}")
 
@@ -259,7 +266,6 @@ class Service(object):
                         Status().add_message(request_id=request_id, username_initiator="luna",
                                              message=f"error {action} service {service}: {response}", status=500)
 
-                    Queue().remove_task_from_queue(next_id)
                     Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
@@ -274,7 +280,8 @@ class Service(object):
                                                       subsystem='service', request_id='__internal__')
         if queue_id:
             next_id = Queue().next_task_in_queue('service')
-            if queue_id == next_id:
+            # a request folded into an existing task starts no worker of its own
+            if response == 'added' and queue_id == next_id:
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                 executor.submit(self.service_mother,service,action,'__internal__')
                 executor.shutdown(wait=False)

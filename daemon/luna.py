@@ -473,7 +473,11 @@ def page_not_found(error):
 @daemon.errorhandler(500)
 def server_error(error):
     """ Abort All 500"""
+    exception = getattr(error, 'original_exception', None)
     error = {'message': 'Server Error'}
+    if exception is not None:
+        # Sent whole on purpose: the CLI and GUI decide what of it to show.
+        error['detail'] = ''.join(traceback.format_exception(type(exception), exception, exception.__traceback__))
     return json.dumps(error), 500
 
 

@@ -38,6 +38,58 @@ import sys
 from utils.log import Log
 #from utils.helper import Helper
 
+# lchroot's exit code when another session holds the image and it refuses to break in.
+LCHROOT_HELD = 9
+
+
+class LchrootError(Exception):
+    """An in-image command under lchroot did not run; the message is what the pack reports."""
+
+
+def bwrap_lchroot(logger, osimage):
+    """Path of an lchroot that takes --path, or None when osimage is packed via chroot."""
+    lchroot = shutil.which('lchroot')
+    if not lchroot:
+        return None
+    try:
+        with open(lchroot, 'rb') as handle:
+            first_line = handle.readline()
+        # A shell-script lchroot is the old one, which calls back into this daemon's API
+        # whatever it is given: it is read here to be rejected, never executed.
+        if b'python' not in first_line:
+            return None
+        probe = subprocess.run([lchroot, '--help'], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError) as error:
+        reason = str(error)
+    else:
+        if probe.returncode:
+            first_error = probe.stderr.strip().split('\n')[0]
+            reason = f"--help exited {probe.returncode}: {first_error}"
+        elif '--path' not in probe.stdout:
+            reason = "no --path"
+        else:
+            return lchroot
+    logger.warning(f"lchroot at {lchroot} is not usable ({reason}); packing '{osimage}' via chroot")
+    return None
+
+
+def run_in_lchroot(lchroot, image_path, command):
+    """Run one in-image command under lchroot and return its stdout.
+
+    The lock is never forced and stdin is closed, so a held image is a refusal rather
+    than a prompt the pack would hang on.
+    """
+    try:
+        result = subprocess.run([lchroot, '--path', image_path, '--'] + command,
+                                stdin=subprocess.DEVNULL, capture_output=True, text=True)
+    except OSError as error:
+        raise LchrootError(f"Could not run {lchroot}: {error}") from error
+    if result.returncode == LCHROOT_HELD:
+        raise LchrootError(result.stderr.strip())
+    if result.returncode:
+        raise LchrootError('.'.join(result.stderr.split('\n')[:3]))
+    return result.stdout
+
 
 class Plugin():
     """
@@ -198,6 +250,27 @@ class Plugin():
 
     # -------------------------------------------------------------------
 
+    def _ramdisk_via_lchroot(self, lchroot, osimage, image_path, kernel_version, ramdisk_file,
+                             modules_add, modules_remove, drivers_add, drivers_remove):
+        # The same two dracut calls as the chroot route, run under lchroot's own /dev,
+        # /proc and /sys, so there is nothing to mount or to undo afterwards.
+        try:
+            listing = run_in_lchroot(lchroot, image_path,
+                                     ['/usr/bin/dracut', '--kver', kernel_version, '--list-modules'])
+            if 'luna' not in listing.split():
+                self.logger.info(f"No luna dracut module in osimage '{osimage}'. I add it as a safe measure.")
+                modules_add.extend(['--add', 'luna'])
+            run_in_lchroot(lchroot, image_path,
+                           ['/usr/bin/dracut', '--force', '--kver', kernel_version] +
+                           modules_add + modules_remove + drivers_add + drivers_remove +
+                           ['/tmp/' + ramdisk_file])
+        except LchrootError as error:
+            self.logger.error(f"Packing '{osimage}' via {lchroot} failed: {error}")
+            return False, str(error)
+        return True, "Success"
+
+    # -------------------------------------------------------------------
+
     def pack(self, osimage=None, image_path=None, files_path=None, kernel_version=None, kernel_modules=[]):
         # files_path = location where ramdisk+kernel are being stored
         # kernel_file = name of the kernel/vmlinuz file
@@ -295,79 +368,87 @@ class Plugin():
                 else:
                     drivers_remove.extend(['--omit-drivers', s[1:]])
 
-        # The bind mounts below are live doors onto the host's /dev, /proc and /sys,
-        # placed inside the image tree. They MUST come back out on every path: leave
-        # one mounted and a later delete of this image walks straight into the host's
-        # filesystems. So everything between the mount and the unmount runs under
-        # try/finally, and the finally restores the root and unmounts even when the
-        # chroot or dracut raises - the one thing the old code did not guarantee.
-        real_root = os.open("/", os.O_RDONLY)
-        chroot_path = None
-        dracut_succeed = True
-        create = None
-        message = "Problem building initrd"
-
-        try:
-            prepare_mounts(image_path)
-            os.chroot(image_path)
-            chroot_path = os.open("/", os.O_DIRECTORY)
-            os.fchdir(chroot_path)
+        lchroot = bwrap_lchroot(self.logger, osimage)
+        if lchroot:
+            self.logger.info(f"Packing '{osimage}' via {lchroot}")
+            dracut_succeed, message = self._ramdisk_via_lchroot(
+                lchroot, osimage, image_path, kernel_version, ramdisk_file,
+                modules_add, modules_remove, drivers_add, drivers_remove)
+        else:
+            self.logger.info(f"Packing '{osimage}' via chroot")
+            # The bind mounts below are live doors onto the host's /dev, /proc and /sys,
+            # placed inside the image tree. They MUST come back out on every path: leave
+            # one mounted and a later delete of this image walks straight into the host's
+            # filesystems. So everything between the mount and the unmount runs under
+            # try/finally, and the finally restores the root and unmounts even when the
+            # chroot or dracut raises - the one thing the old code did not guarantee.
+            real_root = os.open("/", os.O_RDONLY)
+            chroot_path = None
+            dracut_succeed = True
+            create = None
+            message = "Problem building initrd"
 
             try:
-                dracut_modules = subprocess.Popen(['/usr/bin/dracut', '--kver',
-                                                   kernel_version, '--list-modules'],
-                                                  stdout=subprocess.PIPE)
-                luna_exists = False
+                prepare_mounts(image_path)
+                os.chroot(image_path)
+                chroot_path = os.open("/", os.O_DIRECTORY)
+                os.fchdir(chroot_path)
 
-                while dracut_modules.poll() is None:
-                    line = dracut_modules.stdout.readline()
-                    line_clean = line.strip()
-                    line_clean = line_clean.decode('ASCII')
-                    if line_clean == 'luna':
-                        luna_exists = True
-                        break
+                try:
+                    dracut_modules = subprocess.Popen(['/usr/bin/dracut', '--kver',
+                                                       kernel_version, '--list-modules'],
+                                                      stdout=subprocess.PIPE)
+                    luna_exists = False
 
-                if not luna_exists:
-                    self.logger.info(f"No luna dracut module in osimage '{osimage}'. I add it as a safe measure.")
-                    # return False,"No luna dracut module in osimage"
-                    modules_add.extend(['--add', 'luna']) # this part is debatable. for now i add this. pending
+                    while dracut_modules.poll() is None:
+                        line = dracut_modules.stdout.readline()
+                        line_clean = line.strip()
+                        line_clean = line_clean.decode('ASCII')
+                        if line_clean == 'luna':
+                            luna_exists = True
+                            break
 
-                dracut_cmd = (['/usr/bin/dracut', '--force', '--kver', kernel_version] +
-                              modules_add + modules_remove + drivers_add +
-                              drivers_remove + ['/tmp/' + ramdisk_file])
+                    if not luna_exists:
+                        self.logger.info(f"No luna dracut module in osimage '{osimage}'. I add it as a safe measure.")
+                        # return False,"No luna dracut module in osimage"
+                        modules_add.extend(['--add', 'luna']) # this part is debatable. for now i add this. pending
 
-                create = subprocess.Popen(dracut_cmd, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-                while create.poll() is None:
-                    line = create.stdout.readline()
+                    dracut_cmd = (['/usr/bin/dracut', '--force', '--kver', kernel_version] +
+                                  modules_add + modules_remove + drivers_add +
+                                  drivers_remove + ['/tmp/' + ramdisk_file])
 
-            except:
-                exc_type, exc_value, exc_traceback= sys.exc_info()
-                self.logger.info(exc_value)
-                self.logger.debug(exc_traceback.format_exc())
-                dracut_succeed = False
+                    create = subprocess.Popen(dracut_cmd, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                    while create.poll() is None:
+                        line = create.stdout.readline()
 
-            if create and create.returncode:
-                dracut_succeed = False
-                all_messages = create.stderr.read().decode().split('\n')
-                message = '.'.join(all_messages[:3])
+                except:
+                    exc_type, exc_value, exc_traceback= sys.exc_info()
+                    self.logger.info(exc_value)
+                    self.logger.debug(exc_traceback.format_exc())
+                    dracut_succeed = False
 
-            if not create:
-                dracut_succeed = False
-                message = "Could not open subprocess to run dracut"
-        finally:
-            # Always restore the host root and take the mounts back out, whatever
-            # happened above. fchdir to the pre-chroot root fd escapes the chroot even
-            # if we are still inside it; if the chroot never happened this is a
-            # harmless no-op. cleanup_mounts logs any umount it could not complete.
-            try:
-                os.fchdir(real_root)
-                os.chroot(".")
-            except Exception as exp:
-                self.logger.error(f"Failed to restore host root after pack of '{osimage}': {exp}")
-            os.close(real_root)
-            if chroot_path is not None:
-                os.close(chroot_path)
-            cleanup_mounts(image_path)
+                if create and create.returncode:
+                    dracut_succeed = False
+                    all_messages = create.stderr.read().decode().split('\n')
+                    message = '.'.join(all_messages[:3])
+
+                if not create:
+                    dracut_succeed = False
+                    message = "Could not open subprocess to run dracut"
+            finally:
+                # Always restore the host root and take the mounts back out, whatever
+                # happened above. fchdir to the pre-chroot root fd escapes the chroot even
+                # if we are still inside it; if the chroot never happened this is a
+                # harmless no-op. cleanup_mounts logs any umount it could not complete.
+                try:
+                    os.fchdir(real_root)
+                    os.chroot(".")
+                except Exception as exp:
+                    self.logger.error(f"Failed to restore host root after pack of '{osimage}': {exp}")
+                os.close(real_root)
+                if chroot_path is not None:
+                    os.close(chroot_path)
+                cleanup_mounts(image_path)
 
         if not dracut_succeed:
             self.logger.info(f"Error while building initrd: {message}")

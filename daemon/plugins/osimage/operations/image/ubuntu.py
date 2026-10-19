@@ -36,6 +36,7 @@ import shutil
 from time import time
 import sys
 from utils.log import Log
+from plugins.osimage.operations.image.default import bwrap_lchroot, run_in_lchroot, LchrootError
 # from utils.helper import Helper
 
 # Debian and Ubuntu ship two initramfs builders and an image may carry either, so
@@ -45,8 +46,8 @@ DRACUT_PATHS = ('/usr/bin/dracut', '/usr/sbin/dracut')
 MKINITRAMFS_PATHS = ('/usr/sbin/mkinitramfs', '/usr/bin/mkinitramfs')
 
 # Where the image keeps its initramfs-tools configuration, and where we build the copy
-# we actually hand to mkinitramfs. Both are paths INSIDE the image -- everything here
-# runs after os.chroot(image_path).
+# we actually hand to mkinitramfs. Both are paths INSIDE the image: as given after
+# os.chroot(image_path), or prefixed with the image path from outside it.
 IMAGE_CONFDIR = '/etc/initramfs-tools'
 LUNA_CONFDIR = '/tmp/luna-initramfs-tools'
 
@@ -72,7 +73,8 @@ def split_kernel_modules(kernel_modules):
 def write_module_confdir(modules, image_confdir=IMAGE_CONFDIR, luna_confdir=LUNA_CONFDIR):
     """Copy the image's initramfs-tools config aside and append the requested modules.
 
-    CALL THIS ONLY AFTER os.chroot(image_path), like everything else here.
+    Both directories must refer to the IMAGE: call it after os.chroot(image_path), or
+    pass both prefixed with the image path.
 
     mkinitramfs has no flag for adding modules -- the only way in is the `modules` file
     in its configuration directory. It does have `-d`, which points it at a different
@@ -97,11 +99,11 @@ def initramfs_command(kernel_version, ramdisk_file, kernel_modules=None,
                       exists=os.path.exists):
     """Return (argv, builder_name) for building this image's initramfs, or (None, None).
 
-    CALL THIS ONLY AFTER os.chroot(image_path). Every path it probes is absolute, so
-    inside the chroot it asks "what was this IMAGE built with"; called before, the
-    identical code asks the CONTROLLER and answers confidently for the wrong machine.
-    That is what `exists` is for as well -- it keeps the probes injectable so the
-    choice can be tested without a real image.
+    Every path it probes is absolute, so it must ask the IMAGE: from inside
+    os.chroot(image_path), or through an `exists` that prefixes the image path. From
+    the controller's own root the identical code answers confidently for the wrong
+    machine. `exists` also keeps the probes injectable so the choice can be tested
+    without a real image.
 
     The only question asked here is WHICH BUILDER THIS IMAGE HAS. dracut wins when it
     has both: before ubuntu 25.10 it is not a default and its presence is deliberate,
@@ -323,6 +325,38 @@ class Plugin():
 
     # -------------------------------------------------------------------
 
+    def _ramdisk_via_lchroot(self, lchroot, osimage, image_path, kernel_version, ramdisk_file,
+                             kernel_modules, requested_add, requested_omit):
+        # The chroot route's builder choice and call, run under lchroot's own /dev, /proc
+        # and /sys, so there is nothing to mount or to undo. Outside the chroot the image
+        # is asked by prefixing its path to every probe and config directory.
+        initramfs_cmd, builder = initramfs_command(
+            kernel_version, ramdisk_file, kernel_modules,
+            exists=lambda path: os.path.exists(image_path + path))
+        if builder == 'mkinitramfs' and requested_omit:
+            return False, (
+                f"osimage '{osimage}' asks to omit {', '.join(requested_omit)} but "
+                "is packed with mkinitramfs, which cannot exclude a module. Remove "
+                "the '-' entries from kernelmodules, or use an image with dracut.")
+        if not initramfs_cmd:
+            return False, (
+                f"No initramfs builder in osimage '{osimage}': neither dracut nor "
+                f"mkinitramfs is installed in the image")
+        try:
+            if builder == 'mkinitramfs' and requested_add:
+                write_module_confdir(requested_add, image_confdir=image_path + IMAGE_CONFDIR,
+                                     luna_confdir=image_path + LUNA_CONFDIR)
+            self.logger.info(f"Building initramfs for osimage '{osimage}' with {builder}")
+            run_in_lchroot(lchroot, image_path, initramfs_cmd)
+        except LchrootError as error:
+            self.logger.error(f"Packing '{osimage}' via {lchroot} failed: {error}")
+            return False, str(error)
+        finally:
+            shutil.rmtree(image_path + LUNA_CONFDIR, ignore_errors=True)
+        return True, "Success"
+
+    # -------------------------------------------------------------------
+
     def pack(self, osimage=None, image_path=None, files_path=None, kernel_version=None, kernel_modules=[]):
         # files_path = location where ramdisk+kernel are being stored
         # kernel_file = name of the kernel/vmlinuz file
@@ -400,78 +434,86 @@ class Plugin():
         # a value quietly would put it straight back.
         requested_add, requested_omit = split_kernel_modules(kernel_modules)
 
-        # The mounts below are live doors onto the host's /dev, /proc and /sys, placed
-        # inside the image tree. They MUST come back out on every path: leave one mounted
-        # and a later delete of this image walks straight into the host's filesystems. So
-        # the whole mount-chroot-build lifecycle runs under try/finally, and the finally
-        # restores the root and unmounts even when the chroot or the builder raises.
-        real_root = os.open("/", os.O_RDONLY)
-        chroot_path = None
-        initramfs_succeed = True
-        create = None
-        builder = None
-        message = "Problem building initrd"
-
-        try:
-            prepare_mounts(image_path)
-            os.chroot(image_path)
-            chroot_path = os.open("/", os.O_DIRECTORY)
-            os.fchdir(chroot_path)
+        lchroot = bwrap_lchroot(self.logger, osimage)
+        if lchroot:
+            self.logger.info(f"Packing '{osimage}' via {lchroot}")
+            initramfs_succeed, message = self._ramdisk_via_lchroot(
+                lchroot, osimage, image_path, kernel_version, ramdisk_file,
+                kernel_modules, requested_add, requested_omit)
+        else:
+            self.logger.info(f"Packing '{osimage}' via chroot")
+            # The mounts below are live doors onto the host's /dev, /proc and /sys, placed
+            # inside the image tree. They MUST come back out on every path: leave one mounted
+            # and a later delete of this image walks straight into the host's filesystems. So
+            # the whole mount-chroot-build lifecycle runs under try/finally, and the finally
+            # restores the root and unmounts even when the chroot or the builder raises.
+            real_root = os.open("/", os.O_RDONLY)
+            chroot_path = None
+            initramfs_succeed = True
+            create = None
+            builder = None
+            message = "Problem building initrd"
 
             try:
-                # the image decides, not the ubuntu release, and not the controller --
-                # see initramfs_command, which must be called from inside this chroot
-                initramfs_cmd, builder = initramfs_command(kernel_version, ramdisk_file,
-                                                           kernel_modules)
-                if builder == 'mkinitramfs' and requested_omit:
+                prepare_mounts(image_path)
+                os.chroot(image_path)
+                chroot_path = os.open("/", os.O_DIRECTORY)
+                os.fchdir(chroot_path)
+
+                try:
+                    # the image decides, not the ubuntu release, and not the controller --
+                    # see initramfs_command, which must be called from inside this chroot
+                    initramfs_cmd, builder = initramfs_command(kernel_version, ramdisk_file,
+                                                               kernel_modules)
+                    if builder == 'mkinitramfs' and requested_omit:
+                        initramfs_succeed = False
+                        message = (
+                            f"osimage '{osimage}' asks to omit {', '.join(requested_omit)} but "
+                            "is packed with mkinitramfs, which cannot exclude a module. Remove "
+                            "the '-' entries from kernelmodules, or use an image with dracut.")
+                    elif initramfs_cmd:
+                        if builder == 'mkinitramfs' and requested_add:
+                            write_module_confdir(requested_add)
+                        self.logger.info(f"Building initramfs for osimage '{osimage}' with {builder}")
+                        create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        while create.poll() is None:
+                            line = create.stdout.readline()
+
+                except:
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    self.logger.info(exc_value)
+                    self.logger.debug(exc_traceback.format_exc())
+                    initramfs_succeed = False
+
+                if create and create.returncode:
+                    initramfs_succeed = False
+                    all_messages = create.stderr.read().decode().split('\n')
+                    message = '.'.join(all_messages[:3])
+
+                if not create and initramfs_succeed:
                     initramfs_succeed = False
                     message = (
-                        f"osimage '{osimage}' asks to omit {', '.join(requested_omit)} but "
-                        "is packed with mkinitramfs, which cannot exclude a module. Remove "
-                        "the '-' entries from kernelmodules, or use an image with dracut.")
-                elif initramfs_cmd:
-                    if builder == 'mkinitramfs' and requested_add:
-                        write_module_confdir(requested_add)
-                    self.logger.info(f"Building initramfs for osimage '{osimage}' with {builder}")
-                    create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    while create.poll() is None:
-                        line = create.stdout.readline()
+                        f"Could not open subprocess to run {builder}" if builder else
+                        f"No initramfs builder in osimage '{osimage}': neither dracut nor "
+                        f"mkinitramfs is installed in the image"
+                    )
 
-            except:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.info(exc_value)
-                self.logger.debug(exc_traceback.format_exc())
-                initramfs_succeed = False
-
-            if create and create.returncode:
-                initramfs_succeed = False
-                all_messages = create.stderr.read().decode().split('\n')
-                message = '.'.join(all_messages[:3])
-
-            if not create and initramfs_succeed:
-                initramfs_succeed = False
-                message = (
-                    f"Could not open subprocess to run {builder}" if builder else
-                    f"No initramfs builder in osimage '{osimage}': neither dracut nor "
-                    f"mkinitramfs is installed in the image"
-                )
-
-        finally:
-            # Always restore the host root and take the mounts back out, whatever happened
-            # above. fchdir to the pre-chroot root fd escapes the chroot even if we are
-            # still inside it; if the chroot never happened this is a harmless no-op.
-            try:
-                os.fchdir(real_root)
-                os.chroot(".")
-            except Exception as exp:
-                self.logger.error(f"Failed to restore host root after pack of '{osimage}': {exp}")
-            os.close(real_root)
-            if chroot_path is not None:
-                os.close(chroot_path)
-            # The confdir is ours and disposable; it is inside the image, so leaving it
-            # behind would ship in the next tarball.
-            shutil.rmtree(image_path + LUNA_CONFDIR, ignore_errors=True)
-            cleanup_mounts(image_path)
+            finally:
+                # Always restore the host root and take the mounts back out, whatever happened
+                # above. fchdir to the pre-chroot root fd escapes the chroot even if we are
+                # still inside it; if the chroot never happened this is a harmless no-op.
+                try:
+                    os.fchdir(real_root)
+                    os.chroot(".")
+                except Exception as exp:
+                    self.logger.error(f"Failed to restore host root after pack of '{osimage}': {exp}")
+                os.close(real_root)
+                if chroot_path is not None:
+                    os.close(chroot_path)
+                # The confdir is ours and disposable; it is inside the image, so leaving it
+                # behind would ship in the next tarball.
+                shutil.rmtree(image_path + LUNA_CONFDIR, ignore_errors=True)
+                cleanup_mounts(image_path)
 
         if not initramfs_succeed:
             self.logger.info(f"Error while building ramdisk: {message}")

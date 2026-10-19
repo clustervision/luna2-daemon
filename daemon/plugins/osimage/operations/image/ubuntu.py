@@ -183,7 +183,9 @@ class Plugin():
         # ramdisk_modules = list of ramdisk modules to be included/excluded
 
     # ---------------------------------------------------------------------------
-
+    ###########################################################################
+    # Boot: systemroot, read by base/boot.py for the node's boot templates
+    ###########################################################################
     # Ask each initramfs framework in its own language, because ubuntu can be packed
     # with either and they do not share a name for the target root: initramfs-tools
     # exports rootmnt=/root, dracut exports NEWROOT=/sysroot and has no notion of
@@ -226,6 +228,9 @@ class Plugin():
             self.logger.error(f"plugin: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
         return True, "ok"
 
+    ###########################################################################
+    # Build: entry point
+    ###########################################################################
     def build(self, osimage=None, image_path=None, files_path=None, tmp_directory=None):
         # osimage = just the name of the image
         # image_path = is the location where the image resides
@@ -356,7 +361,9 @@ class Plugin():
         return True, "Success"
 
     # -------------------------------------------------------------------
-
+    ###########################################################################
+    # Pack: entry point
+    ###########################################################################
     def pack(self, osimage=None, image_path=None, files_path=None, kernel_version=None, kernel_modules=[]):
         # files_path = location where ramdisk+kernel are being stored
         # kernel_file = name of the kernel/vmlinuz file

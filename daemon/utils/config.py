@@ -2184,6 +2184,7 @@ class Config(object):
                                     'network.network', 'network.network_ipv6',
                                     'network.subnet', 'network.subnet_ipv6',
                                     'network.name as networkname',
+                                    'groupinterface.mtu',
                                     'groupinterface.vlanid',
                                     'groupinterface.vlan_parent',
                                     'groupinterface.bond_mode',

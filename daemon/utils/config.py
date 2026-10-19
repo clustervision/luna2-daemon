@@ -1936,6 +1936,11 @@ class Config(object):
         where_interface = f"groupid = '{groupid}'"
         check_interface = Database().get_record(table='groupinterface', where=where_interface)
         interface_byname = Helper().convert_list_to_dict(check_interface, 'interface')
+        nodes_with_interface = Database().get_record_join(
+            ['node.name as name'],
+            ['nodeinterface.nodeid=node.id'],
+            [f"node.groupid='{groupid}'", f"nodeinterface.interface='{new_interface_name}'"]
+        )
 
         if not check_interface: # ----> easy. interfaces do not exist
             message = f"no interfaces defined"
@@ -1948,6 +1953,14 @@ class Config(object):
             return False, message
         elif new_interface_name in interface_byname.keys():
             message = f"interface {new_interface_name} already exists"
+            return False, message
+        elif nodes_with_interface:
+            # the group's nodes are renamed in the background, where a clash can only be logged
+            names = sorted(node['name'] for node in nodes_with_interface)
+            message = f"interface {new_interface_name} already exists on {len(names)} node(s) "
+            message += f"in this group: {', '.join(names[:5])}"
+            if len(names) > 5:
+                message += ', ...'
             return False, message
         else:
             # we have to update the interface

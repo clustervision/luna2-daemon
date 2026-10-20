@@ -93,7 +93,8 @@ class Housekeeper(object):
                             case 'restart'|'reload'|'only_start':
                                 service=first
                                 if service in ['dhcp','dhcp6','dns']:
-                                    Queue().update_task_status_in_queue(next_id,'in progress')
+                                    # off the queue before the render reads the DB, so a change made meanwhile queues its own run
+                                    Queue().remove_task_from_queue(next_id)
                                     response, code = Service().luna_service(service, task)
                             case 'run_bulk':
                                 run_bulk = True

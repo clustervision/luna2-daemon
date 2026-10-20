@@ -45,11 +45,6 @@ try:
 except Exception:
     Generate = None
 
-try:
-    from trinityx_config_slinky import Generate as Slinky
-except Exception:
-    Slinky = None
-
 # The trix-daemon beside this controller, where there is one. A controller without it
 # carries on exactly as before.
 try:
@@ -106,7 +101,9 @@ class Plugin():
         processes = []
         return_code = 0
         # The old and the new name together, which nothing can recover afterwards.
-        self.tell_trixd('luna.node.update', {'name': name, 'newnodename': newname})
+        if self.tell_trixd('luna.node.update', {'name': name, 'newnodename': newname}):
+            # Where trixd is told it owns the hardware rule files and carries them itself.
+            return True, "trixd notified"
         processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
 
         for process in processes:
@@ -126,7 +123,9 @@ class Plugin():
     def delete(self, name=None):
         processes = []
         return_code = 0
-        self.tell_trixd('luna.node.delete', {'name': name})
+        if self.tell_trixd('luna.node.delete', {'name': name}):
+            # Where trixd is told it retires the hardware rule files itself, keeping a copy.
+            return True, "trixd notified"
         processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
 
         for process in processes:
@@ -160,8 +159,6 @@ class Plugin():
             returns.append(Slurm().all_configs(fullset))
         if Generate:
             returns.append(Generate().Genders(fullset))
-        if Slinky:
-            returns.append(Slinky().all_configs(fullset))
         if not min(returns):
             self.logger.error("Error writing config files")
             return False, "Error writing config files"

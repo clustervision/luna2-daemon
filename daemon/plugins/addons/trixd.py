@@ -171,9 +171,20 @@ def notify(event: str = None, payload: dict = None) -> bool:
     Never raises and never holds up the write that called it: a controller without
     trixd, or with trixd down, goes on working exactly as it did before.
     """
+    return notify_many([{'event': event, 'payload': payload or {}}])
+
+
+def notify_many(changes: list = None) -> bool:
+    """
+    Tell trixd about a whole set of changes at once, on the same terms as notify: a
+    caller with a hundred of them makes one call, not a hundred.
+    """
+    if not changes:
+        # trixd refuses an empty set, so there is nothing to ask it.
+        return False
     logger = Log.get_logger()
     config = where()
-    body = {'changes': [{'event': event, 'payload': payload or {}}]}
+    body = {'changes': changes}
     for attempt in (1, 2):
         token = get_token(renew=attempt == 2)
         if not token:
@@ -183,14 +194,15 @@ def notify(event: str = None, payload: dict = None) -> bool:
                                    headers={'x-access-tokens': token},
                                    timeout=TIMEOUT, verify=config['verify'])
         except Exception as exp:
-            logger.error(f"could not tell trixd about {event}: {exp}")
+            logger.error(f"could not tell trixd about {len(changes)} changes: {exp}")
             return False
         if answer.status_code in (401, 403) and attempt == 1:
             # The token is no longer good to trixd. One more with a fresh one.
             continue
         if answer.status_code >= 400:
-            logger.error(f"trixd answered {answer.status_code} for {event}: {answer.text[:200]}")
+            logger.error(f"trixd answered {answer.status_code} for {len(changes)} "
+                         f"changes: {answer.text[:200]}")
             return False
-        logger.debug(f"told trixd about {event}: {answer.status_code}")
+        logger.debug(f"told trixd about {len(changes)} changes: {answer.status_code}")
         return True
     return False

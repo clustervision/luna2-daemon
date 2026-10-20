@@ -31,8 +31,7 @@ __status__      = 'Development'
 
 from utils.log import Log
 
-# The trix-daemon beside this controller, where there is one. A controller without it
-# carries on exactly as before.
+# The trix-daemon beside this controller, where there is one; absent is normal.
 try:
     from plugins.addons.trixd import notify as trixd_notify
 except Exception:
@@ -59,7 +58,6 @@ class Plugin():
     def tell_trixd(self, event=None, payload=None):
         """
         Hand a change to the trix-daemon, which decides for itself what to do with it.
-        Returns whether it was told; never raises, and never holds up the write.
         """
         if trixd_notify is None:
             return False
@@ -71,7 +69,7 @@ class Plugin():
         told = self.tell_trixd('luna.group.update', {'name': name, 'nodes': nodes or []})
         if not nodes:
             return True, "No nodes in this group"
-        return True, "trixd notified" if told else "Nothing to notify"
+        return True, "trixd notified" if told else "trixd not notified"
 
     # ---------------------------------------------------------------------------
 
@@ -79,7 +77,7 @@ class Plugin():
         told = self.tell_trixd('luna.group.update', {'name': name, 'nodes': nodes or []})
         if not nodes:
             return True, "No nodes in this group"
-        return True, "trixd notified" if told else "Nothing to notify"
+        return True, "trixd notified" if told else "trixd not notified"
 
 
     # ---------------------------------------------------------------------------
@@ -88,14 +86,14 @@ class Plugin():
         # The old and the new name together, which nothing can recover afterwards.
         told = self.tell_trixd('luna.group.update',
                                {'name': name, 'newgroupname': newname})
-        return True, "trixd notified" if told else "Nothing to notify"
+        return True, "trixd notified" if told else "trixd not notified"
 
 
     # ---------------------------------------------------------------------------
 
     def delete(self, name=None):
         told = self.tell_trixd('luna.group.delete', {'name': name})
-        return True, "trixd notified" if told else "Nothing to notify"
+        return True, "trixd notified" if told else "trixd not notified"
 
 
     # ---------------------------------------------------------------------------
@@ -106,10 +104,8 @@ class Plugin():
         This function is called through queue and will typically be called only after a massive
         node operation like cloning a big number of groups.
         """
-        # One change carrying the whole set, never one per group: trixd stores and runs a
-        # task per change it is given.
-        if self.tell_trixd('luna.group.bulk', {'fullset': fullset}):
-            return True, "trixd notified"
-        return True, "No config change required"
+        # One call for the whole set, never one per group: trixd makes a task per change.
+        told = self.tell_trixd('luna.group.bulk', {'fullset': fullset})
+        return True, "trixd notified" if told else "trixd not notified"
 
     # ---------------------------------------------------------------------------

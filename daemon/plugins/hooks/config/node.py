@@ -32,9 +32,7 @@ __status__      = 'Development'
 from utils.log import Log
 import subprocess
 
-# One try each: config-genders is installed on every controller while config-slurm is
-# installed only where Slurm is the workload manager, so importing them together loses
-# genders on a cluster that runs something else.
+# Two try blocks: a shared one would lose genders where config-slurm is absent.
 try:
     from trinityx_config_slurm import Generate as Slurm
 except Exception:
@@ -45,8 +43,7 @@ try:
 except Exception:
     Generate = None
 
-# The trix-daemon beside this controller, where there is one. A controller without it
-# carries on exactly as before.
+# The trix-daemon beside this controller, where there is one; absent is normal.
 try:
     from plugins.addons.trixd import notify as trixd_notify
 except Exception:
@@ -73,7 +70,6 @@ class Plugin():
     def tell_trixd(self, event=None, payload=None):
         """
         Hand a change to the trix-daemon, which decides for itself what to do with it.
-        Returns whether it was told; never raises, and never holds up the write.
         """
         if trixd_notify is None:
             return False
@@ -85,7 +81,7 @@ class Plugin():
         told = self.tell_trixd('luna.node.update', {'name': name, 'group': group or ''})
         if not group:
             return False, "No group given"
-        return True, "trixd notified" if told else "Nothing to notify"
+        return True, "trixd notified" if told else "trixd not notified"
 
     # ---------------------------------------------------------------------------
 
@@ -93,7 +89,7 @@ class Plugin():
         told = self.tell_trixd('luna.node.update', {'name': name, 'group': group or ''})
         if not group:
             return False, "No group given"
-        return True, "trixd notified" if told else "Nothing to notify"
+        return True, "trixd notified" if told else "trixd not notified"
 
     # ---------------------------------------------------------------------------
 
@@ -101,7 +97,8 @@ class Plugin():
         processes = []
         return_code = 0
         # The old and the new name together, which nothing can recover afterwards.
-        if self.tell_trixd('luna.node.update', {'name': name, 'newnodename': newname}):
+        told = self.tell_trixd('luna.node.update', {'name': name, 'newnodename': newname})
+        if told:
             # Where trixd is told it owns the hardware rule files and carries them itself.
             return True, "trixd notified"
         processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
@@ -123,8 +120,9 @@ class Plugin():
     def delete(self, name=None):
         processes = []
         return_code = 0
-        if self.tell_trixd('luna.node.delete', {'name': name}):
-            # Where trixd is told it retires the hardware rule files itself, keeping a copy.
+        told = self.tell_trixd('luna.node.delete', {'name': name})
+        if told:
+            # Where trixd is told it retires the hardware rule files itself.
             return True, "trixd notified"
         processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
 
@@ -148,10 +146,9 @@ class Plugin():
         This function is called through queue and will typically be called only after a massive
         node operation like cloning a big number of nodes.
         """
-        # One change carrying the whole set, never one per node: trixd stores and runs a
-        # task per change it is given. Told, it holds the set and writes these files
-        # itself; the generators below are the fallback for a controller without it.
-        if self.tell_trixd('luna.node.bulk', {'fullset': fullset}):
+        # One call for the whole set, never one per node: trixd makes a task per change.
+        told = self.tell_trixd('luna.node.bulk', {'fullset': fullset})
+        if told:
             return True, "trixd notified"
         if Slurm is None and Generate is None:
             self.logger.error("No configuration generator is installed here: neither "
@@ -167,8 +164,7 @@ class Plugin():
         if not min(returns):
             self.logger.error("Error writing config files")
             return False, "Error writing config files"
-        # Only where Slurm is actually the workload manager; elsewhere there is no
-        # controller to reconfigure and asking for one is an error on every write.
+        # Without Slurm there is no controller to reconfigure, and asking logs an error.
         if Slurm:
             reconf = subprocess.run(["/usr/bin/scontrol", "reconfigure"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if reconf.returncode != 0:

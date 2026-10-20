@@ -101,6 +101,7 @@ class Plugin():
         if told:
             # Where trixd is told it owns the hardware rule files and carries them itself.
             return True, "trixd notified"
+
         processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
 
         for process in processes:
@@ -124,6 +125,7 @@ class Plugin():
         if told:
             # Where trixd is told it retires the hardware rule files itself.
             return True, "trixd notified"
+
         processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
 
         for process in processes:

@@ -106,6 +106,10 @@ class Plugin():
         This function is called through queue and will typically be called only after a massive
         node operation like cloning a big number of groups.
         """
+        # One change carrying the whole set, never one per group: trixd stores and runs a
+        # task per change it is given.
+        if self.tell_trixd('luna.group.bulk', {'fullset': fullset}):
+            return True, "trixd notified"
         return True, "No config change required"
 
     # ---------------------------------------------------------------------------

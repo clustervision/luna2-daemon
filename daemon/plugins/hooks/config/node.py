@@ -148,6 +148,11 @@ class Plugin():
         This function is called through queue and will typically be called only after a massive
         node operation like cloning a big number of nodes.
         """
+        # One change carrying the whole set, never one per node: trixd stores and runs a
+        # task per change it is given. Told, it holds the set and writes these files
+        # itself; the generators below are the fallback for a controller without it.
+        if self.tell_trixd('luna.node.bulk', {'fullset': fullset}):
+            return True, "trixd notified"
         if Slurm is None and Generate is None:
             self.logger.error("No configuration generator is installed here: neither "
                               "trinityx-config-slurm nor trinityx-config-genders could be "

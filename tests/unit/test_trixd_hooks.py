@@ -14,6 +14,11 @@ with nothing to render. And where trixd took a rename or a delete it owns the ha
 rule files under the Prometheus rules directory - it carries them to the new name and
 retires them with a copy - so the hook's own rename and rm are the fallback for a
 controller without trixd, not something that runs as well and undoes it.
+
+TRIX-2298 adds the interface hook to the same family. An interface has no identity
+downstream, so an interface write is announced as the node it belongs to - never as a
+node delete, which retires the rule files of a node that is still there - and it carries
+only the fields its call site already held.
 """
 
 import logging
@@ -127,15 +132,15 @@ def generators(monkeypatch):
     return called
 
 
-def errors(caplog):
-    """The errors the node hook itself logged, for a test that pins their absence.
+def errors(caplog, hook='hooks/config/node.py'):
+    """The errors one hook itself logged, for a test that pins their absence.
 
     Scoped to the hook: resolving where trixd is reads the database, which logs errors
     of its own in this harness, and they are not what these tests are about.
     """
     return [record.getMessage() for record in caplog.records
             if record.levelno >= logging.ERROR
-            and record.pathname.endswith('hooks/config/node.py')]
+            and record.pathname.endswith(hook)]
 
 
 def events(posted):
@@ -158,6 +163,13 @@ def entries(posted, event):
             if change.get('event') == event:
                 carried.extend((change.get('payload') or {}).get('fullset', []))
     return carried
+
+
+def payloads(posted, event):
+    """What the recorded sets carried as the payload of one event, in order."""
+    return [change.get('payload') or {} for body in posted
+            for change in body.get('changes', [])
+            if change.get('event') == event]
 
 
 # ------------------------------------------------- a set is one change, with the set in it
@@ -327,3 +339,142 @@ def test_a_delete_leaves_the_rule_files_to_trixd(trixd, rule_files):
         f'the files trixd keeps a copy of.'
     )
     assert status is True, message
+
+
+# --------------------------------------- an interface write is a change to its node
+
+
+# The four methods and what each operation can supply, as base/interface.py supplies it:
+# a create and an update have the row and its network, a rename has the pair of names,
+# and a delete has neither once the row is gone.
+INTERFACE_CALLS = {
+    'postcreate': {'interface': 'BOOTIF', 'macaddress': 'aa:bb:cc:dd:ee:01',
+                   'ipaddress': '10.141.0.9', 'ipaddress_ipv6': 'fd00:141::9',
+                   'network': 'cluster', 'networktype': 'ethernet', 'zone': 'cluster'},
+    'postupdate': {'interface': 'BOOTIF', 'macaddress': 'aa:bb:cc:dd:ee:01',
+                   'ipaddress': '10.141.0.9', 'ipaddress_ipv6': 'fd00:141::9',
+                   'network': 'cluster', 'networktype': 'ethernet', 'zone': 'cluster'},
+    'rename': {'interface': 'BOOTIF', 'newinterfacename': 'eth0'},
+    'delete': {'interface': 'BOOTIF'},
+}
+
+# Shipped empty, so it is held to the signature but not to announcing anything.
+INTERFACE_STUBS = {'macaddressupdate': {'interface': 'BOOTIF',
+                                        'macaddress': 'aa:bb:cc:dd:ee:01'}}
+
+
+@pytest.mark.parametrize('method', list(INTERFACE_CALLS))
+def test_an_interface_write_is_announced_as_a_node_update(trixd, method):
+    """Every one of the four, under the one event a trixd render and handler both know.
+
+    luna.nodeinterface.update would pass trixd's shape check, wake the renders and repair
+    nothing, reporting a string that reads as an outcome. The object segment of an event
+    is a render-input name, so an interface event is one nothing is listening for.
+    """
+    from plugins.hooks.config.interface import Plugin
+    status, message = getattr(Plugin(), method)(name='node001', **INTERFACE_CALLS[method])
+    assert events(trixd) == ['luna.node.update'], (
+        f'{method} announced {events(trixd)}. luna.node.update is the only name that both '
+        f'repairs the rule files and wakes the renders.'
+    )
+    assert status is True, message
+    carried = payloads(trixd, 'luna.node.update')[0]
+    assert carried['name'] == 'node001', f'{method} announced {carried}'
+    for field, value in INTERFACE_CALLS[method].items():
+        assert carried.get(field) == value, (
+            f'{method} carried {field}={carried.get(field)!r}, not {value!r}: {carried}'
+        )
+
+
+def test_each_method_declares_exactly_what_its_operation_can_supply(trixd):
+    """The signature is the contract a site plugin is written against.
+
+    Enumerated from the methods themselves rather than asserted one by one, so a field
+    added to one of them has to be added here - and so no kwargs can creep back in, which
+    would leave a customer unable to tell from the method what it will be handed.
+    """
+    from inspect import signature
+    from plugins.hooks.config.interface import Plugin
+    for method, fields in {**INTERFACE_CALLS, **INTERFACE_STUBS}.items():
+        declared = signature(getattr(Plugin, method)).parameters
+        assert set(declared) == {'self', 'name'} | set(fields), (
+            f'{method} declares {sorted(declared)}, and its call site supplies '
+            f'{sorted({"name"} | set(fields))}'
+        )
+        assert all(parameter.kind == parameter.POSITIONAL_OR_KEYWORD
+                   for parameter in declared.values()), (
+            f'{method} takes something other than named parameters: {declared}'
+        )
+
+
+def test_an_interface_delete_is_not_a_node_delete(trixd):
+    """One interface went and the node did not.
+
+    luna.node.delete reaches remove_hw_rules in the trix-daemon, which retires every
+    hardware rule file of the node named - so announcing an interface removal that way
+    takes a node that is still running out of its own alerting.
+    """
+    from plugins.hooks.config.interface import Plugin
+    status, message = Plugin().delete(name='node001', interface='BOOTIF')
+    assert status is True, message
+    assert 'luna.node.delete' not in events(trixd), (
+        f'removing one interface announced {events(trixd)}, and a node delete retires '
+        f'the rule files of a node that is still there'
+    )
+    assert events(trixd) == ['luna.node.update'], events(trixd)
+
+
+def test_a_field_the_write_could_not_read_is_absent_rather_than_empty(trixd):
+    """A create whose interface has no address yet leaves the address out of the payload.
+
+    An empty string cannot be told apart from an address that was looked for and found
+    gone, and the trix-daemon takes whatever it is handed.
+    """
+    from plugins.hooks.config.interface import Plugin
+    Plugin().postcreate(name='node001', interface='BOOTIF')
+    carried = payloads(trixd, 'luna.node.update')[0]
+    assert set(carried) == {'name', 'interface'}, (
+        f'a create that knew only the node and the interface carried {sorted(carried)}'
+    )
+
+
+@pytest.mark.parametrize('method', list(INTERFACE_CALLS))
+def test_an_interface_write_without_trixd_is_quiet_and_successful(method, caplog,
+                                                                 monkeypatch):
+    """No addon on this controller, which is the normal state of most of them.
+
+    Nothing was asked of trixd and nothing failed, so this is success. The hook has no
+    files of its own to write instead, which is why there is no fallback to run here.
+    """
+    import plugins.hooks.config.interface as hook
+    monkeypatch.setattr(hook, 'trixd_notify', None)
+    assert hook.trixd_notify is None, 'the addon is still in place, so this proves nothing'
+    with caplog.at_level(logging.ERROR):
+        status, message = getattr(hook.Plugin(), method)(name='node001',
+                                                         **INTERFACE_CALLS[method])
+    assert status is True, message
+    assert message == 'trixd not notified', message
+    assert errors(caplog, 'hooks/config/interface.py') == [], (
+        f'a controller without trixd is the normal case and the hook logged '
+        f'{errors(caplog, "hooks/config/interface.py")}'
+    )
+
+
+def test_a_macaddress_change_announces_nothing_at_all(trixd):
+    """The extension point ships empty, and empty means no event rather than a quiet one.
+
+    Nothing in the trix-daemon reads a macaddress - no handler takes one and no render
+    declares one - so announcing a change to it would wake every render to repair a value
+    none of them look at, and report an outcome that reads like success. The method is
+    there for somebody else's plugin; until one exists, the right amount of work is none.
+    """
+    from plugins.hooks.config.interface import Plugin
+    status, message = Plugin().macaddressupdate(name='node001', interface='BOOTIF',
+                                                macaddress='aa:bb:cc:dd:ee:01')
+    assert status is True, message
+    assert events(trixd) == [], (
+        f'the stub announced {events(trixd)}. A node writes its macaddress as it boots, '
+        f'so anything outward-facing here is paid once per node per boot.'
+    )
+
+

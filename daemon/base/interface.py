@@ -36,6 +36,7 @@ from utils.config import Config
 from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
+from common.constant import CONSTANT
 from common.validate_body import body_checked
 
 
@@ -49,6 +50,8 @@ class Interface():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+        self.interface_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
 
 
     def get_all_node_interface(self, name=None):
@@ -152,7 +155,7 @@ class Interface():
                 # Antoine
                 interface_name = interface['interface']
                 new_interface_name = None
-                ipaddress, macaddress, network, clear_ip = None, None, None, False
+                ipaddress, ipaddress_ipv6, macaddress, network, clear_ip = None, None, None, None, False
                 options, vlanid, force, dhcp, set_dhcp = None, None, False, None, False
                 vlan_parent, bond_mode, bond_slaves, mtu = None, None, None, None
                 if 'newinterfacename' in interface.keys():
@@ -203,8 +206,10 @@ class Interface():
                     existing = Database().get_record_join(
                         [
                             'ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
-                            'ipaddress.dhcp', 'network.name as networkname',
-                            'network.dhcp_nodes_in_pool', 'network.dhcp as networkdhcp'
+                            'ipaddress.dhcp', 'nodeinterface.macaddress',
+                            'network.name as networkname',
+                            'network.dhcp_nodes_in_pool', 'network.dhcp as networkdhcp',
+                            'network.type', 'network.zone', 'node.name'
                         ],
                         [
                             'nodeinterface.nodeid=node.id',  
@@ -217,8 +222,10 @@ class Interface():
                             f"nodeinterface.interface='{interface_name}'"
                         ]
                     )
-                    if network or ipaddress or set_dhcp or clear_ip:
-                        ipaddress_ipv6 = None
+                    # Whether this write moves the interface's addressing: the branch
+                    # below needs it, and it decides which hook method the change is.
+                    moved = network or ipaddress or set_dhcp or clear_ip
+                    if moved:
                         clear_ipv4, clear_ipv6 = False, False
                         nodes_in_pool = False # only used as confirmation variable
                         if not ipaddress:
@@ -373,6 +380,45 @@ class Interface():
                     if result is False and not existing:
                         # roll back
                         self.delete_node_interface(nodeid=nodeid, interface=interface_name)
+                    elif result and (moved or new_interface_name or macaddress is not None):
+                        row = existing[0] if existing else {}
+                        hook_node = row.get('name')
+                        if not hook_node:
+                            node_record = Database().get_record(table='node', where=f"id='{nodeid}'")
+                            hook_node = node_record[0]['name'] if node_record else None
+                        hook_network = network or row.get('networkname')
+                        hook_ipaddress = ipaddress or row.get('ipaddress')
+                        hook_ipv6 = ipaddress_ipv6 or row.get('ipaddress_ipv6')
+                        hook_macaddress = macaddress or row.get('macaddress')
+                        # The row's type and zone are its own network's, not whichever one
+                        # the request moved the interface to.
+                        on_row_network = hook_network == row.get('networkname')
+                        hook_type = row.get('type') if on_row_network else None
+                        hook_zone = row.get('zone') if on_row_network else None
+                        interface_plugin=Helper().plugin_load(self.interface_plugins,'hooks/config','interface')
+                        try:
+                            if new_interface_name:
+                                interface_plugin().rename(
+                                    name=hook_node, interface=interface['interface'],
+                                    newinterfacename=new_interface_name)
+                            elif moved and existing:
+                                interface_plugin().postupdate(
+                                    name=hook_node, interface=interface['interface'],
+                                    macaddress=hook_macaddress,
+                                    ipaddress=hook_ipaddress, ipaddress_ipv6=hook_ipv6,
+                                    network=hook_network, networktype=hook_type, zone=hook_zone)
+                            elif moved:
+                                interface_plugin().postcreate(
+                                    name=hook_node, interface=interface['interface'],
+                                    macaddress=hook_macaddress,
+                                    ipaddress=hook_ipaddress, ipaddress_ipv6=hook_ipv6,
+                                    network=hook_network, networktype=hook_type, zone=hook_zone)
+                            elif macaddress is not None:
+                                interface_plugin().macaddressupdate(
+                                    name=hook_node, interface=interface['interface'],
+                                    macaddress=hook_macaddress)
+                        except Exception as exp:
+                            self.logger.error(f"{exp}")
 
                 if result is False:
                     response = f'error handling {interface_name}: {message}'
@@ -671,6 +717,13 @@ class Interface():
                                           subsystem='housekeeper', request_id='__node_interface_delete__')
                 response = f'Interface {interface} removed successfully'
                 status=True
+                node_record = Database().get_record(table='node', where=f"id='{nodeid}'")
+                interface_plugin=Helper().plugin_load(self.interface_plugins,'hooks/config','interface')
+                try:
+                    interface_plugin().delete(name=node_record[0]['name'] if node_record else None,
+                                              interface=interface)
+                except Exception as exp:
+                    self.logger.error(f"{exp}")
             else:
                 where = f"interface = '{interface}' AND `nodeid` = '{nodeid}'"
                 node_interface = Database().get_record(table='nodeinterface', where=where)

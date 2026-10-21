@@ -34,7 +34,6 @@ IMPORTED_AS = {
 OPTIONAL = {
     'trinityx_config_slurm',
     'trinityx_config_genders',
-    'trinityx_config_slinky',
 }
 
 

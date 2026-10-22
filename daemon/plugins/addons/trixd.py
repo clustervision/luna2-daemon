@@ -68,7 +68,7 @@ def _config() -> dict:
     return {
         'path': path,
         'protocol': parser.get('API', 'PROTOCOL', fallback='https').strip() or 'https',
-        'port': bind.rsplit(':', 1)[-1] if ':' in bind else '8050',
+        'port': bind.rsplit(':', 1)[-1] if ':' in bind else '7070',
         'username': parser.get('API', 'USERNAME', fallback='').strip(),
         'password': parser.get('API', 'PASSWORD', fallback='').strip(),
         'verify': ca_file if ca_file and os.path.isfile(ca_file) else True,

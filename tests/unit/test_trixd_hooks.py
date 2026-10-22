@@ -27,7 +27,7 @@ import pytest
 
 INI = """[API]
 PROTOCOL = http
-BIND = 127.0.0.1:8050
+BIND = 127.0.0.1:7070
 USERNAME = luna
 PASSWORD = secret
 """

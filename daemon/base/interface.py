@@ -618,6 +618,7 @@ class Interface():
                     'ipaddress.dhcp',
                     'nodeinterface.macaddress',
                     'network.name as network',
+                    'nodeinterface.mtu',
                     'nodeinterface.vlanid',
                     'nodeinterface.vlan_parent',
                     'nodeinterface.bond_mode',
@@ -637,7 +638,7 @@ class Interface():
                 my_interface = []
                 for interface in node_interfaces:
                     interface['dhcp'] = Helper().make_bool(interface['dhcp'])
-                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
+                    for item in ['mtu','options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
                         if not interface[item]:
                             del interface[item]
                     if 'vlan_parent' in interface and 'vlanid' not in interface:
@@ -756,6 +757,7 @@ class Interface():
                     [
                         'groupinterface.interface',
                         'network.name as network',
+                        'groupinterface.mtu',
                         'groupinterface.vlanid',
                         'groupinterface.vlan_parent',
                         'groupinterface.bond_mode',
@@ -770,7 +772,7 @@ class Interface():
                 if group_interface:
                     group_interfaces = []
                     for interface in group_interface:
-                        for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                        for item in ['mtu','options','vlanid','vlan_parent','bond_mode','bond_slaves']:
                             if not interface[item]:
                                 del interface[item]
                         interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
@@ -920,6 +922,7 @@ class Interface():
                 [
                     'groupinterface.interface',
                     'network.name as network',
+                    'groupinterface.mtu',
                     'groupinterface.vlanid',
                     'groupinterface.vlan_parent',
                     'groupinterface.bond_mode',
@@ -934,7 +937,7 @@ class Interface():
             if grp_interfaces:
                 my_interface = []
                 for interface in grp_interfaces:
-                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                    for item in ['mtu','options','vlanid','vlan_parent','bond_mode','bond_slaves']:
                         if not interface[item]:
                             del interface[item]
                     interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False

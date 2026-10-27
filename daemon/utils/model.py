@@ -33,6 +33,7 @@ __status__      = 'Development'
 from utils.log import Log
 from utils.helper import Helper
 from utils.database import Database
+from utils.access import Access
 
 
 class Model():
@@ -57,6 +58,7 @@ class Model():
             all_records = Database().get_record(table=table, where=f"name = '{name}'")
         else:
             all_records = Database().get_record(table=table)
+        all_records = Access().visible(table, all_records)
         if all_records:
             if new_table:
                 config_table = new_table
@@ -100,17 +102,22 @@ class Model():
             )
             where = f"{table}id ='{record_id}'"
             get_record_node = Database().get_record(select=['name'], table='node', where=where)
+            # None is a failed query, logged by the database layer; an empty list is no member
+            if get_group_node is None or get_record_node is None:
+                self.logger.error(f'member listing of {table_cap} {name} could not be read')
+                return False, f'Internal error: {table_cap} {name} members could not be read'
             list_nodes = get_group_node + get_record_node
             if list_nodes:
                 for node in list_nodes:
                     nodes.append(node['name'])
+                nodes = Access().visible_names('node', nodes)
             if nodes:
                 response['config'][table][name]['members'] = nodes
                 self.logger.debug(f'Provided all {table_cap} members for nodes {nodes}.')
                 status=True
             else:
-                self.logger.error(f'{table_cap} {name} is not have any member node.')
-                response = f'{table_cap} {name} is not have any member node'
+                self.logger.error(f'{table_cap} {name} has no member node.')
+                response = f'{table_cap} {name} has no member node'
                 status=False
         else:
             self.logger.error(f'{table_cap} {name} is not available.')
@@ -212,7 +219,7 @@ class Model():
             column_check = Helper().compare_list(data, columns)
             if column_check:
                 row = Helper().make_rows(data)
-                Database().insert(table, row)
+                Database().insert(table, Access().created_row(table, row))
                 self.logger.info(f'{name} successfully added in {table}')
                 response = f'{name} successfully added in {table}'
                 status=True
@@ -270,13 +277,11 @@ class Model():
         response = {}
         status=False
         data = request_data['config'][table][name]
-        new_record = new_name
-        if new_name in request_data['config'][table][name]:
-            data['name'] = data[new_name]
-            new_record = data[new_name]
-            del data[new_name]
-        else:
-            data['name'] = name
+        if not data.get(new_name):
+            return False, f'Invalid request: a new name is required to clone {name}'
+        data['name'] = data[new_name]
+        new_record = data[new_name]
+        del data[new_name]
         record = Database().get_record(table=table, where=f"name = '{name}'")
         if record:
             where = f"name = '{new_record}'"
@@ -294,7 +299,8 @@ class Model():
             column_check = Helper().compare_list(data, columns)
             row = Helper().make_rows(data)
             if column_check:
-                Database().insert(table, row)
+                if not Database().insert(table, Access().created_row(table, row)):
+                    return False, f'Internal error: {name} could not be cloned as {new_record}'
                 response = f'{name} cloned as {new_record} successfully'
                 status=True
             else:

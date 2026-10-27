@@ -60,6 +60,8 @@ RETRY_DELAY = f'{RETRY_SECONDS}s'
 # where an install stops. anything else under install. is a step still in flight, and
 # these two stay on the record long after the install finished
 INSTALL_DONE = ('install.success', 'install.booted')
+# where an install stops without an OS to deliver to: parked, or the disks erased
+INSTALL_STOPPED = ('install.degraded', 'install.refused', 'install.fatal', 'install.sanitized')
 # the mother wakes every five seconds; this many passes puts a reconcile sweep roughly
 # every five minutes, which is often enough for a node that has just come back and rare
 # enough that it is never the thing doing the work
@@ -126,6 +128,8 @@ class ProfileSync():
         if not state or not state[0]['state']:
             return None
         current = str(state[0]['state'])
+        if current in INSTALL_STOPPED:
+            return f'it has no installed OS ({current})'
         if current.startswith('install.') and current not in INSTALL_DONE:
             return f'it is installing ({current})'
         return None

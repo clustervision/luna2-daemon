@@ -1,14 +1,11 @@
-# DETECTION / Switch port node detection PLUGIN
+# DETECTION PLUGIN - which node is this booting MAC?
 #
-#        two defined methods are mandatory:
-#        - find   returns true,switch,port on success,  false on no success
+#        switchport.py, two defined methods are mandatory:
+#        - find   receives a MAC, returns True,switch,port on success, False on no success
 #        - scan   runs through a dict of switches. collects ports+macs
-
 #
-# switchport is the default plugin for node detection
-# plugin/detection/switchport.py
-
-# ---- other plugins:
-
-# cloud is a provided plugin to discover a cloud booing node
-# plugin/detection/cloud.py
+#        cloud.py, one defined method is mandatory:
+#        - find   receives a MAC, returns the cloud name
+#
+# Both are loaded by name, plugins/boot/detection/switchport.py and
+# plugins/boot/detection/cloud.py. There is no search path and no default.

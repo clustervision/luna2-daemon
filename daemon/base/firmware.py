@@ -50,6 +50,7 @@ from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED, RESTORE_PEN
 from utils.firmware_push import FirmwarePush
 from utils.status import Status
 from common.constant import CONSTANT
+from utils.access import Access
 from base.authentication import TOKEN_GATED_EXTENSIONS
 
 
@@ -71,7 +72,7 @@ class Firmware():
         """
         This method will return every entry in the catalogue.
         """
-        records = Database().get_record(table=self.table, where=None)
+        records = Access().visible(self.table, Database().get_record(table=self.table, where=None))
         if not records:
             return False, 'No firmware catalogue entry is available'
         response = {'config': {self.table: {}}}
@@ -84,7 +85,7 @@ class Firmware():
         """
         This method will return one catalogue entry.
         """
-        record = Database().get_record(table=self.table, where=f"name = '{name}'")
+        record = Access().visible(self.table, Database().get_record(table=self.table, where=f"name = '{name}'"))
         if not record:
             return False, f'{self.table_cap} {name} is not available'
         return True, {'config': {self.table: {name: self.detail(record[0])}}}
@@ -121,16 +122,25 @@ class Firmware():
             return False, f'Invalid request: {reason}'
         record = Database().get_record(table=self.table, where=f"name = '{name}'")
         if not record:
+            if 'newfirmwarename' in data:
+                return False, f'{self.table_cap} {name} not present in database for rename'
             missing = [field for field in ('manufacturer', 'model', 'component', 'version')
                        if not data.get(field)]
             if missing:
                 return False, (f'Invalid request: a new {self.table} entry needs '
                                f'{", ".join(missing)}')
             row = Helper().make_rows(data)
-            if not Database().insert(self.table, row):
+            if not Database().insert(self.table, Access().created_row(self.table, row)):
                 return False, f'Internal error: {self.table_cap} {name} create failed'
             return True, f'{self.table_cap} {name} created' + self.staging_note(data.get('imagefile'))
         del data['name']
+        if 'newfirmwarename' in data:
+            newname = data.pop('newfirmwarename')
+            if Database().get_record(table=self.table, where=f"name = '{newname}'"):
+                return False, f'Invalid request: {self.table_cap} {newname} already exists'
+            data['name'] = newname
+        if not Helper().compare_list(data, Database().get_columns(self.table)):
+            return False, 'Invalid request: Columns are incorrect'
         if not data:
             return False, 'Nothing to update'
         Database().update(self.table, Helper().make_rows(data),
@@ -150,7 +160,7 @@ class Firmware():
         if not imagefile:
             return ''
         _, port = FirmwarePush().file_port()
-        return (f'; stage {imagefile} in {CONSTANT["FILES"]["IMAGE_FILES"]} on the active '
+        return (f'; note: stage {imagefile} in {CONSTANT["FILES"]["IMAGE_FILES"]} on the active '
                 f'controller. BMCs fetch it from the controller over port {port}, so the '
                 'interface facing the BMC network must be in the firewall\'s trusted zone')
 
@@ -281,6 +291,12 @@ class Firmware():
         if not wanted:
             return False, ('Nothing to update: '
                            + '; '.join(answer['summary']))
+        # applying firmware is the act of whoever controls the catalogue entry, not of
+        # whoever may read it: w on every entry this push would apply
+        for entry in sorted({item['entry'] for plan in wanted.values() for item in plan['differs']}):
+            verdict = Access().require('firmwarecatalog', entry, 'w')
+            if verdict[0] is not True:
+                return False, verdict[1]
         names = "', '".join(sorted(wanted))
         nodeids = [record['id'] for record in Database().get_record(
             table='node', where=f"name IN ('{names}')") or []]
@@ -337,6 +353,8 @@ class Firmware():
         latest, summary = {}, {}
         # a restore is owed by the node, not by the request that left it owed: a
         # newer request must not push it out of view before it has settled
+        readable = set(Access().visible_names('node', {record['nodename'] for record in records}))
+        records = [record for record in records if record['nodename'] in readable]
         owed = {record['nodename'] for record in records
                 if record['restore'] == RESTORE_PENDING}
         for record in records:

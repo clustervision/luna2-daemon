@@ -1,0 +1,15 @@
+# MONITOR HOOK - run when a node reports a state
+#
+#        none of the methods is mandatory. When a node reports a state, the
+#        state's dots and spaces become underscores and a method of that name
+#        is called if the class defines one, with name=<node>:
+#
+#        install.prescript -> install_prescript(name)
+#        install.success   -> install_success(name)
+#
+#        each returns <True|False>,"message"
+#
+#        The methods are called on the class, not on an instance: __init__ never
+#        runs, so keep state out of it.
+#
+# Loaded by name, plugins/hooks/monitor/node.py. There is no search path.

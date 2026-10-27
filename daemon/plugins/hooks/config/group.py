@@ -29,25 +29,18 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-#import os
-#import pwd
-#import sys
-import subprocess
 from utils.log import Log
-#from utils.helper import Helper
 
+# The trix-daemon beside this controller, where there is one; absent is normal.
 try:
-    from trinityx_config_slurm import Generate as Slurm
-    from trinityx_config_genders import Generate
-    use_new_config_method = True
-except Exception as exp:
-    use_new_config_method = False
+    from plugins.addons.trixd import notify as trixd_notify
+except Exception:
+    trixd_notify = None
 
 class Plugin():
     """
     Class for running custom scripts during group create/update actions
     """
-    SCRIPTS_PATH = "/trinity/local/sbin"
 
     def __init__(self):
         """
@@ -62,95 +55,45 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def postcreate(self, name=None, nodes=[]):
-        processes = []
-        return_code = 0
-        if not nodes: return
-        if not use_new_config_method:
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "create", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "group", "create", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "create", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+    def tell_trixd(self, event=None, payload=None):
+        """
+        Hand a change to the trix-daemon, which decides for itself what to do with it.
+        """
+        if trixd_notify is None:
+            return False
+        return trixd_notify(event, payload)
 
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
-            return True, "Config files written"
-        else:
-            return False, "Error writing config files"
+    # ---------------------------------------------------------------------------
+
+    def postcreate(self, name=None, nodes=[]):
+        told = self.tell_trixd('luna.group.update', {'name': name, 'nodes': nodes or []})
+        if not nodes:
+            return True, "No nodes in this group"
+        return True, "trixd notified" if told else "trixd not notified"
 
     # ---------------------------------------------------------------------------
 
     def postupdate(self, name=None, nodes=[]):
-        processes = []
-        return_code = 0
-        if not nodes: return
-        if not use_new_config_method:
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "update", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "group", "update", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "group", "update", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
-            return True, "Config files written"
-        else:
-            return False, "Error writing config files"
+        told = self.tell_trixd('luna.group.update', {'name': name, 'nodes': nodes or []})
+        if not nodes:
+            return True, "No nodes in this group"
+        return True, "trixd notified" if told else "trixd not notified"
 
 
     # ---------------------------------------------------------------------------
 
     def rename(self, name=None, newname=None):
-        processes = []
-        return_code = 0
-        if not use_new_config_method:
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
-            return True, "Config files written"
-        else:
-            return False, "Error writing config files"
+        # The old and the new name together, which nothing can recover afterwards.
+        told = self.tell_trixd('luna.group.update',
+                               {'name': name, 'newgroupname': newname})
+        return True, "trixd notified" if told else "trixd not notified"
 
 
     # ---------------------------------------------------------------------------
 
     def delete(self, name=None):
-        processes = []
-        return_code = 0
-        if not use_new_config_method:
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
-            return True, "Config files written"
-        else:
-            return False, "Error writing config files"
+        told = self.tell_trixd('luna.group.delete', {'name': name})
+        return True, "trixd notified" if told else "trixd not notified"
 
 
     # ---------------------------------------------------------------------------
@@ -161,6 +104,8 @@ class Plugin():
         This function is called through queue and will typically be called only after a massive
         node operation like cloning a big number of groups.
         """
-        return True, "No config change required"
+        # One call for the whole set, never one per group: trixd makes a task per change.
+        told = self.tell_trixd('luna.group.bulk', {'fullset': fullset})
+        return True, "trixd notified" if told else "trixd not notified"
 
     # ---------------------------------------------------------------------------

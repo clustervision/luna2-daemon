@@ -85,9 +85,13 @@ HPONCFG = """
         if [[ "${HPE_HPONCFG_READY}" == "1" ]]
         then
             echo "Luna2: enabling IPMI/DCMI over LAN on iLO"
+            # RIBCL is XML: markup characters in a credential have to be entities,
+            # or iLO rejects the document and IPMI over LAN stays off
+            HPE_XML_USERNAME="$(printf '%s' "${USERNAME}" | sed 's/&/\\&amp;/g; s/</\\&lt;/g; s/>/\\&gt;/g; s/"/\\&quot;/g')"
+            HPE_XML_PASSWORD="$(printf '%s' "${PASSWORD}" | sed 's/&/\\&amp;/g; s/</\\&lt;/g; s/>/\\&gt;/g; s/"/\\&quot;/g')"
             cat > "${HPE_RIBCL_SET}" <<EOF_LUNA_ILO
 <RIBCL VERSION="2.0">
-  <LOGIN USER_LOGIN="${USERNAME}" PASSWORD="${PASSWORD}">
+  <LOGIN USER_LOGIN="${HPE_XML_USERNAME}" PASSWORD="${HPE_XML_PASSWORD}">
     <RIB_INFO MODE="write">
       <MOD_GLOBAL_SETTINGS>
         <IPMI_DCMI_OVER_LAN_ENABLED VALUE="Y"/>

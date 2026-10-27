@@ -1,0 +1,55 @@
+# CONFIG HOOKS - run after the configuration changed
+#
+#        node.py, called after a node is created, changed, cloned or removed:
+#        - postcreate(name, group)
+#        - postupdate(name, group)
+#        - rename(name, newname)
+#        - delete(name)
+#        - bulk(fullset)       the whole node and group set, from the housekeeper
+#
+#        group.py, the same for a group, with the member nodes instead of a group:
+#        - postcreate(name, nodes)
+#        - postupdate(name, nodes)
+#        - rename(name, newname)
+#        - delete(name)
+#        - bulk(fullset)
+#
+#        interface.py, called after a node interface is created, changed, renamed or
+#        removed. The node is what changed - its hostname and its scrape address are
+#        derived from the interface it provisions over - so the node is what travels:
+#        - postcreate(name, interface, macaddress, ipaddress, ipaddress_ipv6, network,
+#                     networktype, zone)
+#        - postupdate(name, interface, macaddress, ipaddress, ipaddress_ipv6, network,
+#                     networktype, zone)
+#                              networktype and zone are the network's, and are carried
+#                              only where the change left the interface on the network it
+#                              was already on
+#        - rename(name, interface, newinterfacename)
+#                              interface is the name it had; a rename moves no address
+#        - delete(name, interface)
+#        - macaddressupdate(name, interface, macaddress)
+#                              where the macaddress moved and the addressing did not - a
+#                              write that moves an address carries the macaddress in its
+#                              own postupdate, because exactly one of these fires per
+#                              interface. An extension point: shipped empty, because
+#                              nothing downstream reads a macaddress
+#                              BEWARE that a node writes its macaddress as it boots, and
+#                              that write is journalled, so whatever is put in here is
+#                              paid once per node per boot on both controllers. Anything
+#                              slow or outward-facing there costs a cluster boot
+#        no bulk: a whole-set operation is the node and group set, which node.py and
+#        group.py already carry
+#        BEWARE that only the interface a node provisions over has an address a controller
+#        can reach - an IPoIB address, for one, is not - so an address from any other
+#        interface must not be scraped. The node document from the API carries the node's
+#        resolved provision_interface: compare it with the interface handed to you here
+#
+#        dns.py, called while the DNS zones are rendered:
+#        - nsupdate(host, ipaddress, zone, ttl, key_name, key_secret, key_hmac)
+#                              for a node that takes its address from a DHCP pool
+#        - notify(master, slaves, key)
+#
+#        each returns <True|False>,"message"
+#
+# Loaded by name, plugins/hooks/config/node.py, group.py, interface.py and dns.py.
+# No search path.

@@ -53,6 +53,7 @@ from utils.status import Status
 from utils.helper import Helper
 from utils.bios import Bios as BiosPlanner, DEFAULT_EXCLUDE
 from utils.redfish import Redfish, RedfishAccess
+from utils.access import Access
 from base.nodeinventory import NodeInventory
 
 
@@ -115,7 +116,7 @@ class Bios():
         """
         This method will return all the BIOS configurations.
         """
-        records = Database().get_record(table=self.table, where=None)
+        records = Access().visible(self.table, Database().get_record(table=self.table, where=None))
         if not records:
             return False, 'No BIOS configuration is available'
         response = {'config': {self.table: {}}}
@@ -128,11 +129,12 @@ class Bios():
         """
         This method will return one BIOS configuration, with its attributes.
         """
-        record = Database().get_record(table=self.table, where=f"name = '{name}'")
+        record = Access().visible(self.table, Database().get_record(table=self.table, where=f"name = '{name}'"))
         if not record:
             return False, f'BIOS configuration {name} is not available'
         detail = self.detail(record[0])
         detail['attributes'] = self.stored_attributes(record[0])
+        detail['labels'] = self.stored_attributes(record[0], column='labels')
         return True, {'config': {self.table: {name: detail}}}
 
     def detail(self, record=None):
@@ -161,26 +163,30 @@ class Bios():
             # would leave it showing something no other entity shows
             'grab_exclude': record['grab_exclude'],
             'updated': record['updated'],
-            'comment': record['comment']
+            'comment': record['comment'],
+            'owners': record['owners'],
+            'usergroups': record['usergroups'],
+            'access': record['access']
         }
 
 
-    def stored_attributes(self, record=None):
+    def stored_attributes(self, record=None, column='attributes'):
         """
-        This method returns a configuration's attributes as a dict.
+        This method returns a configuration's attributes as a dict, or its
+        labels with column='labels'.
 
         A row whose attributes will not parse is reported empty and said out loud
         rather than raising: the configuration is still there to be looked at and
         repaired, and an exception here would take out the list of every other
         configuration alongside it.
         """
-        raw = self.decode((record or {}).get('attributes'))
+        raw = self.decode((record or {}).get(column))
         if not raw:
             return {}
         try:
             return loads(raw)
         except ValueError:
-            self.logger.error(f"BIOS configuration {record.get('name')} has unreadable attributes")
+            self.logger.error(f"BIOS configuration {record.get('name')} has unreadable {column}")
             return {}
 
 
@@ -321,7 +327,9 @@ class Bios():
         row['updated'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         if 'comment' in data:
             row['comment'] = data['comment']
-        Database().insert(self.table, Helper().make_rows(row))
+        # a department's clone carries the creator's columns in the body; the source's otherwise
+        row.update({key: data[key] for key in ('owners', 'usergroups', 'access') if key in data})
+        Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(row)))
         return True, f'BIOS configuration {name} cloned to {newname}'
 
 
@@ -437,6 +445,7 @@ class Bios():
                            f'to another; {len(dropped)} attribute(s) were dropped')
         return True, {'config': {self.table: {name: {
             'attributes': kept,
+            'labels': self.planner.labels(registry=registry, names=kept),
             'dropped': dropped,
             'manufacturer': system.get('Manufacturer'),
             'model': system.get('Model'),
@@ -590,6 +599,7 @@ class Bios():
             'biosversion': data.get('biosversion'),
             'nodeid': node[0]['id'] if node else None,
             'attributes': self.encode(dumps(data.get('attributes') or {})),
+            'labels': self.encode(dumps(data.get('labels') or {})),
             'updated': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         }
         record = Database().get_record(table=self.table, where=f"name = '{name}'")
@@ -601,7 +611,7 @@ class Bios():
             # than an empty one, so it is visible and editable from the start -
             # an administrator who cannot see what was excluded cannot judge it
             row['grab_exclude'] = self.encode(', '.join(DEFAULT_EXCLUDE))
-            Database().insert(self.table, Helper().make_rows(row))
+            Database().insert(self.table, Access().created_row(self.table, Helper().make_rows(row)))
         dropped = data.get('dropped') or {}
         kept = len(data.get('attributes') or {})
         return True, (f"BIOS configuration {name} grabbed from {data.get('node')}: "
@@ -723,6 +733,9 @@ class Bios():
         else:
             nodes = Database().get_record(
                 table='node', where=f"name = '{name}'" if name else None)
+        if nodes:
+            readable = set(Access().visible_names('node', [node['name'] for node in nodes]))
+            nodes = [node for node in nodes if node['name'] in readable]
         if not nodes:
             if name:
                 return False, f'Node {name} is not available'

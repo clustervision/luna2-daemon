@@ -253,7 +253,8 @@ def test_database_layout_shape():
     sys.path.insert(0, os.path.join(DAEMON, 'common'))
     import database_layout as dl
     route_cols = [c['column'] for c in dl.DATABASE_LAYOUT_route]
-    assert route_cols == ['id', 'name', 'destination', 'gateway', 'metric', 'device', 'comment']
+    assert route_cols == ['id', 'name', 'destination', 'gateway', 'metric', 'device', 'comment',
+                          'owners', 'usergroups', 'access']
     name_meta = [c for c in dl.DATABASE_LAYOUT_route if c['column'] == 'name'][0]
     assert name_meta.get('key') == 'UNIQUE'
     map_cols = [c['column'] for c in dl.DATABASE_LAYOUT_routemap]

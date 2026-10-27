@@ -1,1 +1,8 @@
-# custom plugins can be placed here with a 'def Export' to export any arbitrary data
+# EXPORT PLUGIN - a data set the export API hands out
+#
+#        one defined method is mandatory:
+#        - Export(args)   returns <True|False>,<data>
+#
+# Loaded by the name the API was asked for, e.g. plugins/export/prometheus.py,
+# and only when that name is listed in ALLOWED_EXPORTERS under [PLUGINS] in
+# luna.ini. There is no search path and no default.

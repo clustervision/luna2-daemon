@@ -143,9 +143,8 @@ class PluginManager(object):
             if module_name:
                 yield module_name
         if levelone in subtree:
-            if leveltwo and leveltwo in subtree[levelone]:
-                plugin = leveltwo.rsplit('.', 1)
-                module_name = emit(f'plugins.{root_module}.{levelone}.{plugin[0]}')
+            if leveltwo and f'{leveltwo}.py' in subtree[levelone]:
+                module_name = emit(f'plugins.{root_module}.{levelone}.{leveltwo}')
                 if module_name:
                     yield module_name
             if 'default.py' in subtree[levelone]:

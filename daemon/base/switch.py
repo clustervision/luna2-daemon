@@ -35,6 +35,8 @@ from utils.helper import Helper
 from utils.config import Config
 from utils.service import Service
 from utils.model import Model
+from utils.access import Access
+from common.validate_body import body_checked
 
 class Switch():
     """
@@ -120,6 +122,7 @@ class Switch():
             {'column': 'mgmt', 'value': 1}])
 
 
+    @body_checked('switch')
     def update_switch(self, name=None, request_data=None):
         """
         This method will create or update a switch.
@@ -152,6 +155,8 @@ class Switch():
                     del data['newswitchname']
                 update = True
             else:
+                if 'newswitchname' in data:
+                    return False, f'Switch {name} not present in database for rename'
                 create = True
 
             for key, value in items.items():
@@ -193,7 +198,7 @@ class Switch():
                 row = Helper().make_rows(data)
                 if column_check:
                     if create:
-                        switchid = Database().insert(self.table, row)
+                        switchid = Database().insert(self.table, Access().created_row(self.table, row))
                         response = f'Switch {name} created successfully'
                         status=True
                     if update:
@@ -240,6 +245,7 @@ class Switch():
         return status, response
 
 
+    @body_checked('switch')
     def clone_switch(self, name=None, request_data=None):
         """
         This method will clone a switch.
@@ -282,7 +288,7 @@ class Switch():
                         if key not in data:
                             data[key] = switch[0][key]
                     row = Helper().make_rows(data)
-                    switch_id = Database().insert(self.table, row)
+                    switch_id = Database().insert(self.table, Access().created_row(self.table, row))
                     if not switch_id:
                         status=False
                         return status, 'Internal error: Switch not cloned due to clashing config'

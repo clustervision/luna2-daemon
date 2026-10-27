@@ -14,6 +14,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>
 
+# ==========================================================================
+# DEPRECATED - the trix-daemon (trixd) does this now.
+#
+# trixd's directory plugin drives the same obol against the same 389ds,
+# through /api/v1/directory/users and /api/v1/directory/groups.
+#
+# Both are live for the whole transition period and act on the same directory,
+# so either may be used; anything new should call trixd. This file is removed
+# under TRIX-2278, and not before November 2027.
+# ==========================================================================
+
 import subprocess
 import json
 import sys

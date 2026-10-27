@@ -40,9 +40,12 @@ from utils.log import Log
 from utils.config import Config
 from utils.queue import Queue
 from utils.helper import Helper
+from utils.installmode import group_warning
 from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
+from utils.access import Access
+from common.validate_body import body_checked
 
 # The fields a group can hold in its own right rather than inherit, and which
 # therefore mean the group deviates from what it would otherwise be given.
@@ -85,7 +88,7 @@ class Group():
         bmcsetups = Database().get_record(table='bmcsetup')
         osimage = Helper().convert_list_to_dict(osimages, 'id')
         bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
-        groups = Database().get_record(table='group', orderby='name')
+        groups = Access().visible('group', Database().get_record(table='group', orderby='name'))
         if groups:
             response = {'config': {'group': {} }}
             for group in groups:
@@ -187,7 +190,7 @@ class Group():
         b64items = {'prescript': '', 'partscript': '', 'postscript': '',
                     'disklayout': '', 'osimage_filter': '', 'mounts': ''}
         cluster = Database().get_record(table='cluster')
-        groups = Database().get_record(table='group', where=f"name = '{name}'")
+        groups = Access().visible('group', Database().get_record(table='group', where=f"name = '{name}'"))
         if groups:
             response = {'config': {'group': {} }}
             group = groups[0]
@@ -350,11 +353,12 @@ class Group():
                 nodes = []
                 for node in node_list:
                     nodes.append(node['name'])
+                nodes = Access().visible_names('node', nodes)
                 response['config']['group'][name]['members'] = nodes
                 status=True
             else:
-                self.logger.error(f'Group {name} is not have any member node.')
-                response = f'Group {name} is not have any member node'
+                self.logger.error(f'Group {name} has no member node.')
+                response = f'Group {name} has no member node'
                 status=False
         else:
             self.logger.error(f'Group {name} is not available.')
@@ -481,6 +485,7 @@ class Group():
             message = f"Profile {profile} assigned to group {name}." if assign else f"Profile {profile} removed from group {name}."
         return status, message
 
+    @body_checked('group', lists=('interfaces',))
     def update_group(self, name=None, request_data=None):
         """
         This method will create or update a group.
@@ -500,6 +505,9 @@ class Group():
         create, update = False, False
         if request_data:
             data = request_data['config']['group'][name]
+            for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
+                if item in data:
+                    data[item] = Helper().make_text(data[item])
             # Validate a disklayout the operator is SETTING on the group, at store
             # time, before it can cascade to any node (the daemon half of the
             # two-location check; the node's Go validator is the other). Sound
@@ -615,6 +623,16 @@ class Group():
             if 'osimage' in data:
                 data['osimagetagid'] = "default"
 
+            if create:
+                mode = data.get('install_mode')
+                if not mode:
+                    cluster = Database().get_record(table='cluster')
+                    mode = cluster[0]['install_mode'] if cluster else None
+                if mode and mode != 'legacy':
+                    # the diskless part/post are the classic installer's; lpart mounts the root
+                    # and writes fstab itself, and runs whatever a group carries before it
+                    items['partscript'], items['postscript'] = '', ''
+
             for key, value in items.items():
                 if key in data:
                     data[key] = data[key]
@@ -674,6 +692,7 @@ class Group():
                 else:
                     data['scripts'] = None
 
+            has_routes = 'routes' in data
             group_routes = data.pop('routes', None)
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)
@@ -681,17 +700,18 @@ class Group():
                 if update:
                     where = [{"column": "id", "value": group_id}]
                     row = Helper().make_rows(data)
-                    if Database().update('group', row, where):
-                        response = f'Group {name} updated successfully'
+                    # a change of the routes alone leaves no column to write
+                    if not row or Database().update('group', row, where):
+                        response = f'Group {name} updated successfully' + group_warning(group[0], data)
                         status=True
                 elif create:
                     data['name'] = name
                     row = Helper().make_rows(data)
-                    group_id = Database().insert('group', row)
+                    group_id = Database().insert('group', Access().created_row('group', row))
                     if group_id:
                         response = f'Group {name} created successfully'
                         status=True
-                if status and group_routes is not None:
+                if status and has_routes:
                     Route().reconcile('group', group_id, group_routes)
                 if status and new_interface:
                     for ifx in new_interface:
@@ -798,6 +818,7 @@ class Group():
         return status, response
 
 
+    @body_checked('group', lists=('interfaces',))
     def clone_group(self, name=None, request_data=None):
         """
         This method will clone a group.
@@ -860,7 +881,7 @@ class Group():
             column_check = Helper().compare_list(data, group_columns)
             if column_check:
                 row = Helper().make_rows(data)
-                new_group_id = Database().insert('group', row)
+                new_group_id = Database().insert('group', Access().created_row('group', row))
                 if not new_group_id:
                     return False, f'Internal error: Group {newgroupname} is not created due to possible property clash'
                 # response = f'Group {name} created successfully'

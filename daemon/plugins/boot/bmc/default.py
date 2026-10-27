@@ -230,9 +230,9 @@ class Plugin():
                 ;;
         esac
         echo "Luna2: configuring BMC user id ${USERID} name ${USERNAME} on management channel ${MGMTCHANNEL}"
-        ipmitool user set name ${USERID} ${USERNAME}
+        ipmitool user set name ${USERID} "${USERNAME}"
         echo "Luna2: setting BMC password for user id ${USERID} (value hidden)"
-        ipmitool user set password ${USERID} ${PASSWORD}
+        ipmitool user set password ${USERID} "${PASSWORD}"
         echo "Luna2: enabling BMC channel access for user id ${USERID} on management channel ${MGMTCHANNEL}"
         ipmitool channel setaccess ${MGMTCHANNEL} ${USERID} link=on ipmi=on callin=on privilege=4
         echo "Luna2: enabling BMC user id ${USERID}"

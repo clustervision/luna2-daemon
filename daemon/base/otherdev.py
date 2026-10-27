@@ -35,6 +35,8 @@ from utils.helper import Helper
 from utils.config import Config
 from utils.service import Service
 from utils.model import Model
+from utils.access import Access
+from common.validate_body import body_checked
 
 
 class OtherDev():
@@ -77,6 +79,7 @@ class OtherDev():
         return status, response
 
 
+    @body_checked('otherdev')
     def update_otherdev(self, name=None, request_data=None):
         """
         This method will create or update a other device.
@@ -99,6 +102,8 @@ class OtherDev():
                     del data['newotherdevname']
                 update = True
             else:
+                if 'newotherdevname' in data:
+                    return False, f'{self.table_cap} {name} not present in database for rename'
                 create = True
             device_columns = Database().get_columns(self.table)
             ipaddress, network = None, None
@@ -109,14 +114,14 @@ class OtherDev():
                 network = data['network']
                 del data['network']
             if data.get('macaddress'):
-                data['macaddress'] = data['macaddress'].lower()
+                data['macaddress'] = Helper().make_text(data['macaddress']).lower()
             column_check = Helper().compare_list(data, device_columns)
             data = Helper().check_ip_exist(data)
             if data:
                 row = Helper().make_rows(data)
                 if column_check:
                     if create:
-                        device_id = Database().insert(self.table, row)
+                        device_id = Database().insert(self.table, Access().created_row(self.table, row))
                         response = f'Device {name} created successfully'
                         status=True
                     if update:
@@ -208,7 +213,7 @@ class OtherDev():
                         data['macaddress'] = data['macaddress'].lower()
 
                     row = Helper().make_rows(data)
-                    device_id = Database().insert(self.table, row)
+                    device_id = Database().insert(self.table, Access().created_row(self.table, row))
                     if not device_id:
                         status=False
                         return status, 'Internal error: Device not cloned due to clashing config'

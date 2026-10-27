@@ -74,6 +74,9 @@ from base.dns import DNS
 from base.secret import Secret
 from base.profile import Profile
 from base.osuser import OsUser
+from base.user import User
+from base.usergroup import UserGroup
+from utils.access import Access
 from base.monitor import Monitor
 from base.cloud import Cloud
 from base.plugin_import import Import
@@ -261,7 +264,8 @@ class Journal():
                                     # something went wrong. we have to inform the remote host
                                     if not request_id:
                                         request_id=str(time()) + str(randint(1001, 9999)) + str(getpid())
-                                    Status().add_message(request_id, "luna", message)
+                                    Status().add_message(request_id, "luna", message,
+                                                         status=Helper().get_access_code(status_, message))
                                     Status().add_message(request_id, "luna", "EOF")
                                         
                                 if record['misc'] and request_id:

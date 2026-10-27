@@ -72,6 +72,9 @@ from routes.config_osgroup import osgroup_blueprint
 from routes.config_osimage import osimage_blueprint
 from routes.config_hash import hash_blueprint
 from routes.config_osuser import osuser_blueprint
+from routes.config_user import user_blueprint
+from routes.config_usergroup import usergroup_blueprint
+from routes.config_access import access_blueprint
 from routes.config_otherdev import otherdev_blueprint
 from routes.config_secrets import secrets_blueprint
 from routes.config_profiles import profiles_blueprint
@@ -379,6 +382,9 @@ daemon.register_blueprint(node_inventory_blueprint)
 daemon.register_blueprint(osgroup_blueprint)
 daemon.register_blueprint(osimage_blueprint)
 daemon.register_blueprint(osuser_blueprint)
+daemon.register_blueprint(user_blueprint)
+daemon.register_blueprint(usergroup_blueprint)
+daemon.register_blueprint(access_blueprint)
 daemon.register_blueprint(otherdev_blueprint)
 daemon.register_blueprint(secrets_blueprint)
 daemon.register_blueprint(profiles_blueprint)
@@ -467,7 +473,11 @@ def page_not_found(error):
 @daemon.errorhandler(500)
 def server_error(error):
     """ Abort All 500"""
+    exception = getattr(error, 'original_exception', None)
     error = {'message': 'Server Error'}
+    if exception is not None:
+        # Sent whole on purpose: the CLI and GUI decide what of it to show.
+        error['detail'] = ''.join(traceback.format_exception(type(exception), exception, exception.__traceback__))
     return json.dumps(error), 500
 
 

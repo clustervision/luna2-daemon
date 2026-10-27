@@ -518,9 +518,8 @@ class Database():
                             values.append('datetime("'+str(each["value"])+'")')
                 else:
                     if each["value"] is not None:
-                        if isinstance(each["value"], str):
-                            each["value"] = each["value"].replace("'",'"')
-                        values.append("'"+str(each["value"])+"'")
+                        # after str(): a list or dict carries quotes of its own
+                        values.append("'" + str(each["value"]).replace("'", '"') + "'")
                     else:
                         values.append('NULL')
             where_keys = keys
@@ -619,9 +618,8 @@ class Database():
                             column = column + f" = datetime('{cols['value']}')"
                 else:
                     if cols['value'] is not None:
-                        if isinstance(cols["value"], str):
-                            cols["value"] = cols["value"].replace("'",'"')
-                        column = column + " = '" +str(cols['value']) +"'"
+                        # after str(): a list or dict carries quotes of its own
+                        column = column + " = '" + str(cols['value']).replace("'", '"') + "'"
                     else:
                         column = column + ' = NULL'
             columns.append(column)

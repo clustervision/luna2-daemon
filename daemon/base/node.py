@@ -40,11 +40,14 @@ from utils.config import Config
 from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
+from utils.installmode import node_warning
 from utils.monitor import Monitor
 from base.interface import Interface
 from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
+from utils.access import Access
+from common.validate_body import body_checked
 
 # The named things a node points at, and whether a supplied value may be empty.
 # True means: cannot be empty if supplied. False means: can only be empty or correct
@@ -81,7 +84,7 @@ class Node():
         # we collect all needed info from all tables at once and use dicts to collect data/info
         # A join is not really suitable as there are too many permutations in where the below
         # is way more efficient. -Antoine
-        nodes = Database().get_record(table='node', orderby='name')
+        nodes = Access().visible('node', Database().get_record(table='node', orderby='name'))
         groups = Database().get_record(table='group')
         osimages = Database().get_record(table='osimage')
         switches = Database().get_record(table='switch')
@@ -324,7 +327,7 @@ class Node():
         This method will return requested node in detailed format.
         """
         status = False
-        nodes = Database().get_record(table='node', where=f"name = '{name}'")
+        nodes = Access().visible('node', Database().get_record(table='node', where=f"name = '{name}'"))
         all_nodes = Database().get_record_join(
             [
                 'node.*',
@@ -357,7 +360,10 @@ class Node():
             f"node.name='{name}'"
         )
         if all_nodes and nodes:
+            # the join carries the stored ids; keep what visible() rendered
+            rendered = {key: nodes[0][key] for key in ('owners', 'usergroups', 'access')}
             nodes[0].update(all_nodes[0])
+            nodes[0].update(rendered)
         if nodes:
             node = nodes[0]
             response = {'config': {'node': {} }}
@@ -783,6 +789,7 @@ class Node():
             message = f"Profile {profile} assigned to node {name}." if assign else f"Profile {profile} removed from node {name}."
         return status, message
 
+    @body_checked('node', lists=('interfaces',))
     def update_node(self, name=None, request_data=None):
         """
         This method will return update requested node.
@@ -802,6 +809,9 @@ class Node():
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
+            for item in ['disklayout','mounts','scripts','roles','profiles','provision_method','provision_fallback']:
+                if item in data:
+                    data[item] = Helper().make_text(data[item])
             # Validate a disklayout the operator is SETTING here, at store time,
             # before it can reach a node. This is the daemon half of the
             # two-location check (the node's Go validator is the other): a sound
@@ -875,7 +885,7 @@ class Node():
                 data['profiles'] = Profile().to_profile_ids(data['profiles'].replace(' ', ','))
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
-                    if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
+                    if data[item]+'.py' not in boot_plugins['boot']['provision']:
                         return False, f'Invalid request: provisioning plugin {data[item]} does not exist'
             if 'ipxe_kernel' in data and data['ipxe_kernel']:
                 data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()
@@ -944,7 +954,7 @@ class Node():
                     osimagetagids = None
                     if 'osimageid' in data:
                         osimagetagids = Database().get_record(table='osimagetag', where=f"osimageid = '{data['osimageid']}' AND name = '{osimagetag}'")
-                    elif node and 'osimageid' in node[0]:
+                    elif node and node[0].get('osimageid'):
                         osimagetagids = Database().get_record(table='osimagetag', where=f"osimageid = '{node[0]['osimageid']}' AND name = '{osimagetag}'")
                     else:
                         # there is a race condition where someone changes the group AND sets a tag at the same time. ... who will do such a thing?? - Antoine
@@ -976,15 +986,17 @@ class Node():
                 else:
                     data['scripts'] = None
 
+            has_routes = 'routes' in data
             node_routes = data.pop('routes', None)
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)
             if columns_check:
                 if update:
-                    where = [{"column": "id", "value": nodeid}]
-                    row = Helper().make_rows(data)
-                    Database().update('node', row, where)
-                    response = f'Node {name} updated successfully'
+                    # an update of interfaces or routes alone has no node column to write
+                    if data:
+                        where = [{"column": "id", "value": nodeid}]
+                        Database().update('node', Helper().make_rows(data), where)
+                    response = f'Node {name} updated successfully' + node_warning(node[0], data)
                     status = True
                     if nodeid and 'groupid' in data and node and len(node)>0 and 'groupid' in node[0]:
                         Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'], oldgroupid=node[0]['groupid'])
@@ -995,14 +1007,14 @@ class Node():
                         return False, 'Invalid request: group name is required for new nodes'
                     data['name'] = name
                     row = Helper().make_rows(data)
-                    nodeid = Database().insert('node', row)
+                    nodeid = Database().insert('node', Access().created_row('node', row))
                     response = f'Node {name} created successfully'
                     status = True
 
                     if nodeid and 'groupid' in data and data['groupid']:
                         Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
 
-                if node_routes is not None:
+                if has_routes:
                     Route().reconcile('node', nodeid, node_routes)
 
                 if interfaces:
@@ -1055,6 +1067,7 @@ class Node():
         return status, response
 
 
+    @body_checked('node', lists=('interfaces',))
     def clone_node(self, name=None, request_data=None):
         """This method will clone a node."""
         data = {}
@@ -1117,7 +1130,7 @@ class Node():
             if columns_check:
                 new_nodeid=None
                 row = Helper().make_rows(data)
-                new_nodeid = Database().insert('node', row)
+                new_nodeid = Database().insert('node', Access().created_row('node', row))
                 if not new_nodeid:
                     return False, f'Internal error: Node {newnodename} is not created due to possible property clash'
                 response = f'Node {newnodename} created successfully'

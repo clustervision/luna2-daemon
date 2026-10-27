@@ -59,6 +59,9 @@ REG_EXP = {
     # a plugin file name: the strict character set, but 'default' is a real plugin
     'plugin': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
+    # a request id is ours or the daemon's own: __internal__ and its kind come back to a
+    # client that asks for a task the daemon had already queued
+    'requestid': { 'regexp': r'^([a-z0-9\-\.]+|__[a-z_]+__)$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\', or a daemon id such as __internal__' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
     'loosecsv': { 'regexp': r'^[a-z0-9\-\.\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\', \'.\' and \',\'' },
     'interfacecsv': { 'regexp': r'^[a-zA-Z0-9\.\-\,\ \:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, whitespace, \'.\', \':\', \'-\' and \',\'' },
@@ -77,6 +80,8 @@ REG_EXP = {
     'serviceaction': { 'regexp': r'^(restart|stop|reload|start|none|)$', 'error': 'restart, stop, reload, start or none' },
     'profilescope': { 'regexp': r'^(static|dynamic|)$', 'error': 'static or dynamic' },
     'redfishscheme': { 'regexp': r'^(https|http|)$', 'error': 'https or http' },
+    'accessmode': { 'regexp': r'^(([r-][w-][x-]){3}|[0-7]{3})$', 'error': 'a mode as ls shows it, nine characters rwxrwxrwx with - for an absent bit, or three octal digits' },
+    'namelist': { 'regexp': r'^([+-]?[a-zA-Z0-9\-\.\_]+(,\s*[+-]?[a-zA-Z0-9\-\.\_]+)*)?$', 'error': 'comma-separated names, each optionally prefixed with + to add or - to remove' },
     'redfishrole': { 'regexp': r'^[a-zA-Z0-9\-\_\.]*$', 'error': 'combination of characters a-z A-Z, numbers 0-9, \'-\', \'_\' and \'.\'' },
     'anything': { 'regexp': r'', 'error': 'anything' }
 }
@@ -113,6 +118,13 @@ MATCH = {
     'newsecretname': 'name',
     'newname': 'name',
     'newrackname': 'name',
+    'newusername': 'name',
+    'newusergroupname': 'name',
+    'access': 'accessmode',
+    'entity': 'strictname',
+    'objectname': 'name',
+    'owners': 'namelist',
+    'usergroups': 'namelist',
     'newcloudname': 'name',
     'tableref': 'strictname',
     'target': 'name',
@@ -132,7 +144,7 @@ MATCH = {
     'subset': 'strictname',
     'filename': 'filename',
     'subsystem': 'strictname',
-    'request_id': 'strictname',
+    'request_id': 'requestid',
     'device_type': 'strictname',
     'scope': 'profilescope',
     'object_type': 'strictname',
@@ -155,6 +167,7 @@ MATCH = {
     'biosconfig': 'nameandclear',
     'firmwarecatalog': 'name',
     'newbiosname': 'name',
+    'newfirmwarename': 'name',
     'account': 'name',
     'scheme': 'redfishscheme',
     'role': 'redfishrole'
@@ -240,7 +253,7 @@ def input_filter(checks=None, skip=None, json=True):
             else:
                 check_list = checks
             # Checking for Name in kwargs and appending the name in checks - Sumit
-            if check_structure(data, check_list):
+            if check_structure(data, check_list, object_at_end=True):
                 data = parse_item(data)
                 _st().skip_list = []
                 LOGGER.debug(f"----- END ----- {data}")
@@ -368,9 +381,10 @@ def filter_data(data=None, name=None):
     return data
 
 
-def check_structure(data=None, checks=None):
+def check_structure(data=None, checks=None, object_at_end=False):
     """
-    This method will validate the structure of the data.
+    This method will validate the structure of the data. With object_at_end the
+    path must lead to a dict or list: the object the route reads its fields from.
     """
     if not checks:
         return True
@@ -384,11 +398,14 @@ def check_structure(data=None, checks=None):
             arr = check.split(':')
             slice_data = data
             for element in arr:
-                if not element in slice_data:
+                if not isinstance(slice_data, dict) or not element in slice_data:
                     LOGGER.debug(f"{element} not found in data {slice_data}")
                     return False
                 LOGGER.debug(f"OK: {element} found in data {slice_data}")
                 slice_data = slice_data[element]
+            if object_at_end and not isinstance(slice_data, (dict, list)):
+                LOGGER.debug(f"{check} does not lead to an object: {slice_data}")
+                return False
         return True
     except Exception as exp:
         LOGGER.debug(f"filter encountered issue due to incorrect data/json/dict?: {exp}")

@@ -41,6 +41,7 @@ from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.bios import Bios
 from utils.journal import Journal
+from utils.access import Access
 from utils.helper import Helper
 
 
@@ -154,6 +155,10 @@ def config_node_biosgrab(name=None):
         config = None
     if not config:
         return {'message': 'Invalid request: no biosconfig name supplied'}, 400
+    # storing into a named configuration is a write on it; a new one is a create
+    verdict = Access().require('biosconfig', config, 'w') if Access().row('biosconfig', config) else Access().require_create('biosconfig')
+    if verdict[0] is not True:
+        return {'message': verdict[1]}, verdict[2]
     status, response = Bios().collect_bios(node=name, name=config)
     if status is True:
         payload = response
@@ -195,6 +200,10 @@ def _biospush(object_type=None, name=None):
     a reset and a wait for POST, so holding the HTTP request open would mean
     holding it for the better part of an hour.
     """
+    target = Access().pushed_object(object_type, name, request.data, 'biosconfig', 'biosconfigid', 'biosconfig')
+    verdict = Access().require('biosconfig', target, 'w')
+    if verdict[0] is not True:
+        return {'message': verdict[1]}, verdict[2]
     returned = Bios().push_bios(object_type=object_type, name=name,
                                 request_data=request.data)
     status, response = returned[0], returned[1]

@@ -604,6 +604,32 @@ class Bios():
         return sorted(found)
 
 
+    def label_matches(self, registry=None, label=None):
+        """
+        This method returns the attribute names whose DisplayName is the label
+        an administrator typed, ignoring case and runs of spaces - possibly
+        none, possibly several, since a board may repeat a DisplayName.
+        """
+        wanted = ' '.join(str(label or '').split()).casefold()
+        return sorted(name for name, entry in self.attributes(registry=registry).items()
+                      if wanted and ' '.join(str(entry.get('DisplayName') or '').split()).casefold() == wanted)
+
+
+    def labels(self, registry=None, names=None):
+        """
+        This method returns {attribute: DisplayName} for the given attributes,
+        leaving out any the registry gives no DisplayName. For display only:
+        what is pushed is always keyed by attribute name.
+        """
+        described = self.attributes(registry=registry)
+        found = {}
+        for name in names or []:
+            display = str((described.get(name) or {}).get('DisplayName') or '').strip()
+            if display:
+                found[name] = display
+        return found
+
+
     def published_values(self, entry=None):
         """
         This method lists an enumeration's values as (name, display) pairs.
@@ -675,7 +701,8 @@ class Bios():
         Returns (resolved, refused). A key that is an attribute name in the
         registry is taken as one. Otherwise it is a concept: found through the
         registry's DisplayNames, or through a mapping a vendor plugin supplied for
-        a board that discovery cannot answer on. Exactly one attribute must
+        a board that discovery cannot answer on. Failing both, it is the board's
+        own DisplayName for a setting, as show lists it. Exactly one attribute must
         answer - none is refused as "not published", several as ambiguous with
         the candidates listed - because a guess here is written to hardware.
 
@@ -689,22 +716,25 @@ class Bios():
             key = str(key).strip()
             if key in described:
                 attribute = key
-            elif key in CONCEPTS:
-                mapped = (mapping or {}).get(key)
-                candidates = [mapped] if mapped and mapped in described \
-                    else self.concept_matches(registry=registry, concept=key)
-                if not candidates:
-                    refused[key] = 'is not published by this board type'
-                    continue
+            else:
+                if key in CONCEPTS:
+                    mapped = (mapping or {}).get(key)
+                    candidates = [mapped] if mapped and mapped in described \
+                        else self.concept_matches(registry=registry, concept=key)
+                    if not candidates:
+                        refused[key] = 'is not published by this board type'
+                        continue
+                else:
+                    candidates = self.label_matches(registry=registry, label=key)
+                    if not candidates:
+                        refused[key] = ('is neither a known concept nor an attribute or '
+                                        'setting name this board type publishes')
+                        continue
                 if len(candidates) > 1:
                     refused[key] = (f'is ambiguous on this board type, matching '
                                     f'{", ".join(candidates)}; name the attribute instead')
                     continue
                 attribute = candidates[0]
-            else:
-                refused[key] = ('is neither a known concept nor an attribute this '
-                                'board type publishes')
-                continue
             ok, outcome = self.coerce(entry=described[attribute], value=value)
             if not ok:
                 refused[key] = outcome if key == attribute else f'({attribute}) {outcome}'

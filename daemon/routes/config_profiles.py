@@ -43,6 +43,9 @@ from utils.journal import Journal
 from utils.helper import Helper
 
 LOGGER = Log.get_logger()
+# 'profile' is one profile object - what is configured here and what the access routes
+# (_chmod, _chgrp, _chown) govern. 'profiles' is the assignment of profiles onto a node
+# or a group, which is the 'profiles' column those two tables carry.
 profiles_blueprint = Blueprint('config_profiles', __name__)
 
 

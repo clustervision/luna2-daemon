@@ -34,7 +34,6 @@ import concurrent.futures
 from time import sleep
 import os
 import sys
-import shutil
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
@@ -94,7 +93,8 @@ class Housekeeper(object):
                             case 'restart'|'reload'|'only_start':
                                 service=first
                                 if service in ['dhcp','dhcp6','dns']:
-                                    Queue().update_task_status_in_queue(next_id,'in progress')
+                                    # off the queue before the render reads the DB, so a change made meanwhile queues its own run
+                                    Queue().remove_task_from_queue(next_id)
                                     response, code = Service().luna_service(service, task)
                             case 'run_bulk':
                                 run_bulk = True
@@ -128,10 +128,9 @@ class Housekeeper(object):
                                 if first and len(first) > 2 and first.startswith('/'):
                                     if os.path.exists(first):
                                         self.logger.info(f"Removing path {first}")
-                                        try:
-                                            shutil.rmtree(first)
-                                        except Exception as exp:
-                                            self.logger.error(f"while deleting {first} i encountered: {exp}")
+                                        returned=OsImage().remove_image_path(first)
+                                        if returned[0] is False:
+                                            self.logger.error(f"remove_osimage_path: {returned[1]}")
                                     else:
                                         self.logger.error(f"Path {first} does not exist. Cannot remove")
                                 else:
@@ -509,17 +508,32 @@ class Housekeeper(object):
             if not ha_object.get_hastate():
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return
+            ha_object.set_insync(False)
+            insync_state = {'monitor': {'status': {'insync': {'state': 'HA controller not in sync', 'status': '501'}}}}
+            Monitor().update_itemstatus(item='ha', name='insync', request_data=insync_state)
+            # ---------------------------- without knowing which controller we are, no entry is ours.
+            # an address can come up after the daemon has started, so we keep looking for it
+            waited=0
+            while not ha_object.get_me():
+                if waited % 60 == 0:
+                    addresses=', '.join(ip for _, _, ip in Helper().local_addresses()) or 'none'
+                    self.logger.error(f"None of my addresses ({addresses}) belongs to a controller: "
+                                      f"the journal does not run until one does")
+                if event.is_set():
+                    return
+                sleep(5)
+                waited+=5
+                ha_object=HA()
             me=ha_object.get_me()
             shadow=ha_object.get_shadow()
             if shadow:
                 self.logger.info(f"I am {me} and i am a shadow controller")
             else:
                 self.logger.info(f"I am {me}")
+            if waited:
+                self.logger.warning(f"Controller name resolution finished after waiting {waited} seconds for my address")
             journal_object=Journal(me)
             tables_object=Tables()
-            ha_object.set_insync(False)
-            insync_state = {'monitor': {'status': {'insync': {'state': 'HA controller not in sync', 'status': '501'}}}}
-            Monitor().update_itemstatus(item='ha', name='insync', request_data=insync_state)
             # ---------------------------- we keep asking the journal from others until successful
             while syncpull_status is False:
                 try:

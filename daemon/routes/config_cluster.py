@@ -130,7 +130,7 @@ def config_cluster_mounts_remove():
 
 
 @cluster_blueprint.route("/config/cluster/export", methods=['GET'])
-@token_required
+@token_required(requires='rootus')
 def config_cluster_export():
     """
     Input - None
@@ -148,7 +148,7 @@ def config_cluster_export():
 
 
 @cluster_blueprint.route("/config/cluster/import", methods=['POST'])
-@token_required
+@token_required(requires='rootus')
 @input_filter()
 def config_cluster_import():
     """

@@ -34,6 +34,8 @@ from utils.log import Log
 from utils.helper import Helper
 from utils.model import Model
 from utils.ha import HA
+from utils.access import Access
+from common.validate_body import body_checked
 
 class Rack():
     """
@@ -103,10 +105,33 @@ class Rack():
                                                           'orientation': device['orientation'],
                                                           'height': device['height'],
                                                           'position': device['position']})
+            # racks the caller may not read are not listed; devices in a rack likewise
+            racks = {row['name']: row for row in Access().visible('rack', Database().get_record(table='rack') or [])}
+            for rackname in list(config):
+                if rackname not in racks:
+                    del config[rackname]
+                    continue
+                for key in ('owners', 'usergroups', 'access'):
+                    config[rackname][key] = racks[rackname][key]
+            self._readable_devices(config)
             response['config']['rack']=dict(sorted(config.items()))
         return status, response
 
 
+    def _readable_devices(self, config=None):
+        """
+        Drop from every rack the devices the caller may not read, one lookup per device type.
+        """
+        by_type = {}
+        for rack in config.values():
+            for device in rack['devices']:
+                by_type.setdefault(device['type'], set()).add(device['name'])
+        readable = {kind: set(Access().visible_names(kind, sorted(names))) for kind, names in by_type.items()}
+        for rack in config.values():
+            rack['devices'] = [d for d in rack['devices'] if d['name'] in readable.get(d['type'], set())]
+
+
+    @body_checked('rack', lists=('devices',))
     def update_rack(self, name=None, request_data=None):
         """
         This method will create or update a rack.
@@ -167,7 +192,7 @@ class Rack():
                 Database().update('rack', row, where)
             elif create:
                 row = Helper().make_rows(data)
-                rackid = Database().insert('rack', row)
+                rackid = Database().insert('rack', Access().created_row('rack', row))
 
             if not rackid:
                 return False, f"Could not update or create rack {name}"
@@ -178,7 +203,7 @@ class Rack():
                 self.logger.debug(f"DEVICES: {devices}")
                 for device in devices:
                     if 'name' not in device:
-                        return False, "device name not supplied in data structure"
+                        return False, "Invalid request: device name not supplied in data structure"
                     inventory_id = None
                     create, update = False, False
                     for device_type in ['node','switch','otherdevices','controller']:
@@ -193,7 +218,7 @@ class Rack():
                     if 'type' in device:
                         device_data['tableref'] = device['type']
                     elif create:
-                        return False, f"Type for {device['name']} not found in data structure"
+                        return False, f"Invalid request: type for {device['name']} not found in data structure"
 
                     for item in ['height','position','orientation']:
                         if item in device:
@@ -305,6 +330,10 @@ class Rack():
                                               'height': self.inventory_items['height'],
                                               'orientation': self.inventory_items['orientation']
                                               })
+        entries = response['config']['rack']['inventory']
+        readable = {kind: set(Access().visible_names(kind, [e['name'] for e in entries if e['type'] == kind]))
+                    for kind in {e['type'] for e in entries}}
+        response['config']['rack']['inventory'] = [e for e in entries if e['name'] in readable[e['type']]]
         return status, response
 
 
@@ -336,7 +365,7 @@ class Rack():
 
             for device in data:
                 if 'name' not in device:
-                    return False, "device name not supplied in data structure"
+                    return False, "Invalid request: device name not supplied in data structure"
                 create, update = False, False
                 inventory_id = None
                 for device_type in ['node','switch','otherdevices','controller']:
@@ -351,14 +380,14 @@ class Rack():
                 if 'type' in device:
                     device_data['tableref'] = device['type']
                 elif create:
-                    return False, f"Type for {device['name']} not found in data structure"
+                    return False, f"Invalid request: type for {device['name']} not found in data structure"
 
                 for item in ['height','orientation']:
                     if item in device:
                         device_data[item] = device[item]
                            
                 if 'height' in device_data and str(device_data['height']) == '0' and device_type != 'otherdevices':
-                    return False, f"{device['name']} is not allowed to have 0 height"
+                    return False, f"Invalid request: {device['name']} is not allowed to have 0 height"
 
                 for key, value in self.inventory_items.items():
                     if key in device_data:

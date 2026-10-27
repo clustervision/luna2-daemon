@@ -40,6 +40,8 @@ def auth(monkeypatch):
     import common.constant as constant
     from base.authentication import Authentication
     monkeypatch.setitem(constant.CONSTANT['API'], 'EXPIRY', '3600')
+    # the route only forwards the configuration-file account; these cases sign in as 'u'
+    monkeypatch.setitem(constant.CONSTANT['API'], 'USERNAME', 'u')
     monkeypatch.setattr(Authentication, 'get_token', lambda self, data: (True, {'token': 'x'}))
     return Authentication()
 

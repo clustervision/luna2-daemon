@@ -35,6 +35,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 from utils.model import Model
+from utils.access import Access
 
 
 class Route():
@@ -55,7 +56,7 @@ class Route():
         This method returns the whole route catalog, or a single route by name.
         """
         where = f"name='{name}'" if name else None
-        routes = Database().get_record(table='route', where=where)
+        routes = Access().visible('route', Database().get_record(table='route', where=where))
         if not routes:
             return False, f"Route {name} does not exist" if name else "No routes are available"
         response = {'config': {'route': {}}}
@@ -69,6 +70,9 @@ class Route():
                 'device': route['device'],
                 'comment': route['comment'],
                 'assigned': ','.join(targets),
+                'owners': route['owners'],
+                'usergroups': route['usergroups'],
+                'access': route['access'],
             }
         return True, response
 
@@ -109,7 +113,7 @@ class Route():
             if target_name != name:
                 return True, f"Route {name} renamed to {target_name}"
             return True, f"Route {name} updated"
-        Database().insert('route', row)
+        Database().insert('route', Access().created_row('route', row))
         return True, f"Route {name} created"
 
     def delete_route(self, name=None):
@@ -204,8 +208,8 @@ class Route():
         """
         if tableref not in self.COUPLE_TABLES or not tablerefid:
             return
-        if isinstance(names, str):
-            names = names.split(',')
+        if not isinstance(names, list):
+            names = Helper().make_text(names).split(',')
         wanted = set()
         for name in names or []:
             name = name.strip()

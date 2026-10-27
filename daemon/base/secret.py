@@ -32,6 +32,7 @@ __status__      = 'Development'
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
+from utils.access import Access
 
 
 class Secret():
@@ -71,7 +72,8 @@ class Secret():
         status=False
         nodesecrets = Database().get_record(table='nodesecrets')
         groupsecrets = Database().get_record(table='groupsecrets')
-        clustersecrets = Database().get_record(table='clustersecrets')
+        # cluster secrets are the named exception: for rootus and admin only, whatever cluster's bits
+        clustersecrets = Database().get_record(table='clustersecrets') if Access().admin_caller() else []
         if nodesecrets or groupsecrets or clustersecrets:
             response = {'config': {'secrets': {} }}
             status=True
@@ -80,8 +82,11 @@ class Secret():
             status=False
         if nodesecrets:
             response['config']['secrets']['node'] = {}
+            readable = set(Access().visible_names('node', {Database().name_by_id('node', n['nodeid']) for n in nodesecrets}))
             for node in nodesecrets:
                 nodename = Database().name_by_id('node', node['nodeid'])
+                if nodename not in readable:
+                    continue
                 if nodename not in response['config']['secrets']['node']:
                     response['config']['secrets']['node'][nodename] = []
                 del node['nodeid']
@@ -90,8 +95,11 @@ class Secret():
                 response['config']['secrets']['node'][nodename].append(node)
         if groupsecrets:
             response['config']['secrets']['group'] = {}
+            readable = set(Access().visible_names('group', {Database().name_by_id('group', g['groupid']) for g in groupsecrets}))
             for group in groupsecrets:
                 groupname = Database().name_by_id('group', group['groupid'])
+                if groupname not in readable:
+                    continue
                 if groupname not in response['config']['secrets']['group']:
                     response['config']['secrets']['group'][groupname] = []
                 del group['groupid']
@@ -131,24 +139,14 @@ class Secret():
                 status=False
             if clustersecrets:
                 # secrets stack: cluster secrets apply to every node, on top of - not
-                # instead of - the group and node ones. this section comes first so a
-                # node or group secret sharing a path is written later and wins.
+                # instead of - the group and node ones. the installer writes the sections
+                # in this order, so on a shared path the last one wins: cluster, group, node.
                 response['config']['secrets']['cluster'] = []
                 for secret in clustersecrets:
                     del secret['clusterid']
                     del secret['id']
                     self.readable(secret)
                     response['config']['secrets']['cluster'].append(secret)
-            if nodesecrets:
-                response['config']['secrets']['node'] = {}
-                for node in nodesecrets:
-                    nodename = Database().name_by_id('node', node['nodeid'])
-                    if nodename not in response['config']['secrets']['node']:
-                        response['config']['secrets']['node'][nodename] = []
-                    del node['nodeid']
-                    del node['id']
-                    self.readable(node)
-                    response['config']['secrets']['node'][nodename].append(node)
             if groupsecrets:
                 response['config']['secrets']['group'] = {}
                 for group in groupsecrets:
@@ -159,6 +157,16 @@ class Secret():
                     del group['id']
                     self.readable(group)
                     response['config']['secrets']['group'][groupname].append(group)
+            if nodesecrets:
+                response['config']['secrets']['node'] = {}
+                for node in nodesecrets:
+                    nodename = Database().name_by_id('node', node['nodeid'])
+                    if nodename not in response['config']['secrets']['node']:
+                        response['config']['secrets']['node'][nodename] = []
+                    del node['nodeid']
+                    del node['id']
+                    self.readable(node)
+                    response['config']['secrets']['node'][nodename].append(node)
         else:
             self.logger.error(f'Node {name} is not available.')
             response = f'Node {name} is not available'
@@ -177,6 +185,8 @@ class Secret():
         unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['node'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
@@ -274,6 +284,8 @@ class Secret():
         warning = ''
         if request_data:
             data = request_data['config']['secrets']['node'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
@@ -340,6 +352,8 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['node'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             node = Database().get_record(table='node', where=f"name = '{name}'")
             if node:
                 nodeid = node[0]['id']
@@ -459,6 +473,8 @@ class Secret():
         unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['group'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 groupid = group[0]['id']
@@ -551,6 +567,8 @@ class Secret():
         warning = ''
         if request_data:
             data = request_data['config']['secrets']['group'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 groupid = group[0]['id']
@@ -619,6 +637,8 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['group'][name]
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             group = Database().get_record(table='group', where=f"name = '{name}'")
             if group:
                 groupid = group[0]['id']
@@ -736,6 +756,8 @@ class Secret():
         unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['cluster']
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             cluster = Database().get_record(table='cluster')
             if cluster:
                 clusterid = cluster[0]['id']
@@ -827,6 +849,8 @@ class Secret():
         warning = ''
         if request_data:
             data = request_data['config']['secrets']['cluster']
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             cluster = Database().get_record(table='cluster')
             if cluster:
                 clusterid = cluster[0]['id']
@@ -893,6 +917,8 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['cluster']
+            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+                return False, 'Invalid request: the entries must be a list of objects'
             cluster = Database().get_record(table='cluster')
             if cluster:
                 clusterid = cluster[0]['id']

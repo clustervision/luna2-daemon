@@ -35,6 +35,7 @@ from utils.helper import Helper
 from utils.config import Config
 from utils.service import Service
 from utils.model import Model
+from utils.access import Access
 
 class Cloud():
     """
@@ -104,7 +105,7 @@ class Cloud():
             row = Helper().make_rows(data)
             if column_check:
                 if create:
-                    cloudid = Database().insert(self.table, row)
+                    cloudid = Database().insert(self.table, Access().created_row(self.table, row))
                     response = f'Cloud {name} created successfully'
                     status=True
                 if update:

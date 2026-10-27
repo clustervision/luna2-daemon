@@ -762,11 +762,15 @@ class Config(object):
         anchor merged into that group would be reachable from every relayed member in it, and
         selection would land on whichever the render happened to put first. Relays in common are
         the evidence that the link really is shared; a member with no relay is on the wire and
-        cannot be picked out by a relay anyway, so it does not argue either way.
+        cannot be picked out by a relay anyway, so it does not argue either way. Two members with
+        anchors of their own are two links even behind one relay: that is what option 82.5 is for.
         """
         def relays (name):
             nwk = (networksbyname or {}).get(name) or {}
             return {relay.strip() for relay in (nwk.get('dhcp_relay') or '').split(',') if relay.strip()}
+        def anchors (name):
+            nwk = (networksbyname or {}).get(name) or {}
+            return {link.strip() for link in (nwk.get('dhcp_link_subnet') or '').split(',') if link.strip()}
         mine = relays(network)
         for member, nwk in (networksbyname or {}).items():
             if member == network:
@@ -775,6 +779,8 @@ class Config(object):
                 continue
             theirs = relays(member)
             if theirs and not (theirs & mine):
+                return False
+            if anchors(member) and anchors(network) and anchors(member) != anchors(network):
                 return False
         return True
 
@@ -804,18 +810,25 @@ class Config(object):
             if 'range_begin' not in pool or 'range_end' not in pool:
                 continue
             subnet['range_begin'], subnet['range_end'] = pool['range_begin'], pool['range_end']
-            # A relayed member is picked out by its relay, so its pool takes no policy class -
-            # the classes only tell apart members that share a wire, and they all carry the same
-            # udhcp test. Classing a relayed pool refuses its own network's PXE clients, which
-            # then fall through to the carrier's pool and boot on the wrong subnet.
+            # A relayed member's pool is gated on its relays, not on the udhcp class: that would
+            # refuse its own PXE clients. Kea allocates from any pool in a shared network the client
+            # may use, not only the selected subnet's, so an open pool here serves the whole group.
             if policy and 'dhcp_relay' not in subnet:
                 subnet['pool_class'] = carrier_class if name == carrier else f"{name}-class"
+            elif policy:
+                via = f"{group}-{name}-via-class"
+                derived.append({'name': via, 'test': ' or '.join(f"pkt4.giaddr == {relay}"
+                                                                 for relay in subnet['dhcp_relay'])})
+                subnet['pool_class'] = via
             elif fence:
                 subnet['pool_class'] = fence
         if policy and members and any(s.get('pool_class') == carrier_class
                                       for s in (subnets or {}).values()):
+            vias = [s['pool_class'] for s in (subnets or {}).values()
+                    if s.get('pool_class', '').endswith('-via-class')]
             derived.append({'name': carrier_class,
-                            'test': ' and '.join(f"not member('{m}-class')" for m in members)})
+                            'test': ' and '.join([f"not member('{m}-class')" for m in members]
+                                                 + [f"not member('{via}')" for via in vias])})
         if fence:
             for name, subnet in (subnets or {}).items():
                 base = subnet.get('pool_class')
@@ -1068,13 +1081,16 @@ class Config(object):
         controller_network = controller[0]['networkname']
         if 'forwardserver_ip' in cluster[0] and cluster[0]['forwardserver_ip']:
             forwarder = cluster[0]['forwardserver_ip'].split(',')
-        bind_legacy = bool(cluster[0].get('bind_legacy'))
+        # read the way cluster show reads them: an older daemon stored a cleared value as ''
+        bind_legacy = bool(Helper().make_bool(cluster[0].get('bind_legacy'), empty_is_none=True))
+        enable = Helper().make_bool(cluster[0].get('dnssec_enable'), empty_is_none=True)
+        validation = Helper().make_bool(cluster[0].get('dnssec_validation'), empty_is_none=True)
         dnssec_enable = None
         dnssec_validation = None
-        if bind_legacy and cluster[0].get('dnssec_enable') is not None:
-            dnssec_enable = 'yes' if cluster[0]['dnssec_enable'] else 'no'
-        if cluster[0].get('dnssec_validation') is not None and dnssec_enable != 'no':
-            dnssec_validation = 'yes' if cluster[0]['dnssec_validation'] else 'no'
+        if bind_legacy and enable is not None:
+            dnssec_enable = 'yes' if enable else 'no'
+        if validation is not None and dnssec_enable != 'no':
+            dnssec_validation = 'yes' if validation else 'no'
         self.logger.info(f"bind_legacy: {bind_legacy}, dnssec_enable: {dnssec_enable}, dnssec validation: {dnssec_validation}")
         networks = Database().get_record(table='network')
         if networks:
@@ -1246,6 +1262,9 @@ class Config(object):
                     ['dns.networkid=network.id'],
                     [f"network.name='{networkname}'"])
             if additional:
+                # a name may carry several addresses (round-robin), so every row is its own record
+                for row in additional:
+                    row['record_key'] = f"{row['host']}#{row['ipaddress'] or row['ipaddress_ipv6']}"
                 mergedlist.append(additional)
 
             # --------------------------------------------------------------------------------------------------
@@ -1254,6 +1273,7 @@ class Config(object):
             # --------------------------------------------------------------------------------------------------
             for hosts in mergedlist:
                 for host in hosts:
+                    record_key = host.get('record_key') or host['host']
                     if nwk['dhcp_nodes_in_pool']:
                         if 'dhcp' in host and host['dhcp']:
                             continue
@@ -1261,22 +1281,28 @@ class Config(object):
                             # but we create a zone with the non dhcp ones. this is known
                             # to clash and we might have to resort to nspdate through a plugin
                     try:
-                        dns_zone_records[networkname][host['host']]={}
-                        dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')
+                        dns_zone_records[networkname][record_key]={}
+                        dns_zone_records[networkname][record_key]['key']=host['host'].rstrip('.')
                         ipaddress = None
                         # --------------------------------------------------------------------------------------
                         # IPv6 ---------------------------------------------------------------------------------
                         # --------------------------------------------------------------------------------------
                         if 'ipaddress_ipv6' in host and host['ipaddress_ipv6']:
                             # ----- forward
-                            dns_zone_records[networkname][host['host']]['type']='AAAA'
-                            dns_zone_records[networkname][host['host']]['value']=host['ipaddress_ipv6']
+                            dns_zone_records[networkname][record_key]['type']='AAAA'
+                            dns_zone_records[networkname][record_key]['value']=host['ipaddress_ipv6']
                             ipaddress = host['ipaddress_ipv6']
                             self.logger.debug(f"DNS -- IPv6: host {host['host']}, AAAA ip [{host['ipaddress_ipv6']}]")
                             # ----- all reverse pointer PTR below
-                            rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
-                            rev_ipv6 = rev_ipv6.split('.')
-                            rev_ipv6 = '.'.join(rev_ipv6[16:])
+                            rev_ipv6 = ''
+                            if nwk['network_ipv6']:
+                                rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
+                                rev_ipv6 = rev_ipv6.split('.')
+                                rev_ipv6 = '.'.join(rev_ipv6[16:])
+                            else:
+                                # no prefix, no reverse zone: the forward record still stands
+                                self.logger.warning(f"DNS -- IPv6: host {host['host']} has {host['ipaddress_ipv6']} "
+                                                    f"but network {networkname} has no IPv6 prefix, no PTR for it")
                             if rev_ipv6:
                                 ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
                                 ipv6_list = ipv6_rev.split('.')
@@ -1290,18 +1316,18 @@ class Config(object):
                                     dns_zone_records[rev_ipv6]={}
                                     dns_authoritative[rev_ipv6]=authoritative_server
                                     dns_zone_forwarders[rev_ipv6]=dns_zone_forwarders[networkname]
-                                if host['host'] not in dns_zone_records[rev_ipv6].keys():
-                                    dns_zone_records[rev_ipv6][host['host']]={}
-                                    dns_zone_records[rev_ipv6][host['host']]['key']=host_ptr
-                                    dns_zone_records[rev_ipv6][host['host']]['type']='PTR'
-                                    dns_zone_records[rev_ipv6][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                                if record_key not in dns_zone_records[rev_ipv6].keys():
+                                    dns_zone_records[rev_ipv6][record_key]={}
+                                    dns_zone_records[rev_ipv6][record_key]['key']=host_ptr
+                                    dns_zone_records[rev_ipv6][record_key]['type']='PTR'
+                                    dns_zone_records[rev_ipv6][record_key]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
                         # --------------------------------------------------------------------------------------
                         # IPv4 ---------------------------------------------------------------------------------
                         # --------------------------------------------------------------------------------------
                         elif host['ipaddress']:
                             # ----- forward
-                            dns_zone_records[networkname][host['host']]['type']='A'
-                            dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
+                            dns_zone_records[networkname][record_key]['type']='A'
+                            dns_zone_records[networkname][record_key]['value']=host['ipaddress']
                             ipaddress = host['ipaddress']
                             self.logger.debug(f"DNS -- IPv4: host {host['host']}, A ip [{host['ipaddress']}]")
                             # ----- all reverse pointer PTR below
@@ -1321,18 +1347,18 @@ class Config(object):
                                         dns_zone_records[rev_ip]={}
                                         dns_authoritative[rev_ip]=authoritative_server
                                         dns_zone_forwarders[rev_ip]=dns_zone_forwarders[networkname]
-                                    if host['host'] not in dns_zone_records[rev_ip].keys():
-                                        dns_zone_records[rev_ip][host['host']]={}
-                                        dns_zone_records[rev_ip][host['host']]['key']=host_ptr
-                                        dns_zone_records[rev_ip][host['host']]['type']='PTR'
-                                        dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                                    if record_key not in dns_zone_records[rev_ip].keys():
+                                        dns_zone_records[rev_ip][record_key]={}
+                                        dns_zone_records[rev_ip][record_key]['key']=host_ptr
+                                        dns_zone_records[rev_ip][record_key]['type']='PTR'
+                                        dns_zone_records[rev_ip][record_key]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
                         # --------------------------------------------------------------------------------------
                         # DHCP ---------------------------------------------------------------------------------
                         # --------------------------------------------------------------------------------------
                         else: # we have nothing! are we doing pure dhcp?
                             if not host['dhcp']:
                                 self.logger.warning(f"node {host['host']} does not appear to have any ipaddress configured")
-                            del dns_zone_records[networkname][host['host']]
+                            del dns_zone_records[networkname][record_key]
                         if ipaddress and nwk['dhcp_nodes_in_pool']:
                             return_code, message = dns_plugin().nsupdate(host=f"{host['host']}.{networkname}", ipaddress=ipaddress, ttl=3600,
                                                                          key_name='omapi_key', key_secret=omapikey)
@@ -1910,6 +1936,11 @@ class Config(object):
         where_interface = f"groupid = '{groupid}'"
         check_interface = Database().get_record(table='groupinterface', where=where_interface)
         interface_byname = Helper().convert_list_to_dict(check_interface, 'interface')
+        nodes_with_interface = Database().get_record_join(
+            ['node.name as name'],
+            ['nodeinterface.nodeid=node.id'],
+            [f"node.groupid='{groupid}'", f"nodeinterface.interface='{new_interface_name}'"]
+        )
 
         if not check_interface: # ----> easy. interfaces do not exist
             message = f"no interfaces defined"
@@ -1922,6 +1953,14 @@ class Config(object):
             return False, message
         elif new_interface_name in interface_byname.keys():
             message = f"interface {new_interface_name} already exists"
+            return False, message
+        elif nodes_with_interface:
+            # the group's nodes are renamed in the background, where a clash can only be logged
+            names = sorted(node['name'] for node in nodes_with_interface)
+            message = f"interface {new_interface_name} already exists on {len(names)} node(s) "
+            message += f"in this group: {', '.join(names[:5])}"
+            if len(names) > 5:
+                message += ', ...'
             return False, message
         else:
             # we have to update the interface
@@ -2145,6 +2184,7 @@ class Config(object):
                                     'network.network', 'network.network_ipv6',
                                     'network.subnet', 'network.subnet_ipv6',
                                     'network.name as networkname',
+                                    'groupinterface.mtu',
                                     'groupinterface.vlanid',
                                     'groupinterface.vlan_parent',
                                     'groupinterface.bond_mode',
@@ -2581,5 +2621,8 @@ class Config(object):
         if reserved_details:
             for each in reserved_details:
                 ips.append(each['ipaddress'])
+        network_row = Database().get_record(table='network', where=f"name = '{network}'")
+        if network_row:
+            ips += [address for _, address in Helper().network_service_addresses(network_row[0], ipversion)]
         return ips
 

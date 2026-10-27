@@ -409,6 +409,37 @@ class Helper(object):
             self.logger.error(f'Invalid subnet: {ipaddr}, Exception is {exp}.')
         return False
 
+    def network_service_addresses(self, network=None, ipversion='ipv4'):
+        """
+        The addresses a network keeps for itself: its gateway, and its nameserver and NTP
+        server when those sit inside the network. Nothing may hand them to a node, so they
+        count as taken wherever the network's taken addresses are asked for.
+        Output - [(what, address), ...] for the asked family, in a fixed order
+        """
+        if ipversion == 'ipv6':
+            prefix, subnet = network.get('network_ipv6'), network.get('subnet_ipv6')
+            candidates = [('gateway', network.get('gateway_ipv6')), ('nameserver', network.get('nameserver_ip_ipv6')),
+                          ('ntp', network.get('ntp_server'))]
+        else:
+            prefix, subnet = network.get('network'), network.get('subnet')
+            candidates = [('gateway', network.get('gateway')), ('nameserver', network.get('nameserver_ip')),
+                          ('ntp', network.get('ntp_server'))]
+        if not prefix or not subnet:
+            return []
+        try:
+            inside = ipaddress.ip_network(f"{prefix}/{subnet}", strict=False)
+        except ValueError:
+            return []
+        found = []
+        for what, value in candidates:
+            try:
+                address = ipaddress.ip_address(str(value).strip())
+            except ValueError:
+                continue
+            if address in inside:
+                found.append((what, str(address)))
+        return found
+
     def check_ip_exist(self, data=None):
         """
         check if IP is valid or not
@@ -431,29 +462,35 @@ class Helper(object):
                     data['ipaddress'] = subnet_record[0]['id']
         return data
 
-    def get_available_ip(self, network=None, subnet=None, takenips=[], ping=False):
+    def get_available_ip(self, network=None, subnet=None, takenips=None, ping=False):
         """
         This method will provide the available IP address list.
         Optionally we can ping it to just make sure...
         """
+        takenips = list(takenips or [])
         if subnet:
             network+=str('/'+subnet)
         try:
-            avail = None
             net = ipaddress.ip_network(f"{network}")
+            free = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
             if not ping:
-                avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
-                return str(next(avail))
+                return str(next(free))
             # we try to ping for X ips, if none of these are free,
             # something else is going on (read: rogue devices)....
-            ret = 0
-            maximum = 5
-            while(maximum > 0 and ret != 1):
-                avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
-                takenips.append(avail)
-                result, ret = self.runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                maximum -= 1
-            return str(next(avail))
+            # An address that answers belongs to something the database does not know
+            # about. Falling back to the first candidate keeps the old answer when every
+            # one of them replies.
+            first = None
+            for _ in range(5):
+                candidate = next(free, None)
+                if candidate is None:
+                    break
+                if first is None:
+                    first = candidate
+                _, ret = self.runcommand(f"ping -w1 -c1 {candidate}", True, 3)
+                if ret == 1:  # no reply: nothing is holding it
+                    return candidate
+            return first
         except Exception as exp:
             return None
 
@@ -757,6 +794,16 @@ class Helper(object):
         else:
             variable = None
         return variable
+
+
+    def make_text(self, value=None):
+        """
+        Input - what a request body holds for a field that is text
+        Output - text: nothing becomes empty text, anything else is written out. A body
+                 may carry null, a number, a list or an object where text belongs; read as
+                 text it is cleared or refused by the checks the field already has.
+        """
+        return '' if value is None else str(value)
 
 
     def make_bool(self, variable=None, empty_is_none=False):
@@ -1231,13 +1278,20 @@ class Helper(object):
         access_code=404
         if status is True:
             access_code=201
-            if 'update' in response or 'remove' in response or 'delete' in response:
+            # a 204 carries no body, so an explicitly labelled warning or note stays a 201.
+            # the table routes answer with the data itself, not a message
+            labelled = response.lower() if isinstance(response, str) else ''
+            if 'warning: ' in labelled or 'note: ' in labelled:
+                access_code=201
+            elif 'update' in response or 'remove' in response or 'delete' in response:
                 access_code=204
         else:
             if 'nvalid request' in response or 'ad request' in response or ' invalid ' in response:
                 access_code=400
             elif 'uthentication error' in response:
                 access_code=401
+            elif 'not permitted' in response:
+                access_code=403
             elif 'nternal error' in response:
                 access_code=500
             elif 'ervice unavailable' in response:

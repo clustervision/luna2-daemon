@@ -378,6 +378,20 @@ def test_a_profile_with_no_enabled_value_is_enabled(db):
     assert Profile().is_enabled(row) is True
 
 
+@pytest.mark.parametrize('value', ['', None, 'maybe', 2, [], {}])
+def test_an_explicit_enabled_value_must_be_boolean(db, value):
+    """Legacy NULL rows stay enabled, but a request may set only true or false."""
+    from base.profile import Profile
+    Profile().update_profile('p', _make('p', enabled=True))
+
+    status, message = Profile().update_profile('p', _make('p', enabled=value))
+
+    assert status is False
+    assert message == 'Invalid request: enabled must be true or false'
+    row = db.get_record(table='profile', where='name = "p"')[0]
+    assert Profile().is_enabled(row) is True
+
+
 def test_disabled_profile_travels_as_a_name_only(db, seed):
     """It must not simply vanish: the applier reclaims a path by finding it in its
     manifest and not in the payload, so silence would revert exactly the files that
@@ -548,6 +562,21 @@ def test_a_finished_install_does_not_block_delivery(db, seed):
             {'tableref': 'node', 'tablerefid': seed['nodeid'], 'state': state}))
         reason = ProfileSync().skip_reason('node001')
         assert bool(reason) is blocked, f'{state} gave {reason!r}'
+
+
+def test_a_stopped_install_is_skipped_as_having_no_os(db, seed):
+    """A parked or sanitized node has no OS to deliver to, and is not installing:
+    nothing follows until someone acts, so the reason must not say it will finish."""
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    from utils.dbstructure import DBStructure
+    db.create('monitor', DBStructure().get_database_table_structure('monitor'))
+    for state in ('install.degraded', 'install.refused', 'install.fatal', 'install.sanitized'):
+        db.delete_row('monitor', [{"column": "tablerefid", "value": seed['nodeid']}])
+        db.insert('monitor', Helper().make_rows(
+            {'tableref': 'node', 'tablerefid': seed['nodeid'], 'state': state}))
+        reason = ProfileSync().skip_reason('node001')
+        assert reason == f'it has no installed OS ({state})', f'{state} gave {reason!r}'
 
 
 def test_a_node_with_no_profiles_still_gets_a_payload(db, seed):

@@ -1,0 +1,8 @@
+# LUNA HOOK - run when the daemon starts and stops
+#
+#        two defined methods are mandatory, each receives the whole node and
+#        group set and returns <True|False>,"message":
+#        - startup(fullset)
+#        - shutdown(fullset)
+#
+# Loaded by name, plugins/hooks/luna/default.py. There is no search path.

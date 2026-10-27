@@ -1,0 +1,14 @@
+# OSPUSH PLUGIN - an image onto a running node
+#
+#        one defined method is mandatory:
+#        - push   responsible for pushing the image path onto the running node. returns <True|False>,"message"
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 node name                 e.g. plugins/osimage/operations/ospush/node001.py
+# 2 distribution              e.g. plugins/osimage/operations/ospush/redhat.py
+# 3 osimage name              e.g. plugins/osimage/operations/ospush/compute.py
+# 4 group name                e.g. plugins/osimage/operations/ospush/compute.py
+# 5 default                   e.g. plugins/osimage/operations/ospush/default.py
+#
+# A push to a whole group starts at step 2.

@@ -254,8 +254,8 @@ class Plugin():
             if [[ "${DELL_BMC_RACADM_READY}" == "1" ]]
             then
                 echo "Luna2: Dell racadm configuring BMC user id ${USERID} name ${USERNAME}"
-                racadm_set_first ${USERNAME} iDRAC.Users.${USERID}.UserName cfgUserAdmin.UserName >/dev/null || DELL_BMC_RACADM_READY=0
-                racadm_set_first ${PASSWORD} iDRAC.Users.${USERID}.Password cfgUserAdmin.Password >/dev/null || DELL_BMC_RACADM_READY=0
+                racadm_set_first "${USERNAME}" iDRAC.Users.${USERID}.UserName cfgUserAdmin.UserName >/dev/null || DELL_BMC_RACADM_READY=0
+                racadm_set_first "${PASSWORD}" iDRAC.Users.${USERID}.Password cfgUserAdmin.Password >/dev/null || DELL_BMC_RACADM_READY=0
                 racadm_set_first 1 iDRAC.Users.${USERID}.Enable cfgUserAdmin.Enable >/dev/null || DELL_BMC_RACADM_READY=0
                 racadm_set_first 4 iDRAC.Users.${USERID}.IpmiLanPrivilege cfgUserAdmin.IpmiLanPrivilege >/dev/null || true
                 racadm_set_first 511 iDRAC.Users.${USERID}.Privilege cfgUserAdmin.Privilege >/dev/null || true
@@ -458,9 +458,9 @@ class Plugin():
                     ;;
             esac
             echo "Luna2: configuring BMC user id ${USERID} name ${USERNAME} on management channel ${MGMTCHANNEL}"
-            ipmitool user set name ${USERID} ${USERNAME}
+            ipmitool user set name ${USERID} "${USERNAME}"
             echo "Luna2: setting BMC password for user id ${USERID} (value hidden)"
-            ipmitool user set password ${USERID} ${PASSWORD}
+            ipmitool user set password ${USERID} "${PASSWORD}"
             echo "Luna2: enabling BMC channel access for user id ${USERID} on management channel ${MGMTCHANNEL}"
             ipmitool channel setaccess ${MGMTCHANNEL} ${USERID} link=on ipmi=on callin=on privilege=4
             echo "Luna2: enabling BMC user id ${USERID}"

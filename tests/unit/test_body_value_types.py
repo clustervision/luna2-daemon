@@ -1,0 +1,258 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# This code is part of the TrinityX software suite
+# Copyright (C) 2026  ClusterVision Solutions b.v.
+
+"""
+TRIX-2188 unit tests: a body that carries the wrong kind of value does not make a write raise.
+
+A write is journaled before it runs, so a body that makes the base class raise answers
+500 here and halts the journal of the other controller. The base classes read a text
+field as text: nothing clears it, and a number, a list or an object is refused by the
+checks the field already has. Every column of every object with a write route is tried,
+read from the layout, through the real routes.
+"""
+
+import ast
+import json
+import os
+
+import pytest
+from flask import Flask
+from jwt import encode
+
+DAEMON = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'daemon'))
+
+OBJECTS = {
+    'osimage': ('osimage', 'img', {'path': '/tmp/__none__'}),
+    'bmcsetup': ('bmcsetup', 'bmc', {'userid': 3, 'username': 'u', 'password': 'p', 'netchannel': 1, 'mgmtchannel': 1}),
+    'group': ('group', 'grp', {'osimage': 'img', 'interfaces': [{'interface': 'BOOTIF', 'network': 'cluster'}]}),
+    'node': ('node', 'n001', {'group': 'grp'}),
+    'switch': ('switch', 'sw', {'network': 'cluster', 'ipaddress': '10.141.250.250'}),
+    'network': ('network', 'net2', {'network': '10.150.0.0/16'}),
+    'rack': ('rack', 'rack1', {'size': 42}),
+    'otherdevices': ('otherdev', 'pdu', {'network': 'cluster', 'ipaddress': '10.141.250.251'}),
+}
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    """The real routes over a fresh database holding one object of every kind."""
+    import common.constant as constant
+    from utils import database
+    from utils.database import Database
+    from utils.dbstructure import DBStructure
+    from utils.helper import Helper
+    from cases.route_requirements_cases import app as routes_app
+
+    original = constant.CONSTANT['DATABASE']['DATABASE']
+    constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'unit.db')
+    database.local_thread.connection = None
+    for table in DBStructure().tables:
+        Database().create(table, DBStructure().get_database_table_structure(table))
+    monkeypatch.setitem(constant.CONSTANT['PLUGINS'], 'PLUGINS_DIRECTORY', os.path.join(DAEMON, 'plugins'))
+    monkeypatch.setitem(constant.CONSTANT, 'SERVICES', {'DHCP': 'dhcpd', 'DNS': 'named', 'COOLDOWN': '2', 'COMMAND': '/bin/true'})
+    Database().insert('cluster', Helper().make_rows({'name': 'cluster'}))
+    Database().insert('network', Helper().make_rows({'name': 'cluster', 'network': '10.141.0.0', 'subnet': '16'}))
+    Database().insert('controller', Helper().make_rows({'hostname': 'controller', 'serverport': '7050', 'beacon': '1'}))
+    app = routes_app()
+    app.testing = True
+    token = encode({'id': 0}, constant.CONSTANT['API']['SECRET_KEY'], 'HS256')
+
+    def post(segment, name, fields, action=''):
+        # a write that raises is what halts the journal; an answer, whatever its code, does not
+        response = app.test_client().post(f'/config/{segment}/{name}{action}', headers={'x-access-tokens': token},
+                                          data=json.dumps({'config': {segment: {name: fields}}}), content_type='application/json')
+        return response.status_code, response.get_data(as_text=True)
+    for segment, name, fields in OBJECTS.values():
+        code, text = post(segment, name, fields)
+        assert code in (201, 204), (segment, text)
+    yield post
+    constant.CONSTANT['DATABASE']['DATABASE'] = original
+    database.local_thread.connection = None
+
+
+def _columns(table):
+    from utils.dbstructure import DBStructure
+    return [column['column'] for column in DBStructure().get_database_table_structure(table)
+            if column['column'] not in ('id', 'name')]
+
+
+VALUES = (None, 5, 1.5, True, ['a'], {'a': 1})
+
+
+@pytest.mark.parametrize('table', sorted(OBJECTS))
+def test_no_value_in_a_column_makes_the_write_raise(client, table):
+    segment, name, _ = OBJECTS[table]
+    raised = []
+    for column in _columns(table) + ['routes']:
+        for value in VALUES:
+            try:
+                client(segment, name, {column: value})
+            except Exception as exp:
+                raised.append((column, value, type(exp).__name__))
+    assert not raised
+
+
+@pytest.mark.parametrize('table', ['group', 'node'])
+@pytest.mark.parametrize('field', ['roles', 'scripts', 'profiles'])
+def test_nothing_clears_a_text_field_and_a_number_is_refused(client, table, field):
+    from utils.database import Database
+    segment, name, _ = OBJECTS[table]
+    known = {'roles': 'bond', 'scripts': 'raid1', 'profiles': None}[field]
+    if known:
+        assert client(segment, name, {field: known})[0] == 204
+        assert Database().get_record(table=table, where=f"name = '{name}'")[0][field] == known
+    assert client(segment, name, {field: None})[0] == 204
+    assert not Database().get_record(table=table, where=f"name = '{name}'")[0][field]
+    code, text = client(segment, name, {field: 5})
+    assert code == 400 and '5 does not exist' in text
+    assert not Database().get_record(table=table, where=f"name = '{name}'")[0][field]
+
+
+@pytest.mark.parametrize('table', ['group', 'node', 'network'])
+def test_routes_alone_are_coupled_and_nothing_clears_them(client, table):
+    """A change that carries the routes and no column still couples them; nothing, like
+    empty text, uncouples them all."""
+    from utils.database import Database
+    segment, name, _ = OBJECTS[table]
+    assert client('route', 'r1', {'destination': '10.9.0.0/16', 'gateway': '10.141.0.1'})[0] == 201
+
+    def coupled():
+        return len(Database().get_record(table='routemap', where=f"tableref = '{table}'") or [])
+    for clear in (None, ''):
+        assert client(segment, name, {'routes': 'r1'})[0] == 204
+        assert coupled() == 1
+        assert client(segment, name, {'routes': clear})[0] == 204
+        assert coupled() == 0
+
+
+# where a body carries a list of objects: segment, object, action, field, what a clone needs
+LISTS = [('node', 'n001', '', 'interfaces', {}), ('node', 'n001', '/interfaces', 'interfaces', {}),
+         ('node', 'n001', '/_clone', 'interfaces', {'newnodename': 'n002'}),
+         ('group', 'grp', '', 'interfaces', {}), ('group', 'grp', '/interfaces', 'interfaces', {}),
+         ('group', 'grp', '/_clone', 'interfaces', {'newgroupname': 'grp2'}),
+         ('switch', 'sw', '/interfaces', 'interfaces', {}), ('rack', 'rack1', '', 'devices', {})]
+
+
+@pytest.mark.parametrize('segment, name, action, field, more', LISTS)
+def test_what_is_not_a_list_of_objects_is_refused(client, segment, name, action, field, more):
+    from utils.database import Database
+    table = 'nodeinterface' if segment == 'node' else 'groupinterface' if segment == 'group' else 'switchinterface'
+    before = len(Database().get_record(table=table) or [])
+    for value in (5, True, 'eth0', {'interface': 'eth1'}, ['eth1'], [5], [None], [{'interface': 'eth1'}, 5]):
+        code, text = client(segment, name, {field: value, **more}, action)
+        assert code == 400 and f'{field} takes a list of objects' in text, (value, code, text)
+    assert len(Database().get_record(table=table) or []) == before
+    assert not Database().get_record(table=segment, where="name IN ('n002', 'grp2')")
+
+
+@pytest.mark.parametrize('segment, name, action, field, more', LISTS)
+def test_nothing_for_a_list_of_objects_reads_as_not_given(client, segment, name, action, field, more):
+    code, _ = client(segment, name, {field: None, 'comment': 'x', **more}, action)
+    assert code in ((201, 204) if action in ('', '/_clone') else (400, 404, 500))
+
+
+@pytest.mark.parametrize('segment, name, action', [('node', 'n001', ''), ('node', 'n001', '/interfaces'),
+                                                   ('group', 'grp', ''), ('group', 'grp', '/interfaces'),
+                                                   ('switch', 'sw', '/interfaces')])
+def test_an_interface_without_its_name_is_refused(client, segment, name, action):
+    code, text = client(segment, name, {'interfaces': [{'network': 'cluster'}]}, action)
+    assert code == 400 and 'interface name is required for this operation' in text
+
+
+# what a second object of the same kind needs to differ in
+SECOND = {'osimage': {'path': '/tmp/__taken__'}, 'switch': {'ipaddress': '10.141.250.252'},
+          'otherdevices': {'ipaddress': '10.141.250.253'}, 'network': {'network': '10.151.0.0/16'}}
+
+
+@pytest.mark.parametrize('table', sorted(OBJECTS))
+def test_a_body_that_names_another_object_is_refused(client, table):
+    """The object is the one the request addresses. A name in the body that differs is
+    refused, whether free or taken; a rename has a field of its own."""
+    from utils.database import Database
+    segment, name, create = OBJECTS[table]
+    assert client(segment, 'taken', dict(create, **SECOND.get(table, {})))[0] in (201, 204)
+
+    def names():
+        return sorted(row['name'] for row in Database().get_record(table=table))
+    before = names()
+    for value in ('other', 'taken', 5, True, ['a'], {'a': 1}):
+        code, text = client(segment, name, {'name': value, 'comment': 'x'})
+        assert code == 400 and f'the request addresses {name}' in text, (value, code, text)
+        assert names() == before
+    assert not Database().get_record(table=table, where=f"name = '{name}'")[0].get('comment')
+
+
+@pytest.mark.parametrize('table', sorted(OBJECTS))
+def test_the_name_addressed_or_nothing_in_the_body_changes_no_name(client, table):
+    from utils.database import Database
+    segment, name, _ = OBJECTS[table]
+    before = sorted(str(row['name']) for row in Database().get_record(table=table))
+    for value in (name, None):
+        assert client(segment, name, {'name': value, 'comment': 'x'})[0] == 204
+        assert sorted(str(row['name']) for row in Database().get_record(table=table)) == before
+
+
+@pytest.mark.parametrize('table, field', [('node', 'newnodename'), ('group', 'newgroupname'), ('bmcsetup', 'newbmcname'),
+                                          ('network', 'newnetname'), ('otherdevices', 'newotherdevname'),
+                                          ('rack', 'newrackname'), ('switch', 'newswitchname')])
+def test_a_rename_by_its_own_field_still_works(client, table, field):
+    from utils.database import Database
+    segment, name, _ = OBJECTS[table]
+    assert client(segment, name, {'name': name, field: 'renamed'})[0] == 204
+    names = [row['name'] for row in Database().get_record(table=table)]
+    assert 'renamed' in names and name not in names
+
+
+def test_an_osimage_rename_still_reaches_the_image_on_disk(client):
+    """There is no image on disk here, so the rename stops where it would move the files:
+    past the name check, which is what this pins."""
+    code, text = client('osimage', 'img', {'name': 'img', 'newosimage': 'renamed'})
+    assert code == 404 and 'renaming img to renamed failed' in text
+
+
+# ── the derived half: every method that reads one of these bodies carries the check ──
+
+def test_every_method_that_reads_a_body_of_these_objects_carries_the_check():
+    """The check is a decorator on the base method, so a method added later that takes a
+    body for one of these objects has to carry it too. Read from the source: the update and
+    clone method of each of these objects, and every interface change, taking
+    (name, request_data), and the segment each names is the one the route keeps the body under."""
+    from common.route_grammar import ALIAS
+    segments = {table: segment for segment, table in ALIAS.items()}
+    expected = {'node': 'node', 'group': 'group', 'osimage': 'osimage', 'bmcsetup': 'bmcsetup', 'network': 'network',
+                'switch': 'switch', 'rack': 'rack', 'otherdevices': 'otherdev', 'interface': None}
+    missing, wrong = [], []
+    for name in os.listdir(os.path.join(DAEMON, 'base')):
+        table = name[:-3]
+        if table not in expected:
+            continue
+        tree = ast.parse(open(os.path.join(DAEMON, 'base', name), encoding='utf-8').read())
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef) or [a.arg for a in node.args.args] != ['self', 'name', 'request_data']:
+                continue
+            own = expected[table] or table
+            if node.name not in (f'update_{own}', f'clone_{own}') and not (node.name.startswith('change_') and 'interface' in node.name):
+                continue
+            found = [d for d in node.decorator_list if isinstance(d, ast.Call) and getattr(d.func, 'id', None) == 'body_checked']
+            if not found:
+                missing.append(f'{name}:{node.name}')
+                continue
+            segment = found[0].args[0].value
+            wanted = expected[table] or {'node': 'node', 'group': 'group', 'switch': 'switch'}.get(node.name.split('_')[1])
+            if segment != wanted:
+                wrong.append(f'{name}:{node.name} names {segment}, the route keeps the body under {wanted}')
+    assert not missing, missing
+    assert not wrong, wrong
+
+
+@pytest.mark.parametrize('segment, name, more', [('bmcsetup', 'bmc', {'newbmcname': 'bmc2'}), ('switch', 'sw', {'newswitchname': 'sw2'}),
+                                                  ('node', 'n001', {'newnodename': 'n002'}), ('group', 'grp', {'newgroupname': 'grp2'})])
+def test_a_clone_body_that_names_another_object_is_refused(client, segment, name, more):
+    from utils.database import Database
+    table = {'bmcsetup': 'bmcsetup', 'switch': 'switch', 'node': 'node', 'group': 'group'}[segment]
+    code, text = client(segment, name, {'name': 'zzz', **more}, '/_clone')
+    assert code == 400 and f'the request addresses {name}' in text, (code, text)
+    assert not Database().get_record(table=table, where="name IN ('zzz', 'bmc2', 'sw2', 'n002', 'grp2')")

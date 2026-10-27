@@ -662,6 +662,25 @@ def test_verify_keeps_asking_while_the_board_is_rebooting_and_decides_on_the_fir
     assert answers == []
 
 
+def test_verify_keeps_asking_when_the_board_answers_with_the_version_it_booted_with(monkeypatch):
+    """
+    Measured on a GIGABYTE R181 (TRIX-2163): the flash landed, but the BMC came back
+    answering Redfish while still reporting the version it had booted with, and only
+    switched over a while later. Ending the wait on that answer calls a flash that
+    worked a failure, which is what it did. An answer that is not the wanted version
+    is not a verdict.
+    """
+    import utils.firmware_push as module
+    from utils.firmware_push import FirmwarePush
+    monkeypatch.setattr(module, 'sleep', lambda seconds: None)
+    answers = [(True, '12.61.25')] * 3 + [(True, '12.61.21')]
+    monkeypatch.setattr(FirmwarePush, 'running_version',
+                        lambda self, redfish=None, component=None: answers.pop(0))
+    assert FirmwarePush().verify(redfish=object(), component='BMC',
+                                 wanted='12.61.21', deadline=600) == (True, '12.61.21')
+    assert answers == [], 'it stopped asking while the board was still on the old version'
+
+
 def test_verify_gives_up_after_the_deadline_and_says_how_long_it_asked(monkeypatch):
     import utils.firmware_push as module
     from utils.firmware_push import FirmwarePush

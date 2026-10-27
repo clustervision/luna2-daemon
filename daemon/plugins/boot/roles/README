@@ -1,0 +1,16 @@
+# ROLE PLUGIN - a systemd unit a node runs after it has booted
+#
+#        two defined variables are mandatory:
+#        - script   the content of /usr/local/roles/<role name> on the node
+#        - unit     the systemd unit that runs it; the literal __LUNA_ROLE__ is
+#                   replaced by the role name
+#
+#        both may be given base64 encoded; plain text is encoded for transport.
+
+# Plugin selection:
+#
+# 1 role name                 e.g. plugins/boot/roles/beegfs-server.py
+# 2 default                   e.g. plugins/boot/roles/default.py
+#
+# One lookup per name listed under 'roles' on a node or group. A role name with no
+# file of its own resolves to default.py, the example role, without an error.

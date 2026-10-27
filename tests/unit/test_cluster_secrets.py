@@ -14,8 +14,8 @@ applies to every node.
 Secrets are the exception to Luna's inheritance: they stack. A node receives its own
 secrets, its group's, and the cluster's - additively, never overriding. The one place
 order matters is a shared path: the installer writes the sections in JSON order, so
-the cluster section is emitted first and a node or group secret naming the same path
-is written later and wins.
+the sections are emitted cluster, group, node and the most specific one naming a path
+is written last and wins.
 """
 
 import json
@@ -293,3 +293,28 @@ def test_installer_parse_carries_cluster_secrets_aligned(db, seed, tmp_path):
     assert paths == ['"/etc/c1"', '"/etc/n1"'], 'cluster row must come first'
     assert owners == ['"0:0"', '"0:0"']
     assert modes == ['"444"', '"640"']
+
+
+def test_a_node_secret_on_a_shared_path_is_written_after_the_groups(db, seed, tmp_path):
+    """Node beats group on the same path, as everywhere else in Luna: the real template
+    extraction must hand the installer the node's content last."""
+    from base.secret import Secret
+    Secret().update_node_secret('node001', 'cert', {'config': {'secrets': {'node': {
+        'node001': [{'name': 'cert', 'content': 'bm9kZQ==', 'path': '/etc/cert'}]}}}})
+    Secret().update_group_secret('compute', 'cert', {'config': {'secrets': {'group': {
+        'compute': [{'name': 'cert', 'content': 'Z3JvdXA=', 'path': '/etc/cert'}]}}}})
+    Secret().update_cluster_secrets(_cluster_payload(
+        {'name': 'cert', 'content': 'Y2x1c3Rlcg==', 'path': '/etc/cert'}))
+
+    status, response = Secret().get_node_secrets('node001')
+    assert status, response
+    assert list(response['config']['secrets'].keys()) == ['cluster', 'group', 'node']
+
+    json_file = tmp_path / 'node.secrets.json'
+    json_file.write_text(json.dumps(response))
+    script = f'function get_json_segment {{\n{_template_function("get_json_segment")}\n}}\n'
+    result = subprocess.run(['bash', '-c', script + f'get_json_segment {json_file} content nodash'],
+                            capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    contents = [line for line in result.stdout.split() if line != '--']
+    assert contents == ['"Y2x1c3Rlcg=="', '"Z3JvdXA="', '"bm9kZQ=="'], 'the node secret must be written last'

@@ -39,12 +39,16 @@ from base.route import Route
 from utils.config import Config
 from utils.service import Service
 from utils.controller import Controller
+from utils.access import Access, CHILDREN
+from common.validate_body import body_checked
 
 
 class Network():
     """
     This class is responsible for all operations for network.
     """
+    # the per-distro interface templates know these two, in lower case, and no other
+    NETWORK_TYPES = ['ethernet', 'infiniband']
 
     def __init__(self):
         """
@@ -144,7 +148,7 @@ class Network():
         This method will return all the network in detailed format.
         """
         status=False
-        networks = Database().get_record(table='network')
+        networks = Access().visible('network', Database().get_record(table='network'))
         if networks:
             response = {'config': {'network': {} }}
             for network in networks:
@@ -184,7 +188,7 @@ class Network():
         This method will return requested network in detailed format.
         """
         status=False
-        networks = Database().get_record(table='network', where=f"name = '{name}'")
+        networks = Access().visible('network', Database().get_record(table='network', where=f"name = '{name}'"))
         if networks:
             response = {'config': {'network': {} }}
             for network in networks:
@@ -239,6 +243,7 @@ class Network():
         return mine == other or theirs == name or (mine is not None and mine == theirs)
 
 
+    @body_checked('network')
     def update_network(self, name=None, request_data=None):
         """
         This method will create or update a network.
@@ -276,6 +281,8 @@ class Network():
                         del data['newnetname']
                 update = True
             else:
+                if 'newnetname' in data:
+                    return False, f'Network {name} not present in database for rename'
                 create = True
  
             # ---------------------- parse incoming data -------------------
@@ -370,6 +377,10 @@ class Network():
                 default_zone=data['zone']
             elif create is True:
                 data['zone']="internal"
+            if data.get('type') and data['type'] not in self.NETWORK_TYPES:
+                status=False
+                ret_msg = 'Invalid request: Incorrect type. Must be either ethernet or infiniband'
+                return status, ret_msg
             if 'gateway' in data:
                 if data['gateway'] == "":
                     data['gateway'] = None
@@ -388,6 +399,9 @@ class Network():
                         if default_zone == "external":
                             default_gateway_metric="100"
                         data['gateway_metric'] = default_gateway_metric
+            for item in ['nameserver_ip','ntp_server']:
+                if item in data:
+                    data[item] = Helper().make_text(data[item])
             if 'nameserver_ip' in data:
                 # nameserver_ip is a single input that may carry a mixed CSV of IPv4 and IPv6
                 # servers; segregate by family into the nameserver_ip (v4) and nameserver_ip_ipv6
@@ -644,16 +658,17 @@ class Network():
                     ret_msg = f"Internal error updating ip address for controller {controller['hostname']}"
                     return status, ret_msg
                 
+            has_routes = 'routes' in data
             network_routes = data.pop('routes', None)
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)
             if column_check:
                 row = Helper().make_rows(data)
                 if create:
-                    networkid = Database().insert('network', row)
+                    networkid = Database().insert('network', Access().created_row('network', row))
                     response = f'Network {name} created successfully'
                     status=True
-                    if network_routes is not None:
+                    if has_routes:
                         Route().reconcile('network', networkid, network_routes)
                 elif update:
                     changed_fields = {
@@ -714,7 +729,7 @@ class Network():
 
                     where = [{"column": "id", "value": networkid}]
                     Database().update('network', row, where)
-                    if network_routes is not None:
+                    if has_routes:
                         Route().reconcile('network', networkid, network_routes)
                     # TWANNIE
                     if redistribute_ipaddress is True:
@@ -867,18 +882,25 @@ class Network():
         # device can be node, controller, switch, otherdevices. Remember nodeinterface table.
         status=False
         taken = []
-        network_id = Database().id_by_name('network', name)
+        network_row = Database().get_record(table='network', where=f"name = '{name}'")
+        network_id = network_row[0]['id'] if network_row else None
         if network_id:
             where = f"networkid = '{network_id}'"
             ip_list = Database().get_record(table='ipaddress', where=where)
             if ip_list:
                 for each in ip_list:
-                    if 'interface' in each['tableref']:
-                        tablerefid = each['tablerefid']
-                        where = f"id = '{tablerefid}'"
-                        nodeid = Database().get_record(table='nodeinterface', where=where)
-                        nodeid = nodeid[0]['nodeid']
-                        device_name = Database().name_by_id('node', nodeid)
+                    kind = each['tableref']
+                    if each['tableref'] in CHILDREN:
+                        # an interface row: a node or a switch can hold several addresses,
+                        # each through its own interface, and the device is the parent
+                        kind, column = CHILDREN[each['tableref']]
+                        owner = Database().get_record(table=each['tableref'], where=f"id = '{each['tablerefid']}'")
+                        if not owner:
+                            self.logger.warning(f"network {name}: address {each['ipaddress']} points at "
+                                                f"{each['tableref']} {each['tablerefid']}, which no longer "
+                                                f"exists; not listed")
+                            continue
+                        device_name = Database().name_by_id(kind, owner[0][column])
                     elif 'controller' in each['tableref']:
                         tablerefid = each['tablerefid']
                         where = f"id = '{tablerefid}'"
@@ -890,12 +912,21 @@ class Network():
                             device_name = "Controller has No Hostname"
                     else:
                         device_name = Database().name_by_id(each['tableref'], each['tablerefid'])
-                    taken.append({'ipaddress': each['ipaddress'], 'device': device_name})
+                    taken.append({'ipaddress': each['ipaddress'], 'device': device_name, '_kind': kind})
                     device_name = ""
+                # an address belongs to the device holding it: shown to whoever may read that device
+                readable = {kind: set(Access().visible_names(kind, [t['device'] for t in taken if t['_kind'] == kind]))
+                            for kind in {t['_kind'] for t in taken}}
+                taken = [{'ipaddress': t['ipaddress'], 'device': t['device']}
+                         for t in taken if t['device'] in readable[t['_kind']]]
+            # the network's own addresses are taken too: whoever may ask about the network may see them
+            taken += [{'ipaddress': address, 'device': what}
+                      for what, address in Helper().network_service_addresses(network_row[0])]
+            if taken:
                 response = {'config': {'network': {name: {'taken': taken} } } }
                 status=True
             else:
-                response = 'Invalid request: All IP Address are free on Network {name}. None is Taken'
+                response = f'Invalid request: All IP Address are free on Network {name}. None is Taken'
                 status=False
         else:
             response = f'Network {name} not present in database'

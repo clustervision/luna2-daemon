@@ -1,0 +1,37 @@
+Authentication sources
+======================
+
+One file per source. The chain in the daemon ini names them in the order they are asked:
+
+    [AUTH]
+    CHAIN = local, pam
+
+The driver in base/authentication.py loads each named file and asks it in turn. The INI
+account is checked before the chain and is not a source. A source knows nothing about
+tokens, bits or tables: it answers who somebody is, and the daemon does the rest.
+
+Every source is a class named Plugin with two methods.
+
+    authenticate(name, password)
+        (True, identity)   known here and the password verified
+        (False, message)   known here and refused: the chain stops, nothing else is asked
+        (None, message)    not known here: the chain continues with the next source
+
+    resolve(name)
+        (True, identity)   known here, no credential checked
+        (False, message)   not known here
+
+An identity is a dict with three keys:
+
+    name         the login name as the source knows it
+    external_id  the source's stable identifier for this person: never the name,
+                 because a name can be reused for somebody else
+    groups       a list of group names as the source knows them; the daemon turns
+                 them into memberships through the usergroup map for this source
+
+A source that cannot work at all, because its library is missing or its server is
+unreachable, raises. The driver logs that and moves on, so a local user still gets in.
+
+local   the daemon's own user table; a row with a password digest
+pam     the controller's operating system, through python-pam; needs the daemon to run as root
+ldap    a directory bind through ldap3, settings in [AUTH_LDAP]

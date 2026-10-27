@@ -1,20 +1,28 @@
-# NETWORK TEMPLATE
+# NETWORK TEMPLATE - the supported form
 #
 # contains a 'live' config file which is being parsed and rendered during boot
 # Takes precedence over a plugin with the same name
 
-# NETWORK PLUGIN
+# NETWORK PLUGIN - DEPRECATED, only tried when no template matches
 #
-#        three defined variables are mandatory which contains snippets of bash code:
-#        - gateway
+#        seven defined variables are mandatory which contain snippets of bash code:
+#        - init
 #        - interface
-#        - hostname
+#        - gateway
+#        - dns
+#        - interface_ipv6
+#        - gateway_ipv6
+#        - dns_ipv6
 #
-#        these snippets are included and run during node installation time
+#        these snippets are included and run during node installation time.
+#        a family a node does not use may be an empty string, never absent.
 
-# Plugin/Template selection based on the following search path and priority:
+# Plugin/Template selection based on the following search path and priority,
+# the template first and the plugin only when no template matched:
 #
-# 1 distribution + osrelease, e.g. plugins/network/redhat/el9.py
-# 2 distribution              e.g. plugins/network/redhat/default.py  or  plugins/osimage/redhat.py
-# 3 default                   e.g. plugins/network/default.py
+# 1 distribution + osrelease  e.g. plugins/boot/network/redhat9.templ, redhat9.py
+#                                  or plugins/boot/network/redhat/9.templ, redhat/9.py
+# 2 distribution              e.g. plugins/boot/network/redhat/default.py  or  redhat.py
+# 3 default                   e.g. plugins/boot/network/default.py
 #
+# distribution and osrelease are those of the node's osimage.

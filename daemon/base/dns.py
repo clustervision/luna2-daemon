@@ -62,7 +62,7 @@ class DNS():
             response = {'config': {'dns': {name: [] }}}
             data=[]
             for host in dns:
-                response['config']['dns'][name].append({ "host": host['host'], "ipaddress": host['ipaddress'] })
+                response['config']['dns'][name].append({ "host": host['host'], "ipaddress": host['ipaddress'] or host['ipaddress_ipv6'] })
         else:
             network = Database().get_record(table="network", where=f"name='{name}'")
             if not network:
@@ -85,23 +85,26 @@ class DNS():
                 status=True
                 response='DNS entries added or changed'
                 networkid=network[0]['id']
+                applied = 0
                 for entry in data:
-                    if 'host' in entry and 'ipaddress' in entry:
+                    if isinstance(entry, dict) and 'host' in entry and 'ipaddress' in entry:
                         host=entry['host']
                         ipaddress=entry['ipaddress']
                         valid_ip = Helper().check_ip(ipaddress)
                         if valid_ip:
-                            ndata={}
-                            ndata['host']=host
-                            ndata['ipaddress']=ipaddress
-                            ndata['networkid']=networkid
-                            row = Helper().make_rows(ndata)
-                            exist = Database().get_record(table="dns", where=f"host='{host}' AND networkid='{networkid}'")
-                            if exist:
-                                where = [{"column": "id", "value": exist[0]['id']}]
-                                Database().update('dns', row, where)
-                            else:
-                                Database().insert('dns', row)
+                            column = 'ipaddress_ipv6' if ':' in str(ipaddress) else 'ipaddress'
+                            if Helper().make_bool(entry.get('replace')):
+                                # change: the name keeps this address and no other
+                                Database().delete_row('dns', [{"column": "host", "value": host},
+                                                              {"column": "networkid", "value": networkid}])
+                            # add: a name may carry several addresses (round-robin); the same pair twice is one row
+                            exist = Database().get_record(table="dns",
+                                                          where=f"host='{host}' AND networkid='{networkid}' AND {column}='{ipaddress}'")
+                            if not exist:
+                                Database().insert('dns', Helper().make_rows({'host': host, column: ipaddress, 'networkid': networkid}))
+                            applied += 1
+                if not applied:
+                    return False, 'Invalid request: no entry with a host and a valid ipaddress'
                 Service().queue('dns','reload')
             else:
                 status=False
@@ -112,15 +115,21 @@ class DNS():
         return status, response
 
 
-    def delete_dns(self, name=None, network=None):
+    def delete_dns(self, name=None, network=None, request_data=None):
         """
-        This method deletes a single host entry for a network.
+        This method deletes a host entry for a network: one address of it when one is
+        given, every address of it otherwise.
         """
         status=False
         response="Entry does not present in database"
-        exist = Database().get_record_join(['dns.*'],['dns.networkid=network.id'],[f"dns.host='{name}'",f"network.name='{network}'"])
+        ipaddress = request_data.get('ipaddress') if isinstance(request_data, dict) else request_data
+        where = [f"dns.host='{name}'", f"network.name='{network}'"]
+        if ipaddress:
+            where.append(f"(dns.ipaddress='{ipaddress}' OR dns.ipaddress_ipv6='{ipaddress}')")
+        exist = Database().get_record_join(['dns.*'],['dns.networkid=network.id'],where)
         if exist:
-            Database().delete_row('dns', [{"column": "id", "value": exist[0]['id']}])
+            for row in exist:
+                Database().delete_row('dns', [{"column": "id", "value": row['id']}])
             status=True
             response="Entry removed"
             Service().queue('dns','reload')

@@ -1,4 +1,7 @@
 Flask==2.3.3
+# Imported directly by the boot routes to render the iPXE templates, so declared here
+# rather than relied on through Flask. The floor is the one Flask itself requires.
+Jinja2>=3.0
 requests==2.29.0
 urllib3==1.26.16
 PyJWT==2.8.0
@@ -9,7 +12,12 @@ cryptography==41.0.3
 gunicorn==21.2.0
 libtorrent==2.0.9
 #snmp==0.5.0
-pydantic>=1.9.0
+# 2.x, not 1.x: the prometheus rules plugins use RootModel and field_validator, which
+# exist only in 2, so this has not been true since they landed. It must also match
+# trix-daemon exactly - one python on a controller, and one wheel to mirror for airgap.
+pydantic>=2.9.0
 netifaces>=0.11.0
 PyYAML>=6.0.0
+python-pam==2.0.2
+ldap3==2.9.1
 # python3-snmp==1.1a1

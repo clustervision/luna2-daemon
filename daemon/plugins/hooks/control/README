@@ -1,0 +1,21 @@
+# CONTROL HOOK - run after a power or control action on a node
+#
+#        nine defined methods are mandatory, each takes nodename and groupname
+#        and returns <True|False>,"message":
+#        - power_on
+#        - power_off
+#        - power_reset
+#        - power_cycle
+#        - power_status
+#        - identify
+#        - no_identify
+#        - sel_list
+#        - sel_clear
+#
+# The hook runs once the control plugin has acted, whatever that returned.
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 node name                 e.g. plugins/hooks/control/node001.py
+# 2 group name                e.g. plugins/hooks/control/compute.py
+# 3 default                   e.g. plugins/hooks/control/default.py

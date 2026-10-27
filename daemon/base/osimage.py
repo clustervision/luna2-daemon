@@ -31,6 +31,7 @@ __status__      = 'Development'
 
 import os
 import re
+import signal
 from time import sleep, time
 from os import getpid, path
 from random import randint
@@ -43,9 +44,12 @@ from utils.database import Database
 from utils.log import Log
 from utils.queue import Queue
 from utils.helper import Helper
+from utils.kernels import kernels_in_image
 from utils.hashes import Hashes
 from utils.model import Model
 from utils.database import Database
+from utils.access import Access
+from common.validate_body import body_checked
 
 class OSImage():
     """
@@ -76,7 +80,7 @@ class OSImage():
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
         os_image_plugin=Helper().plugin_load(self.osimage_plugins,
                                            'osimage/filesystem',filesystem_plugin)
-        all_records = Database().get_record(table='osimage', orderby='name')
+        all_records = Access().visible('osimage', Database().get_record(table='osimage', orderby='name'))
         if all_records:
             status = True
             response = {'config': {self.table: {} }}
@@ -118,7 +122,7 @@ class OSImage():
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
         os_image_plugin=Helper().plugin_load(self.osimage_plugins,
                                            'osimage/filesystem',filesystem_plugin)
-        all_records = Database().get_record(table='osimage', where=f"name = '{name}'")
+        all_records = Access().visible('osimage', Database().get_record(table='osimage', where=f"name = '{name}'"))
         if all_records:
             status = True
             response = {'config': {self.table: {} }}
@@ -206,7 +210,10 @@ class OSImage():
             groups = Helper().convert_list_to_dict(allgroups, 'id')
             nodes = Helper().convert_list_to_dict(allnodes, 'id')
             response = {'config': {'osimagetag': {} }}
+            readable = set(Access().visible_names('osimage', {image['osimagename'] for image in image_details}))
             for image in image_details:
+                if image['osimagename'] not in readable:
+                    continue
                 nodes_using = []
                 groups_using = []
                 data = {}
@@ -244,6 +251,20 @@ class OSImage():
         return status, response
 
 
+    def path_warning(self, data=None):
+        """
+        A path set by hand that is not there on this controller is worth a word, never a
+        refusal: lexport registers an image under a path that must not exist, on purpose.
+        """
+        given = (data or {}).get('path')
+        if not given:
+            return ''
+        full = str(given) if str(given).startswith('/') else f'{self.image_directory}/{given}'
+        if path.isdir(full):
+            return ''
+        return f'; warning: path {full} does not exist on this controller'
+
+    @body_checked('osimage')
     def update_osimage(self, name=None, request_data=None):
         """
         This method will create or update a osimage.
@@ -333,13 +354,13 @@ class OSImage():
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
                     Database().update('osimage', row, where)
-                    response = f'OS Image {name} updated'
+                    response = f'OS Image {name} updated' + self.path_warning(data)
                     status=True
                 if create:
                     data['name'] = name
                     row = Helper().make_rows(data)
-                    Database().insert('osimage', row)
-                    response = f'OS Image {name} created'
+                    Database().insert('osimage', Access().created_row('osimage', row))
+                    response = f'OS Image {name} created' + self.path_warning(data)
                     status=True
             else:
                 response = 'Invalid request: Columns are incorrect'
@@ -419,7 +440,7 @@ class OSImage():
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
                 row = Helper().make_rows(data)
-                img_id = Database().insert('osimage', row)
+                img_id = Database().insert('osimage', Access().created_row('osimage', row))
                 if not img_id:
                     status = False
                     return status, "Internal error: Failed cloning image"
@@ -818,6 +839,8 @@ class OSImage():
         response = {"message": f'Internal error: OS image {name} packing failed. No sign of life of spawned thread'}
         # Antoine
         image = Database().get_record(table='osimage', where=f"name = '{name}'")
+        if not image:
+            return False, f"OS image {name} does not exist"
         force = False
         # force lets a genuinely-changed image rebuild despite a recent identical request (staleness),
         # but it must never create a second concurrent chain: if this image is already being packed,
@@ -879,9 +902,12 @@ class OSImage():
         return status, response
 
 
+    # how long a cancelled worker gets to stop on SIGTERM before it is killed
+    CANCEL_GRACE_SECONDS = 5
+
     def cancel_pack(self, name=None):
         """
-        Cancel an in-flight pack for an image: signal the owning worker's (isolated) process group so
+        Cancel an in-flight pack for an image: stop the owning worker's (isolated) process group so
         its dracut/tar children die with it, then abort the chain - EOF the waiting client and remove
         its tasks. The signal only ever reaches a worker positively identified by its stamped pid and
         start-time; a reused or vital pid is refused by Helper().safe_kill_worker. Local and transient,
@@ -897,7 +923,28 @@ class OSImage():
         chain_tasks = Database().get_record(table='queue', where=f"request_id='{request_id}'")
         self.logger.warning(f"cancel_pack: cancelling osimage {name} chain {request_id} "
                             f"(worker pid {owner_pid}); {len(chain_tasks or [])} task(s) to clear")
-        signalled = Helper().safe_kill_worker(owner_pid, owner_started)
+        # SIGTERM lets a cooperative worker clean up. If SIGKILL is needed, daemon core
+        # removes every mount below the image without relying on the selected plugin.
+        signalled = Helper().safe_kill_worker(owner_pid, owner_started, signal.SIGTERM)
+        deadline = time() + self.CANCEL_GRACE_SECONDS
+        while signalled and Helper().pid_alive(owner_pid, owner_started) and time() < deadline:
+            sleep(0.2)
+        cleanup_failure = None
+        if signalled and Helper().pid_alive(owner_pid, owner_started):
+            killed = Helper().safe_kill_worker(owner_pid, owner_started, signal.SIGKILL)
+            if killed:
+                try:
+                    cleanup_ok, cleanup_message = OsImager().cleanup_image_mounts(name)
+                except Exception as exp:
+                    cleanup_ok = False
+                    cleanup_message = f"could not inspect or clean image mounts: {exp}"
+                if not cleanup_ok:
+                    cleanup_failure = cleanup_message
+                    self.logger.error(f"cancel_pack: worker {owner_pid} was killed, but "
+                                      f"mount cleanup failed: {cleanup_message}")
+                else:
+                    self.logger.warning(f"cancel_pack: worker {owner_pid} killed after ignoring "
+                                        f"SIGTERM; {cleanup_message}")
         self.logger.warning(f"cancel_pack: worker for osimage {name} "
                             f"{'stopped' if signalled else 'was already gone'} (pid {owner_pid})")
         # abort the chain either way - the kill was delivered, or the worker was already gone.
@@ -911,6 +958,8 @@ class OSImage():
         detail = "worker stopped" if signalled else "worker already gone"
         self.logger.warning(f"cancel_pack for osimage {name}: {detail} (pid {owner_pid}); "
                             f"chain cleared ({len(chain_tasks or [])} task(s)), client EOF'd")
+        if cleanup_failure:
+            return False, f"pack worker killed but mount cleanup failed: {cleanup_failure}"
         return True, f"cancelled pack for osimage {name} ({detail})"
 
 
@@ -972,6 +1021,24 @@ class OSImage():
         return status, response
 
 
+    def kernel_is_in_image(self, name=None, image=None, kernelversion=None):
+        """
+        A registered kernel has to exist in the image tree, or a typo is stored as a fact
+        and only the pack, much later, fails. A tree that is not on this controller cannot
+        be checked; it is said so, and the registration goes through.
+        """
+        image_path = image.get('path') or os.path.join(self.image_directory, name)
+        if not os.path.isdir(image_path):
+            self.logger.warning(f"osimage {name}: tree {image_path} is not on this controller, "
+                                f"kernel {kernelversion} registered unchecked")
+            return True, ''
+        kernels = kernels_in_image(image_path)
+        if kernelversion not in kernels:
+            listed = ', '.join(kernels) if kernels else 'no kernel at all'
+            return False, (f"Invalid request: kernel {kernelversion} is not in osimage {name}, "
+                           f"which carries {listed}")
+        return True, ''
+
     def change_kernel(self, name=None, request_data=None):
         """
         This method will change the kernel of an image and pack again that image.
@@ -992,6 +1059,10 @@ class OSImage():
                 osimage_columns = Database().get_columns('osimage')
                 column_check = Helper().compare_list(data, osimage_columns)
                 if column_check:
+                    if data.get('kernelversion'):
+                        status, response = self.kernel_is_in_image(name, image[0], data['kernelversion'])
+                        if status is False:
+                            return status, response
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
                     img_id = Database().update('osimage', row, where)

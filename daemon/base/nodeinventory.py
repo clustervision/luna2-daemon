@@ -46,6 +46,7 @@ from utils.helper import Helper
 from utils.redfish import Redfish, RedfishAccess, LOGIN
 from utils.status import Status
 from common.constant import CONSTANT
+from utils.access import Access
 
 class NodeInventory():
     """
@@ -125,9 +126,16 @@ class NodeInventory():
         if not records:
             return status, response
         config = {}
+        readable = set(Access().visible_names('node', {record['name'] for record in records}))
         for record in records:
             name = record.pop('name')
-            config[name] = record
+            if name not in readable:
+                continue
+            # one row per node: the installer's snapshot always carries the summary, where a
+            # BMC may publish none; the two also count differently (threads against physical
+            # cores), so the BMC snapshot stands in only when the node has nothing else
+            if name not in config or record['source'] == self.default_source:
+                config[name] = record
         response = {'config': {'node': dict(sorted(config.items()))}}
         status = True
         return status, response

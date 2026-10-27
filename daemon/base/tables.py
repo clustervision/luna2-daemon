@@ -50,8 +50,8 @@ class Tables():
     def get_table_hashes(self):
         status=False
         response='not master'
-        master = HA().get_role()
-        if master is True:
+        ha_object = HA()
+        if (not ha_object.get_hastate()) or ha_object.get_role():
             status=True
             hashes = UTables().get_table_hashes()
             response = {'table': {'hashes': hashes} }

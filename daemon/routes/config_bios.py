@@ -224,7 +224,7 @@ def config_bios_status():
 
 
 @bios_blueprint.route("/config/biosconfig/status/<string:name>", methods=['GET'])
-@token_required
+@token_required(requires=('node', 'r'))
 @validate_name
 def config_bios_status_node(name=None):
     """
@@ -235,7 +235,7 @@ def config_bios_status_node(name=None):
 
 
 @bios_blueprint.route("/config/biosconfig/status/group/<string:name>", methods=['GET'])
-@token_required
+@token_required(requires=('group', 'r'))
 @validate_name
 def config_bios_status_group(name=None):
     """

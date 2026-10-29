@@ -200,10 +200,15 @@ def _biospush(object_type=None, name=None):
     a reset and a wait for POST, so holding the HTTP request open would mean
     holding it for the better part of an hour.
     """
-    target = Access().pushed_object(object_type, name, request.data, 'biosconfig', 'biosconfigid', 'biosconfig')
-    verdict = Access().require('biosconfig', target, 'w')
-    if verdict[0] is not True:
-        return {'message': verdict[1]}, verdict[2]
+    # write on every configuration the push would apply, as push_bios resolves them;
+    # where nothing can be planned, the check stays the one on the object's own
+    status, plan = Bios().push_plan(object_type=object_type, name=name, request_data=request.data)
+    targets = sorted(set(plan.values())) if status else \
+        [Access().pushed_object(object_type, name, request.data, 'biosconfig', 'biosconfigid', 'biosconfig')]
+    for target in targets:
+        verdict = Access().require('biosconfig', target, 'w')
+        if verdict[0] is not True:
+            return {'message': verdict[1]}, verdict[2]
     returned = Bios().push_bios(object_type=object_type, name=name,
                                 request_data=request.data)
     status, response = returned[0], returned[1]

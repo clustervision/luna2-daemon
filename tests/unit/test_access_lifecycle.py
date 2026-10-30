@@ -202,3 +202,57 @@ def test_a_persons_fetch_of_a_nodes_install_script_is_reprovisioning(client, wor
     code, body = ivan.get('/boot/roles/compute')
     assert code == 403 and 'for nodes, rootus and admin users' in body['message']
     assert zed.get('/boot/roles/compute')[0] == 200
+
+
+# TRIX-2336
+
+def test_a_groups_bmc_and_redfish_setup_are_hardware(client, world, db):
+    alice = client.as_(world.ids['alice'])
+    for fields in ({'bmcsetupname': 'ipmi'}, {'redfishsetupname': 'rf'}, {'redfishsetupname': ''}):
+        code, body = alice.post('/config/group/compute-intel', _body('group', 'compute-intel', **fields))
+        assert code == 403, f'{fields}: intel has no hardware flag'
+        assert f'changing {next(iter(fields))} of group compute-intel is not permitted' in body['message']
+
+
+def test_a_group_may_only_name_a_bmc_or_redfish_setup_the_caller_can_read(client, world, db):
+    from utils.dbstructure import DBStructure
+    from utils.helper import Helper
+    db.create('redfishsetup', DBStructure().get_database_table_structure('redfishsetup'))
+    for table in ('bmcsetup', 'redfishsetup'):
+        db.insert(table, Helper().make_rows({'name': 'mine', 'usergroups': str(world.amd), 'access': '770'}))
+        db.insert(table, Helper().make_rows({'name': 'locked', 'access': '700'}))
+    hans = client.as_(world.ids['hans'])
+    for key, table in (('bmcsetupname', 'bmcsetup'), ('redfishsetupname', 'redfishsetup')):
+        assert hans.post('/config/group/compute-amd', _body('group', 'compute-amd', **{key: 'mine'}))[0] == 200
+        code, body = hans.post('/config/group/compute-amd', _body('group', 'compute-amd', **{key: 'locked'}))
+        assert code == 404, f'{key}: {table} locked is not readable by amd'
+        assert f'{table} locked is not available' in body['message']
+
+
+def _body_keys(entity):
+    """What a node or group body carries: the table's columns, the named references the
+    base resolves to their id columns, and every key the base module tests the body for."""
+    import ast
+    import importlib
+    from utils.dbstructure import DBStructure
+    module = importlib.import_module(f'base.{entity}')
+    names = {key: value[0] if isinstance(value, tuple) else key for key, value in module.NAME_REFERENCES.items()}
+    keys = {c['column'] for c in DBStructure().get_database_table_structure(entity)} | set(names)
+    with open(module.__file__, encoding='utf-8') as source:
+        for node in ast.walk(ast.parse(source.read())):
+            if (isinstance(node, ast.Compare) and isinstance(node.left, ast.Constant)
+                    and isinstance(node.ops[0], (ast.In, ast.NotIn)) and getattr(node.comparators[0], 'id', None) == 'data'):
+                keys.add(node.left.value)
+    return keys, names
+
+
+def test_hardware_and_reference_keys_are_keys_a_node_or_group_body_carries():
+    from utils.access import HARDWARE_KEYS, REFERENCES
+    wrong = []
+    for entity in ('node', 'group'):
+        keys, names = _body_keys(entity)
+        wrong += [f'{entity} HARDWARE_KEYS {key}' for key in sorted(HARDWARE_KEYS[entity] - keys)]
+        wrong += [f'{entity} REFERENCES {key}' for key in sorted(set(REFERENCES[entity]) - keys)]
+        wrong += [f'{entity} REFERENCES {key} -> {table}, the base resolves it in {names[key]}'
+                  for key, table in REFERENCES[entity].items() if key in names and names[key] != table]
+    assert not wrong, f'keys no body carries, so the gate never sees them: {wrong}'

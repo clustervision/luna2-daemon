@@ -123,7 +123,7 @@ CONFIG_FIELDS = {
 REFERENCES = {
     'node': {'group': 'group', 'osimage': 'osimage', 'bmcsetup': 'bmcsetup', 'redfishsetup': 'redfishsetup',
              'biosconfig': 'biosconfig', 'switch': 'switch', 'cloud': 'cloud', 'profiles': 'profile'},
-    'group': {'osimage': 'osimage', 'bmcsetup': 'bmcsetup', 'redfishsetup': 'redfishsetup',
+    'group': {'osimage': 'osimage', 'bmcsetupname': 'bmcsetup', 'redfishsetupname': 'redfishsetup',
               'biosconfig': 'biosconfig', 'profiles': 'profile'},
 }
 
@@ -132,8 +132,8 @@ HARDWARE_KEYS = {
     'node': {'newnodename', 'switch', 'switchport', 'cloud', 'bmcsetup', 'redfishsetup',
              'biosconfig', 'setupbmc', 'setupredfish', 'unmanaged_bmc_users', 'tpm_uuid',
              'tpm_pubkey', 'tpm_sha256', 'vendor', 'assettag', 'provision_interface', 'service',
-             'macaddress', 'interfaces'},
-    'group': {'newgroupname', 'bmcsetup', 'redfishsetup', 'biosconfig', 'setupbmc', 'setupredfish',
+             'interfaces'},
+    'group': {'newgroupname', 'bmcsetupname', 'redfishsetupname', 'biosconfig', 'setupbmc', 'setupredfish',
               'unmanaged_bmc_users', 'provision_interface', 'domain', 'interfaces'},
 }
 

@@ -207,7 +207,7 @@ def config_firmware_status():
 
 
 @firmware_blueprint.route("/config/firmwarecatalog/status/<string:name>", methods=['GET'])
-@token_required
+@token_required(requires=('node', 'r'))
 @validate_name
 def config_firmware_status_node(name=None):
     """
@@ -218,7 +218,7 @@ def config_firmware_status_node(name=None):
 
 
 @firmware_blueprint.route("/config/firmwarecatalog/status/group/<string:name>", methods=['GET'])
-@token_required
+@token_required(requires=('group', 'r'))
 @validate_name
 def config_firmware_status_group(name=None):
     """

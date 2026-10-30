@@ -150,7 +150,7 @@ def test_what_is_not_a_list_of_objects_is_refused(client, segment, name, action,
 
 @pytest.mark.parametrize('segment, name, action, field, more', LISTS)
 def test_nothing_for_a_list_of_objects_reads_as_not_given(client, segment, name, action, field, more):
-    code, _ = client(segment, name, {field: None, 'comment': 'x', **more}, action)
+    code, _ = client(segment, name, {field: None, ('room' if segment == 'rack' else 'comment'): 'x', **more}, action)
     assert code in ((201, 204) if action in ('', '/_clone') else (400, 404, 500))
 
 
@@ -191,7 +191,7 @@ def test_the_name_addressed_or_nothing_in_the_body_changes_no_name(client, table
     segment, name, _ = OBJECTS[table]
     before = sorted(str(row['name']) for row in Database().get_record(table=table))
     for value in (name, None):
-        assert client(segment, name, {'name': value, 'comment': 'x'})[0] == 204
+        assert client(segment, name, {'name': value, ('room' if table == 'rack' else 'comment'): 'x'})[0] == 204
         assert sorted(str(row['name']) for row in Database().get_record(table=table)) == before
 
 
@@ -256,3 +256,12 @@ def test_a_clone_body_that_names_another_object_is_refused(client, segment, name
     code, text = client(segment, name, {'name': 'zzz', **more}, '/_clone')
     assert code == 400 and f'the request addresses {name}' in text, (code, text)
     assert not Database().get_record(table=table, where="name IN ('zzz', 'bmc2', 'sw2', 'n002', 'grp2')")
+
+
+@pytest.mark.parametrize('name', ['rack1', 'rack2'], ids=['update', 'create'])
+def test_a_rack_body_with_an_unknown_key_is_refused_and_stores_nothing(client, name):
+    from utils.database import Database
+    code, text = client('rack', name, {'size': 20, 'bogus': 1, 'devices': [{'name': 'n001', 'type': 'node', 'position': 3}]})
+    assert code == 400 and 'Columns are incorrect' in text, (code, text)
+    assert [str(row['size']) for row in Database().get_record(table='rack')] == ['42']
+    assert not Database().get_record(table='rackinventory')

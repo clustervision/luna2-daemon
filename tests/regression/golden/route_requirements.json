@@ -72,13 +72,13 @@
  },
  "GET /config/biosconfig/status/<string:name>": {
   "bit": "r",
-  "entity": "biosconfig",
+  "entity": "node",
   "kind": "object",
   "name": "<name>"
  },
  "GET /config/biosconfig/status/group/<string:name>": {
   "bit": "r",
-  "entity": "biosconfig",
+  "entity": "group",
   "kind": "object",
   "name": "<name>"
  },
@@ -184,13 +184,13 @@
  },
  "GET /config/firmwarecatalog/status/<string:name>": {
   "bit": "r",
-  "entity": "firmwarecatalog",
+  "entity": "node",
   "kind": "object",
   "name": "<name>"
  },
  "GET /config/firmwarecatalog/status/group/<string:name>": {
   "bit": "r",
-  "entity": "firmwarecatalog",
+  "entity": "group",
   "kind": "object",
   "name": "<name>"
  },
@@ -515,7 +515,7 @@
  },
  "GET /config/profiles/status/<string:name>": {
   "bit": "r",
-  "entity": "profile",
+  "entity": "node",
   "kind": "object",
   "name": "<name>"
  },

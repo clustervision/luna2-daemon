@@ -7,7 +7,7 @@ Setup file, will build the pip package for the project.
 
 __author__      = 'Sumit Sharma'
 __copyright__   = 'Copyright 2025, Luna2 Project'
-__license__     = 'GPL'
+__license__     = 'GPLv3'
 __version__     = '2.2'
 __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
@@ -107,7 +107,7 @@ setup(
         'Development Status :: BETA',
         'Environment :: REST API',
         'Intended Audience :: System Administrators',
-        'License :: MIT',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Operating System :: RockyLinux :: CentOS :: RedHat',
         'Programming Language :: Python',
         'Topic :: Trinity :: Luna'

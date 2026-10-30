@@ -862,6 +862,31 @@ class Bios():
         return True
 
 
+    def push_plan(self, object_type=None, name=None, request_data=None):
+        """
+        This method resolves a push into {node: configuration name}, in target
+        order. The access check reads the same plan, so what it checks is what
+        is pushed.
+        """
+        try:
+            configname = request_data['config'][object_type][name].get('biosconfig')
+        except (KeyError, TypeError, AttributeError):
+            configname = None
+        status, targets = self.push_targets(object_type=object_type, name=name)
+        if not status:
+            return False, targets
+        assigned = {}
+        if not configname:
+            # no name means the assignment: each node's own, else its group's.
+            # Resolved now, per node, so a group whose members are assigned
+            # differently gets each member its own - and refused as a whole when
+            # one of them has none
+            status, assigned = self.assigned_configs(nodenames=targets)
+            if not status:
+                return False, assigned
+        return True, {target: configname or assigned[target] for target in targets}
+
+
     def push_bios(self, object_type=None, name=None, request_data=None):
         """
         This method queues a BIOS configuration to be applied to a node or to
@@ -879,22 +904,12 @@ class Bios():
             data = request_data['config'][object_type][name]
         except (KeyError, TypeError):
             data = {}
-        configname = data.get('biosconfig')
         policy = str(data.get('version_match') or self.version_policy()).strip().lower()
 
-        status, targets = self.push_targets(object_type=object_type, name=name)
+        status, plan = self.push_plan(object_type=object_type, name=name, request_data=request_data)
         if not status:
-            return False, targets
-        if configname:
-            plan = {target: configname for target in targets}
-        else:
-            # no name means the assignment: each node's own, else its group's.
-            # Resolved now, per node, so a group whose members are assigned
-            # differently gets each member its own - and refused as a whole when
-            # one of them has none
-            status, plan = self.assigned_configs(nodenames=targets)
-            if not status:
-                return False, plan
+            return False, plan
+        targets = list(plan)
         for configname in sorted(set(plan.values())):
             record = Database().get_record(table=self.table, where=f"name = '{configname}'")
             if not record:

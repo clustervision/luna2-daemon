@@ -202,3 +202,183 @@ def test_a_persons_fetch_of_a_nodes_install_script_is_reprovisioning(client, wor
     code, body = ivan.get('/boot/roles/compute')
     assert code == 403 and 'for nodes, rootus and admin users' in body['message']
     assert zed.get('/boot/roles/compute')[0] == 200
+
+
+# TRIX-2336
+
+def test_a_groups_bmc_and_redfish_setup_are_hardware(client, world, db):
+    alice = client.as_(world.ids['alice'])
+    for fields in ({'bmcsetupname': 'ipmi'}, {'redfishsetupname': 'rf'}, {'redfishsetupname': ''}):
+        code, body = alice.post('/config/group/compute-intel', _body('group', 'compute-intel', **fields))
+        assert code == 403, f'{fields}: intel has no hardware flag'
+        assert f'changing {next(iter(fields))} of group compute-intel is not permitted' in body['message']
+
+
+def test_a_group_may_only_name_a_bmc_or_redfish_setup_the_caller_can_read(client, world, db):
+    from utils.dbstructure import DBStructure
+    from utils.helper import Helper
+    db.create('redfishsetup', DBStructure().get_database_table_structure('redfishsetup'))
+    for table in ('bmcsetup', 'redfishsetup'):
+        db.insert(table, Helper().make_rows({'name': 'mine', 'usergroups': str(world.amd), 'access': '770'}))
+        db.insert(table, Helper().make_rows({'name': 'locked', 'access': '700'}))
+    hans = client.as_(world.ids['hans'])
+    for key, table in (('bmcsetupname', 'bmcsetup'), ('redfishsetupname', 'redfishsetup')):
+        assert hans.post('/config/group/compute-amd', _body('group', 'compute-amd', **{key: 'mine'}))[0] == 200
+        code, body = hans.post('/config/group/compute-amd', _body('group', 'compute-amd', **{key: 'locked'}))
+        assert code == 404, f'{key}: {table} locked is not readable by amd'
+        assert f'{table} locked is not available' in body['message']
+
+
+def _body_keys(entity):
+    """What a node or group body carries: the table's columns, the named references the
+    base resolves to their id columns, and every key the base module tests the body for."""
+    import ast
+    import importlib
+    from utils.dbstructure import DBStructure
+    module = importlib.import_module(f'base.{entity}')
+    names = {key: value[0] if isinstance(value, tuple) else key for key, value in module.NAME_REFERENCES.items()}
+    keys = {c['column'] for c in DBStructure().get_database_table_structure(entity)} | set(names)
+    with open(module.__file__, encoding='utf-8') as source:
+        for node in ast.walk(ast.parse(source.read())):
+            if (isinstance(node, ast.Compare) and isinstance(node.left, ast.Constant)
+                    and isinstance(node.ops[0], (ast.In, ast.NotIn)) and getattr(node.comparators[0], 'id', None) == 'data'):
+                keys.add(node.left.value)
+    return keys, names
+
+
+def test_hardware_and_reference_keys_are_keys_a_node_or_group_body_carries():
+    from utils.access import HARDWARE_KEYS, REFERENCES
+    wrong = []
+    for entity in ('node', 'group'):
+        keys, names = _body_keys(entity)
+        wrong += [f'{entity} HARDWARE_KEYS {key}' for key in sorted(HARDWARE_KEYS[entity] - keys)]
+        wrong += [f'{entity} REFERENCES {key}' for key in sorted(set(REFERENCES[entity]) - keys)]
+        wrong += [f'{entity} REFERENCES {key} -> {table}, the base resolves it in {names[key]}'
+                  for key, table in REFERENCES[entity].items() if key in names and names[key] != table]
+    assert not wrong, f'keys no body carries, so the gate never sees them: {wrong}'
+
+
+# TRIX-2337
+
+@pytest.fixture
+def routes(sqlite_db, monkeypatch):
+    """The real node and group routes over a full schema: alice manages intel (no hardware
+    flag), hans manages amd (hardware flag), zed is admin; locked objects only rootus reads,
+    the other osimages and setups are readable by the department they are named for."""
+    import json
+    import common.constant as constant
+    from jwt import encode
+    from utils.database import Database
+    from utils.helper import Helper
+    from routes.config_node import node_blueprint
+    from routes.config_group import group_blueprint
+    monkeypatch.setitem(constant.CONSTANT['PLUGINS'], 'PLUGINS_DIRECTORY', os.path.join(DAEMON, 'plugins'))
+    db = Database()
+
+    def insert(table, **row):
+        return db.insert(table, Helper().make_rows(row))
+    ids = {n: insert('user', username=n, source='local', enabled='1', admin='1' if n == 'zed' else '0', delegate='0')
+           for n in ('alice', 'hans', 'zed')}
+    intel, amd = insert('usergroup', name='intel', hardware='0'), insert('usergroup', name='amd', hardware='1')
+    insert('usergroupmember', userid=ids['alice'], usergroupid=intel, role='manager', source='local')
+    insert('usergroupmember', userid=ids['hans'], usergroupid=amd, role='manager', source='local')
+    for table in ('bmcsetup', 'redfishsetup', 'osimage'):
+        ids[table] = insert(table, name='locked', access='700')
+    ids['img_intel'] = insert('osimage', name='intel', usergroups=str(intel), access='770')
+    ids['img_public'] = insert('osimage', name='public', access='774')
+    ids['img_amd'] = insert('osimage', name='amd', usergroups=str(amd), access='744')
+    ids['tag_v1'] = insert('osimagetag', name='v1', osimageid=ids['img_intel'])
+    for table in ('bmcsetup', 'redfishsetup'):
+        ids[f'{table}_amd'] = insert(table, name='amd', usergroups=str(amd), access='770')
+        ids[f'{table}_public'] = insert(table, name='public', access='774')
+    ids['g_intel'] = insert('group', name='compute-intel', usergroups=str(intel), access='770')
+    ids['g_amd'] = insert('group', name='compute-amd', usergroups=str(amd), access='770')
+    insert('node', name='node001', groupid=ids['g_intel'], usergroups=str(intel), access='770')
+    insert('node', name='node002', groupid=ids['g_amd'], usergroups=str(amd), access='770')
+    app = Flask(__name__)
+    app.register_blueprint(node_blueprint)
+    app.register_blueprint(group_blueprint)
+
+    def post(who, entity, name, fields):
+        claims = {'node': name, 'scope': 'provision'} if who == 'node' else {'id': ids[who]}
+        token = encode(claims, constant.CONSTANT['API']['SECRET_KEY'], 'HS256')
+        response = app.test_client().post(f'/config/{entity}/{name}', headers={'x-access-tokens': token},
+                                          data=json.dumps({'config': {entity: {name: fields}}}), content_type='application/json')
+        return response.status_code, (json.loads(response.data) if response.data else {}).get('message')
+
+    def row(entity, name):
+        return db.get_record(table=entity, where=f"name = '{name}'")[0]
+    return ids, post, row
+
+
+def test_a_body_may_not_set_an_id_column_of_a_node_or_group(routes):
+    """the base writes a key naming a column as it stands, so an id in the body would
+    walk past the hardware and reference checks, which read the names the API takes"""
+    ids, post, row = routes
+    cases = [('node', 'node001', 'bmcsetupid', ids['bmcsetup']), ('node', 'node001', 'redfishsetupid', ids['redfishsetup']),
+             ('node', 'node001', 'osimageid', ids['osimage']), ('node', 'node001', 'groupid', ids['g_amd']),
+             ('node', 'node001', 'id', 77), ('group', 'compute-intel', 'osimagetagid', 5),
+             ('group', 'compute-intel', 'bmcsetupid', ids['bmcsetup']), ('group', 'compute-intel', 'id', 77)]
+    for entity, name, key, value in cases:
+        before = row(entity, name)
+        code, message = post('alice', entity, name, {key: value})
+        assert row(entity, name) == before, f'{entity} {key} was written'
+        assert code == 403 and f'setting {key} on {entity} {name} is not permitted' in (message or ''), (entity, key)
+    for entity, name, key, value in cases[:4] + cases[5:7]:
+        assert post('zed', entity, name, {key: value})[0] == 204, (entity, key)
+        assert str(row(entity, name)[key]) == str(value), f'admin sets {entity} {key}'
+    assert post('alice', 'node', 'node001', {'bmcsetup': 'locked'})[0] == 403, 'the name form stays hardware'
+    assert post('alice', 'node', 'node001', {'osimage': 'locked'})[0] == 404, 'the name form still needs r'
+    assert post('alice', 'node', 'node001', {'comment': 'x'})[0] == 204
+    assert post('hans', 'node', 'node002', {'tpm_uuid': 'abc'})[0] == 204, 'tpm_uuid is no id column'
+    code, message = post('node', 'node', 'node001', {'groupid': ids['g_amd']})
+    assert code == 403 and 'setting groupid on node node001' in (message or ''), 'a node token is refused too'
+    assert post('node', 'node', 'node001', {'comment': 'x'})[0] == 204
+
+
+# Columns a non-admin body may name although CONFIG_FIELDS does not list them: name is the
+# route's own name; status is in HARDWARE_FIELDS but no body key gates it, which this pins as today.
+PASSES_UNCLASSIFIED = {'node': {'name', 'status'}, 'group': {'name'}}
+
+
+def test_every_node_and_group_column_in_a_body_is_refused_or_classified(routes):
+    """A column a non-admin may name must be config or deliberately allowed: a new id
+    column, or any new column, fails here until it is classified."""
+    from utils.dbstructure import DBStructure
+    from utils.access import CONFIG_FIELDS
+    _, post, _ = routes
+    unclassified = []
+    for entity, name in (('node', 'node001'), ('group', 'compute-intel')):
+        allowed = {c for c in CONFIG_FIELDS[entity] if not c.endswith('id')} | PASSES_UNCLASSIFIED[entity]
+        for column in [c['column'] for c in DBStructure().get_database_table_structure(entity)]:
+            code, _ = post('alice', entity, name, {column: name if column == 'name' else '1'})
+            if code != 403 and column not in allowed:
+                unclassified.append(f'{entity}.{column} ({code})')
+    assert not unclassified, f'a non-admin body sets these past every gate: {unclassified}'
+
+
+def test_a_department_still_sets_osimage_tag_and_comment_by_name(routes):
+    """the name form the CLI sends for -o, -t and -qc still writes the column the id form
+    is refused on: an own, a public and another department's 744 osimage, on node and group"""
+    ids, post, row = routes
+    for entity, name in (('node', 'node001'), ('group', 'compute-intel')):
+        for image in ('intel', 'public', 'amd'):
+            assert post('alice', entity, name, {'name': name, 'osimage': image})[0] == 204, (entity, image)
+            assert row(entity, name)['osimageid'] == ids[f'img_{image}'], (entity, image)
+    fields = {'name': 'node001', 'osimage': 'intel', 'osimagetag': 'v1'}
+    assert post('alice', 'node', 'node001', fields)[0] == 204
+    assert row('node', 'node001')['osimagetagid'] == ids['tag_v1']
+    assert post('alice', 'node', 'node001', {'name': 'node001', 'comment': 'rack 2'})[0] == 204
+    assert row('node', 'node001')['comment'] == 'rack 2'
+
+
+def test_a_hardware_department_still_sets_bmc_and_redfish_setup_by_name(routes):
+    """-b and -F with the hardware flag: a node body carries bmcsetup and redfishsetup, a group
+    body bmcsetupname and redfishsetupname, and each writes the id of a setup the user reads"""
+    ids, post, row = routes
+    for entity, name, suffix in (('node', 'node002', ''), ('group', 'compute-amd', 'name')):
+        for table in ('bmcsetup', 'redfishsetup'):
+            for setup in ('amd', 'public'):
+                code, message = post('hans', entity, name, {'name': name, table + suffix: setup})
+                assert code == 204, (entity, table + suffix, setup, message)
+                assert row(entity, name)[f'{table}id'] == ids[f'{table}_{setup}'], (entity, table, setup)

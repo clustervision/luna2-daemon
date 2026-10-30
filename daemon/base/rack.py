@@ -186,6 +186,8 @@ class Rack():
                 if key in data and (not data[key]) and (key not in self.rack_items):
                     del data[key]
 
+            if not Helper().compare_list(data, Database().get_columns('rack')):
+                return False, 'Invalid request: Columns are incorrect'
             if update:
                 where = [{"column": "id", "value": rackid}]
                 row = Helper().make_rows(data)

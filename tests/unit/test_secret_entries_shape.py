@@ -57,3 +57,15 @@ def test_anything_but_a_list_of_objects_is_a_400(post, path, scope, value):
 def test_a_list_of_objects_still_goes_through(post, path, scope):
     code, message = post(path, scope, [{'name': 's1', 'content': 'x', 'path': '/tmp/s1'}])
     assert code in (200, 201, 204), (code, message)
+
+
+@pytest.mark.parametrize('stored', [False, True], ids=['new', 'existing'])
+@pytest.mark.parametrize('path,scope,table', [('/config/secrets/node/n1', ('node', 'n1'), 'nodesecrets'),
+                                              ('/config/secrets/group/g1', ('group', 'g1'), 'groupsecrets'),
+                                              ('/config/secrets/cluster', ('cluster', None), 'clustersecrets')])
+def test_an_entry_with_an_unknown_key_is_a_400_and_stores_nothing(post, path, scope, table, stored):
+    if stored:
+        assert post(path, scope, [{'name': 's1', 'content': 'x', 'path': '/tmp/s1'}])[0] in (201, 204)
+    code, message = post(path, scope, [{'name': 's1', 'content': 'y', 'path': '/tmp/s2', 'bogus': 1}])
+    assert code == 400 and 'Columns are incorrect' in message, (code, message)
+    assert [row['path'] for row in Database().get_record(table=table) or []] == (['/tmp/s1'] if stored else [])

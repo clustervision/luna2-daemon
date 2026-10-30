@@ -195,6 +195,8 @@ class Secret():
                         if ('name' not in secret.keys()) or ('content' not in secret.keys()):
                             status=False
                             return status, 'Invalid request: secret information not complete'
+                        if not Helper().compare_list(secret, Database().get_columns('nodesecrets')):
+                            return False, 'Invalid request: Columns are incorrect'
                         secret_name = secret['name']
                         if secret.get('owner') and not Helper().check_owner(secret['owner']):
                             unresolvable.append(f"{secret_name}: {secret['owner']}")
@@ -483,6 +485,8 @@ class Secret():
                         if ('name' not in secret.keys()) or ('content' not in secret.keys()):
                             status=False
                             return status, 'Invalid request: secret information not complete'
+                        if not Helper().compare_list(secret, Database().get_columns('groupsecrets')):
+                            return False, 'Invalid request: Columns are incorrect'
                         secret_name = secret['name']
                         if secret.get('owner') and not Helper().check_owner(secret['owner']):
                             unresolvable.append(f"{secret_name}: {secret['owner']}")
@@ -766,6 +770,8 @@ class Secret():
                         if ('name' not in secret.keys()) or ('content' not in secret.keys()):
                             status=False
                             return status, 'Invalid request: secret information not complete'
+                        if not Helper().compare_list(secret, Database().get_columns('clustersecrets')):
+                            return False, 'Invalid request: Columns are incorrect'
                         secret_name = secret['name']
                         if secret.get('owner') and not Helper().check_owner(secret['owner']):
                             unresolvable.append(f"{secret_name}: {secret['owner']}")

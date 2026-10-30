@@ -256,3 +256,94 @@ def test_hardware_and_reference_keys_are_keys_a_node_or_group_body_carries():
         wrong += [f'{entity} REFERENCES {key} -> {table}, the base resolves it in {names[key]}'
                   for key, table in REFERENCES[entity].items() if key in names and names[key] != table]
     assert not wrong, f'keys no body carries, so the gate never sees them: {wrong}'
+
+
+# TRIX-2337
+
+@pytest.fixture
+def routes(sqlite_db, monkeypatch):
+    """The real node and group routes over a full schema: alice manages intel (no hardware
+    flag), hans manages amd (hardware flag), zed is admin; locked objects only rootus reads."""
+    import json
+    import common.constant as constant
+    from jwt import encode
+    from utils.database import Database
+    from utils.helper import Helper
+    from routes.config_node import node_blueprint
+    from routes.config_group import group_blueprint
+    monkeypatch.setitem(constant.CONSTANT['PLUGINS'], 'PLUGINS_DIRECTORY', os.path.join(DAEMON, 'plugins'))
+    db = Database()
+
+    def insert(table, **row):
+        return db.insert(table, Helper().make_rows(row))
+    ids = {n: insert('user', username=n, source='local', enabled='1', admin='1' if n == 'zed' else '0', delegate='0')
+           for n in ('alice', 'hans', 'zed')}
+    intel, amd = insert('usergroup', name='intel', hardware='0'), insert('usergroup', name='amd', hardware='1')
+    insert('usergroupmember', userid=ids['alice'], usergroupid=intel, role='manager', source='local')
+    insert('usergroupmember', userid=ids['hans'], usergroupid=amd, role='manager', source='local')
+    for table in ('bmcsetup', 'redfishsetup', 'osimage'):
+        ids[table] = insert(table, name='locked', access='700')
+    ids['g_intel'] = insert('group', name='compute-intel', usergroups=str(intel), access='770')
+    ids['g_amd'] = insert('group', name='compute-amd', usergroups=str(amd), access='770')
+    insert('node', name='node001', groupid=ids['g_intel'], usergroups=str(intel), access='770')
+    insert('node', name='node002', groupid=ids['g_amd'], usergroups=str(amd), access='770')
+    app = Flask(__name__)
+    app.register_blueprint(node_blueprint)
+    app.register_blueprint(group_blueprint)
+
+    def post(who, entity, name, fields):
+        claims = {'node': name, 'scope': 'provision'} if who == 'node' else {'id': ids[who]}
+        token = encode(claims, constant.CONSTANT['API']['SECRET_KEY'], 'HS256')
+        response = app.test_client().post(f'/config/{entity}/{name}', headers={'x-access-tokens': token},
+                                          data=json.dumps({'config': {entity: {name: fields}}}), content_type='application/json')
+        return response.status_code, (json.loads(response.data) if response.data else {}).get('message')
+
+    def row(entity, name):
+        return db.get_record(table=entity, where=f"name = '{name}'")[0]
+    return ids, post, row
+
+
+def test_a_body_may_not_set_an_id_column_of_a_node_or_group(routes):
+    """the base writes a key naming a column as it stands, so an id in the body would
+    walk past the hardware and reference checks, which read the names the API takes"""
+    ids, post, row = routes
+    cases = [('node', 'node001', 'bmcsetupid', ids['bmcsetup']), ('node', 'node001', 'redfishsetupid', ids['redfishsetup']),
+             ('node', 'node001', 'osimageid', ids['osimage']), ('node', 'node001', 'groupid', ids['g_amd']),
+             ('node', 'node001', 'id', 77), ('group', 'compute-intel', 'osimagetagid', 5),
+             ('group', 'compute-intel', 'bmcsetupid', ids['bmcsetup']), ('group', 'compute-intel', 'id', 77)]
+    for entity, name, key, value in cases:
+        before = row(entity, name)
+        code, message = post('alice', entity, name, {key: value})
+        assert row(entity, name) == before, f'{entity} {key} was written'
+        assert code == 403 and f'setting {key} on {entity} {name} is not permitted' in (message or ''), (entity, key)
+    for entity, name, key, value in cases[:4] + cases[5:7]:
+        assert post('zed', entity, name, {key: value})[0] == 204, (entity, key)
+        assert str(row(entity, name)[key]) == str(value), f'admin sets {entity} {key}'
+    assert post('alice', 'node', 'node001', {'bmcsetup': 'locked'})[0] == 403, 'the name form stays hardware'
+    assert post('alice', 'node', 'node001', {'osimage': 'locked'})[0] == 404, 'the name form still needs r'
+    assert post('alice', 'node', 'node001', {'comment': 'x'})[0] == 204
+    assert post('hans', 'node', 'node002', {'tpm_uuid': 'abc'})[0] == 204, 'tpm_uuid is no id column'
+    code, message = post('node', 'node', 'node001', {'groupid': ids['g_amd']})
+    assert code == 403 and 'setting groupid on node node001' in (message or ''), 'a node token is refused too'
+    assert post('node', 'node', 'node001', {'comment': 'x'})[0] == 204
+
+
+# Columns a non-admin body may name although CONFIG_FIELDS does not list them: name is the
+# route's own name; status is in HARDWARE_FIELDS but no body key gates it, which this pins as today.
+PASSES_UNCLASSIFIED = {'node': {'name', 'status'}, 'group': {'name'}}
+
+
+def test_every_node_and_group_column_in_a_body_is_refused_or_classified(routes):
+    """A column a non-admin may name must be config or deliberately allowed: a new id
+    column, or any new column, fails here until it is classified."""
+    from utils.dbstructure import DBStructure
+    from utils.access import CONFIG_FIELDS
+    _, post, _ = routes
+    unclassified = []
+    for entity, name in (('node', 'node001'), ('group', 'compute-intel')):
+        allowed = {c for c in CONFIG_FIELDS[entity] if not c.endswith('id')} | PASSES_UNCLASSIFIED[entity]
+        for column in [c['column'] for c in DBStructure().get_database_table_structure(entity)]:
+            code, _ = post('alice', entity, name, {column: name if column == 'name' else '1'})
+            if code != 403 and column not in allowed:
+                unclassified.append(f'{entity}.{column} ({code})')
+    assert not unclassified, f'a non-admin body sets these past every gate: {unclassified}'

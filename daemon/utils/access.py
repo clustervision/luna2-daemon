@@ -40,6 +40,7 @@ __status__      = 'Development'
 import re
 from flask import g, has_request_context, request
 from utils.database import Database
+from utils.dbstructure import DBStructure
 from utils.log import Log
 from utils.helper import Helper
 from common.constant import CONSTANT
@@ -136,6 +137,13 @@ HARDWARE_KEYS = {
     'group': {'newgroupname', 'bmcsetupname', 'redfishsetupname', 'biosconfig', 'setupbmc', 'setupredfish',
               'unmanaged_bmc_users', 'provision_interface', 'domain', 'interfaces'},
 }
+
+# The id columns of node and group: the base writes a body key that names a column as it
+# stands, past the name-keyed checks above, so naming one is for rootus and admin only.
+_LAYOUT = DBStructure()
+ID_COLUMNS = {t: {c['column'] for c in _LAYOUT.get_database_table_structure(t)
+                  if c['column'] == 'id' or c['column'][:-2] in _LAYOUT.tables and c['column'].endswith('id')}
+              for t in HARDWARE_KEYS}
 
 
 class AccessRefused(Exception):
@@ -710,6 +718,9 @@ class Access():
         named = [key for key in COLUMNS if key in self._body_of(entity, name)]
         if named:
             raise AccessRefused(403, f"setting {', '.join(named)} on {entity} {name} is not permitted: they are changed with chown, chgrp and chmod")
+        named = sorted(set(self._body_of(entity, name)) & ID_COLUMNS.get(entity, set()))
+        if named:
+            raise AccessRefused(403, f"setting {', '.join(named)} on {entity} {name} is not permitted: that is for rootus and admin users")
 
     def _created_by(self, caller, entity, name):
         """

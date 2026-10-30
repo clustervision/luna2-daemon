@@ -263,7 +263,8 @@ def test_hardware_and_reference_keys_are_keys_a_node_or_group_body_carries():
 @pytest.fixture
 def routes(sqlite_db, monkeypatch):
     """The real node and group routes over a full schema: alice manages intel (no hardware
-    flag), hans manages amd (hardware flag), zed is admin; locked objects only rootus reads."""
+    flag), hans manages amd (hardware flag), zed is admin; locked objects only rootus reads,
+    the other osimages and setups are readable by the department they are named for."""
     import json
     import common.constant as constant
     from jwt import encode
@@ -283,6 +284,13 @@ def routes(sqlite_db, monkeypatch):
     insert('usergroupmember', userid=ids['hans'], usergroupid=amd, role='manager', source='local')
     for table in ('bmcsetup', 'redfishsetup', 'osimage'):
         ids[table] = insert(table, name='locked', access='700')
+    ids['img_intel'] = insert('osimage', name='intel', usergroups=str(intel), access='770')
+    ids['img_public'] = insert('osimage', name='public', access='774')
+    ids['img_amd'] = insert('osimage', name='amd', usergroups=str(amd), access='744')
+    ids['tag_v1'] = insert('osimagetag', name='v1', osimageid=ids['img_intel'])
+    for table in ('bmcsetup', 'redfishsetup'):
+        ids[f'{table}_amd'] = insert(table, name='amd', usergroups=str(amd), access='770')
+        ids[f'{table}_public'] = insert(table, name='public', access='774')
     ids['g_intel'] = insert('group', name='compute-intel', usergroups=str(intel), access='770')
     ids['g_amd'] = insert('group', name='compute-amd', usergroups=str(amd), access='770')
     insert('node', name='node001', groupid=ids['g_intel'], usergroups=str(intel), access='770')
@@ -347,3 +355,30 @@ def test_every_node_and_group_column_in_a_body_is_refused_or_classified(routes):
             if code != 403 and column not in allowed:
                 unclassified.append(f'{entity}.{column} ({code})')
     assert not unclassified, f'a non-admin body sets these past every gate: {unclassified}'
+
+
+def test_a_department_still_sets_osimage_tag_and_comment_by_name(routes):
+    """the name form the CLI sends for -o, -t and -qc still writes the column the id form
+    is refused on: an own, a public and another department's 744 osimage, on node and group"""
+    ids, post, row = routes
+    for entity, name in (('node', 'node001'), ('group', 'compute-intel')):
+        for image in ('intel', 'public', 'amd'):
+            assert post('alice', entity, name, {'name': name, 'osimage': image})[0] == 204, (entity, image)
+            assert row(entity, name)['osimageid'] == ids[f'img_{image}'], (entity, image)
+    fields = {'name': 'node001', 'osimage': 'intel', 'osimagetag': 'v1'}
+    assert post('alice', 'node', 'node001', fields)[0] == 204
+    assert row('node', 'node001')['osimagetagid'] == ids['tag_v1']
+    assert post('alice', 'node', 'node001', {'name': 'node001', 'comment': 'rack 2'})[0] == 204
+    assert row('node', 'node001')['comment'] == 'rack 2'
+
+
+def test_a_hardware_department_still_sets_bmc_and_redfish_setup_by_name(routes):
+    """-b and -F with the hardware flag: a node body carries bmcsetup and redfishsetup, a group
+    body bmcsetupname and redfishsetupname, and each writes the id of a setup the user reads"""
+    ids, post, row = routes
+    for entity, name, suffix in (('node', 'node002', ''), ('group', 'compute-amd', 'name')):
+        for table in ('bmcsetup', 'redfishsetup'):
+            for setup in ('amd', 'public'):
+                code, message = post('hans', entity, name, {'name': name, table + suffix: setup})
+                assert code == 204, (entity, table + suffix, setup, message)
+                assert row(entity, name)[f'{table}id'] == ids[f'{table}_{setup}'], (entity, table, setup)

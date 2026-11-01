@@ -436,3 +436,24 @@ def test_every_request_id_the_daemon_hands_out_can_be_followed():
         filter_data(value, 'request_id')
         assert validate_input._st().error, f"{value!r} accepted as request_id"
     validate_input._st().error = None
+
+
+def test_an_architecture_is_one_of_three_words_and_never_empty():
+    """
+    The field takes a word the DHCP templates can render a boot file for, not free text,
+    and it is reverted by naming another word -- so empty is a refusal here, where most
+    fields read it as a clear. The refusal has to name all three, or the operator is told
+    only that it was wrong.
+    """
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+    for value in ('x86', 'arm64', 'openpower'):
+        validate_input._st().error = None
+        filter_data(value, 'architecture')
+        assert not validate_input._st().error, f"{value!r} refused"
+    for value in ('x86_64', 'aarch64', 'ARM64', 'ppc64le', 'x86 arm64', ''):
+        validate_input._st().error = None
+        filter_data(value, 'architecture')
+        assert validate_input._st().error, f"{value!r} accepted"
+        missing = [w for w in ('x86', 'arm64', 'openpower') if w not in validate_input._st().error]
+        assert not missing, f"{validate_input._st().error} does not name {missing}"

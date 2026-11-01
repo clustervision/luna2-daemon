@@ -107,6 +107,7 @@ class OSImage():
                         record[item]='!!'+record[item]+'!!'
 
                 record['tag'] = tagname or 'default'
+                record['architecture'] = record['architecture'] or 'x86'
                 response['config'][self.table][record['name']] = record
         return status, response
 
@@ -149,6 +150,7 @@ class OSImage():
                     record[item]='!!'+record[item]+'!!'
 
             record['tag'] = tagname or 'default'
+            record['architecture'] = record['architecture'] or 'x86'
             image_tags = []
             all_tags = Database().get_record(table='osimagetag',
                                              where=f"osimageid = '{record_id}'")
@@ -278,7 +280,8 @@ class OSImage():
         items = {
             'grab_filesystems': '/, /boot, /var',
             'grab_exclude': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /opt/*, /var/log/*, /trinity/shared/*, /boot/*, /cm/*, /data/*, /fhgfs/*, /local/*, /scratch/*, /media/*, lost+found/, /tftpboot/*, /etc/aliases.db, /etc/blkid/*, /etc/exports, /etc/fstab, /etc/HOSTNAME, /etc/hostname, /etc/hosts, /etc/lvm/cache/*, /etc/lvm/archive/*, /etc/lvm/backup/*, /etc/mtab, /etc/ntp.conf, /etc/ntp/*, /etc/chrony.conf, /etc/chrony.keys, /etc/chrony/*, /etc/openvpn/*, /etc/postfix/main.cf, /etc/resolv.conf, /etc/sysconfig/network, /etc/sysconfig/network-scripts/*, /etc/NetworkManager/system-connections/*, /etc/network/interfaces.d/*, /etc/udev/rules.d/*-persistent-*, /var/cache/*, /var/lib/dhclient/*, /var/lib/dhcpcd/*, /var/lib/ldap/*, /var/lib/logrotate.status, /var/lib/mlocate/*, /var/lib/nfs/*, /var/lib/ntp/*, /var/lib/chrony/*, /var/lib/rpm/__db.*, /var/lib/sss/*, /var/lib/systemd/random-seed, /var/spool/*, /var/tmp/*',
-            'kernelmodules': 'ipmi_devintf, ipmi_si, ipmi_msghandler'
+            'kernelmodules': 'ipmi_devintf, ipmi_si, ipmi_msghandler',
+            'architecture': 'x86'
         }
         if request_data:
             data = request_data['config']['osimage'][name]
@@ -392,7 +395,8 @@ class OSImage():
             'kerneloptions',
             'kernelversion',
             'distribution',
-            'osrelease'
+            'osrelease',
+            'architecture'
         }
         response = {"message": 'Internal error: OS image copy failed. No sign of life of spawned thread'}
         if request_data:

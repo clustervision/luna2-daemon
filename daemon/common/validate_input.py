@@ -80,6 +80,7 @@ REG_EXP = {
     'serviceaction': { 'regexp': r'^(restart|stop|reload|start|none|)$', 'error': 'restart, stop, reload, start or none' },
     'profilescope': { 'regexp': r'^(static|dynamic|)$', 'error': 'static or dynamic' },
     'redfishscheme': { 'regexp': r'^(https|http|)$', 'error': 'https or http' },
+    'architecture': { 'regexp': r'^(x86|arm64|openpower)$', 'error': 'x86, arm64 or openpower' },
     'accessmode': { 'regexp': r'^(([r-][w-][x-]){3}|[0-7]{3})$', 'error': 'a mode as ls shows it, nine characters rwxrwxrwx with - for an absent bit, or three octal digits' },
     'namelist': { 'regexp': r'^([+-]?[a-zA-Z0-9\-\.\_]+(,\s*[+-]?[a-zA-Z0-9\-\.\_]+)*)?$', 'error': 'comma-separated names, each optionally prefixed with + to add or - to remove' },
     'redfishrole': { 'regexp': r'^[a-zA-Z0-9\-\_\.]*$', 'error': 'combination of characters a-z A-Z, numbers 0-9, \'-\', \'_\' and \'.\'' },
@@ -134,6 +135,7 @@ MATCH = {
     'profiles': 'loosecsv',
     'newprofilename': 'strictname',
     'profile': 'strictname',
+    'architecture': 'architecture',
     # URL segments: each reaches a query, so each carries the rule of what it names
     'secret': 'name',
     'nodename': 'strictname',

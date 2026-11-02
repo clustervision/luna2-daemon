@@ -834,9 +834,11 @@ class OSImage():
         return status, "Invalid request: osimage push request is missing data"
 
 
-    def pack(self, name=None):
+    def pack(self, name=None, request_id=None):
         """
-        This method will pack requested osimage.
+        This method will pack requested osimage. A caller already being polled on a status
+        stream hands its id in and the chain writes there, so the EOF that ends that stream
+        belongs to this chain; with no id it mints its own, exactly as it always has.
         """
         status=False
         response="unknown state"
@@ -857,7 +859,8 @@ class OSImage():
             where = [{"column": "name", "value": name}]
             row = [{"column": "changed", "value": '0'}]
             Database().update('osimage', row, where)
-        request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+        supplied = request_id
+        request_id = request_id or str(time()) + str(randint(1001, 9999)) + str(getpid())
         queue_id, queue_response = Queue().add_task_to_queue(task='pack_n_build_osimage', param=name,
                                                              subsystem='osimage', request_id=request_id, force=force)
         if not queue_id:
@@ -868,6 +871,12 @@ class OSImage():
             # this means we already have an equal request in the queue
             Queue().log_tasks_in_queue(subsystem='osimage')
             Status().add_message(queue_response, "luna", f"similar task with id {queue_id} is already queued. its progress is listed here")
+            if supplied and supplied != queue_response:
+                # the caller is being polled on its own stream and the deduped chain writes to a
+                # different one, so nothing will ever write here again. say where to look and end
+                # it, or the operator polls for ever.
+                Status().add_message(supplied, "luna", f"a similar task is already queued. its progress is listed under {queue_response}")
+                Status().add_message(supplied, "luna", "EOF")
             response = f"osimage pack for {name} already queued"
             self.logger.info(f"my response [{response}] [{queue_response}]")
             status=True

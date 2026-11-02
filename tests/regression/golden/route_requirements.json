@@ -1213,6 +1213,12 @@
   "kind": "override",
   "name": "<name>"
  },
+ "POST /config/osimage/<string:name>/_pack": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
  "POST /config/osimage/<string:name>/kernel": {
   "bit": "w",
   "entity": "osimage",

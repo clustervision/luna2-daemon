@@ -318,6 +318,35 @@ def config_osimage_pack(name=None):
     return response, access_code
 
 
+@osimage_blueprint.route("/config/osimage/<string:name>/_pack", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:osimage'], skip=None)
+def config_osimage_pack_on_stream(name=None):
+    """
+    Input - OS Image Name, and in the body the status stream the pack is to report on
+    Process - Pack the OS Image, with the chain writing to the stream the caller names
+              instead of one of our own. The GET above is this same work for a caller that
+              has no stream yet; it is unchanged, and the method is the whole difference.
+    Output - Success or Failure.
+    """
+    request_id = (request.data['config']['osimage'][name] or {}).get('request_id')
+    if not request_id:
+        return {'message': f'OS image {name} not packed: this call needs the request_id to pack on'}, 400
+    if HA().get_hastate() is True and HA().get_role() is False:
+        # No hand-up to the master, unlike the GET: the journal replays a pack with the object
+        # alone, so it cannot carry this id, and accepting here would leave the caller's stream
+        # silent for ever. A refusal they can see beats a stream that never ends.
+        return {'message': f'OS image {name} not packed: this controller is not the master'}, 503
+    returned = OSImage().pack(name, request_id=request_id)
+    if returned[0] is not True:
+        return {'message': returned[1]}, 404
+    stream = returned[2] if len(returned) == 3 else request_id
+    if HA().get_hastate() is True:
+        Journal().queue_source_sync(name, stream)
+    return {"message": returned[1], "request_id": stream}, 200
+
+
 @osimage_blueprint.route("/config/osimage/<string:name>/_cancel", methods=['GET'])
 @token_required
 @validate_name

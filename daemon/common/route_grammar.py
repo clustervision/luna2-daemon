@@ -77,7 +77,8 @@ ALIAS = {'otherdev': 'otherdevices', 'profiles': 'profile', 'osimagetag': 'osima
 
 # Suffixes that state the verb outright.
 SUFFIX_BITS = {'_delete': 'w', '_remove': 'w', '_unassign': 'w', '_pack': 'w', '_cancel': 'w',
-               '_updatecerts': 'w', '_member': 'r', '_nextfreeip': 'r', '_preview': 'r'}
+               '_updatecerts': 'w', '_create': 'w', '_member': 'r', '_nextfreeip': 'r',
+               '_preview': 'r'}
 
 # Suffixes whose check spans two objects or a create; each is resolved by name later.
 # clone: w on the new object's class and r on the source. push and grab: x on the node

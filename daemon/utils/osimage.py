@@ -536,6 +536,106 @@ class OsImage(object):
 
     # ---------------------------------------------------------------------------
 
+    def create_osimage(self,taskid,request_id):
+
+        self.logger.info("create_osimage called")
+        try:
+
+            result=False
+            details=Queue().get_task_details(taskid)
+            request_id=details['request_id']
+            osimage=details['param']
+
+            image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+            image = Database().get_record(table='osimage', where=f"name='{osimage}'")
+            if not image:
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"error creating osimage {osimage}: Image {osimage} does not exist?",
+                                     status=404)
+                return False
+
+            distribution = str(image[0]['distribution'] or 'redhat')
+            distribution=distribution.lower()
+            osrelease = str(image[0]['osrelease'] or '')
+            architecture = str(image[0]['architecture'] or 'x86')
+            image_path = str(image[0]['path'] or '')
+            if not image_path:
+                filesystem_plugin = 'default'
+                if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                    filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                ret, data = os_image_plugin().getpath(image_directory=image_directory, osimage=osimage, tag=None)
+                if ret is True:
+                    image_path = str(data)
+            if image_path and image_path[0] != '/' and len(image_directory or '') > 1:
+                image_path = f"{image_directory}/{image_path}"
+
+            os_create_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/create',[osimage,distribution,osrelease])
+            Status().add_message(request_id=request_id, username_initiator="luna",
+                                 message=f"creating content for osimage {osimage} ({distribution} {osrelease} {architecture})")
+            returned = os_create_plugin().create(name=osimage, architecture=architecture,
+                                                 distribution=distribution, osrelease=osrelease,
+                                                 path=image_path, request_id=request_id)
+            # A plugin written before build_state existed returns two values, and sites keep their
+            # own copies of these files - so unpack tolerantly and never by index. Anything we do not
+            # recognise reads as a hand-off: that leaves an image unpacked, which one pack command
+            # repairs, where guessing the other way packs an image that was never built.
+            status, message, *rest = returned
+            build_state = rest[0] if rest else 'accepted'
+            if build_state not in ('built','accepted'):
+                self.logger.warning(f"create plugin for osimage {osimage} returned build_state "
+                                    f"'{build_state}'; treating it as 'accepted'")
+                build_state = 'accepted'
+            elif not rest:
+                self.logger.warning(f"create plugin for osimage {osimage} returned no build_state; "
+                                    f"treating it as 'accepted'")
+            if not status:
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"error creating osimage {osimage}: {message}",
+                                     status=500)
+                return False
+            Status().add_message(request_id=request_id, username_initiator="luna", message=f"{message}")
+
+            if build_state == 'built':
+                # the content is on disk already, so nothing else will ever pack it. this is the
+                # chain pack_n_build_osimage runs for a manual pack, on this same request_id.
+                queue_id, queue_response = Queue().add_task_to_queue(task='pack_n_build_osimage', param=osimage,
+                                                                     subsystem='osimage', request_id=request_id)
+                if not queue_id:
+                    Status().add_message(request_id=request_id, username_initiator="luna",
+                                         message=f"error creating osimage {osimage}: queuing the pack of the built image failed",
+                                         status=500)
+                    return False
+                if queue_response != "added":
+                    # an identical pack chain was queued within the dedup window, so it carries its
+                    # own request_id and this stream will never be written to again. say where the
+                    # progress is and end it here, or the operator polls for ever.
+                    Status().add_message(request_id=request_id, username_initiator="luna",
+                                         message=f"a similar task is already queued. its progress is listed under {queue_response}")
+                    Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+            else:
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"the builder has taken the build of osimage {osimage}; it packs the image when the build is done")
+            result=True
+
+            # No EOF on a success path, and no 'if not noeof' ending like the siblings have: the
+            # pack chain above owns the EOF, or the builder that took the job does. Writing one here
+            # would delete every line either of them still has to deliver.
+            return result
+
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"create_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+            try:
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"Creation failed: {exp}", status=501)
+                Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+            except Exception as nexp:
+                self.logger.error(f"create_osimage has problems during exception handling: {nexp}")
+            return False
+
+    # ---------------------------------------------------------------------------
+
     def build_osimage(self,taskid,request_id):
 
         self.logger.info("build_osimage called")
@@ -1430,6 +1530,20 @@ class OsImage(object):
                         if not Queue().claim_task(next_id, my_pid, my_started):
                             continue
                         ret = self.pack_osimage(next_id,request_id)
+                        if self._stop_requested:
+                            Queue().update_task_status_in_queue(next_id,'queued')
+                        elif not ret:
+                            Queue().remove_task_from_queue(next_id)
+                            Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                        else:
+                            Queue().remove_task_from_queue(next_id)
+
+                elif action == "create_osimage":
+                    if first:
+                        if not Queue().claim_task(next_id, my_pid, my_started):
+                            continue
+                        ret = self.create_osimage(next_id,request_id)
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
                         elif not ret:

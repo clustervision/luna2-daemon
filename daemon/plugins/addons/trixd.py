@@ -21,7 +21,8 @@
 Addon Class ::  Reaching the trix-daemon (trixd) beside this controller.
 
 Offers get_credentials, get_token and get_token_for to any plugin that needs to call
-trixd, and notify to tell it something changed. The mirror of trixd's own luna plugin:
+trixd, notify to tell it something changed, and submit to hand it a job and read its
+answer. The mirror of trixd's own luna plugin:
 each daemon reads the other's ini for facts about the other, and neither depends on the
 other's signing secret.
 """
@@ -206,3 +207,42 @@ def notify_many(changes: list = None) -> bool:
         logger.debug(f"told trixd about {len(changes)} changes: {answer.status_code}")
         return True
     return False
+
+
+def submit(path: str = None, payload: dict = None) -> dict:
+    """
+    Hand trixd a job and return what it answered, or None when it would not take it.
+
+    notify's terms, with the answer kept: the same token refresh, the same timeout and the
+    same refusal to raise. A caller that acts on what came back needs the body, and needs
+    None and an empty answer to be different things - no builder at all against a builder
+    that took the job and said nothing.
+    """
+    if not path:
+        return None
+    logger = Log.get_logger()
+    config = where()
+    for attempt in (1, 2):
+        token = get_token(renew=attempt == 2)
+        if not token:
+            return None
+        try:
+            answer = requests.post(f"{config['base']}{path}", json=payload or {},
+                                   headers={'x-access-tokens': token},
+                                   timeout=TIMEOUT, verify=config['verify'])
+        except Exception as exp:
+            logger.error(f"could not hand trixd a job at {path}: {exp}")
+            return None
+        if answer.status_code in (401, 403) and attempt == 1:
+            # The token is no longer good to trixd. One more with a fresh one.
+            continue
+        if answer.status_code >= 400:
+            logger.error(f"trixd answered {answer.status_code} for a job at {path}: "
+                         f"{answer.text[:200]}")
+            return None
+        try:
+            return answer.json() or {}
+        except Exception as exp:
+            logger.error(f"trixd took a job at {path} but answered no json: {exp}")
+            return {}
+    return None

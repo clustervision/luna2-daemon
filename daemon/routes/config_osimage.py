@@ -382,6 +382,51 @@ def config_osimage_updatecerts(name=None):
     return response, access_code
 
 
+@osimage_blueprint.route("/config/osimage/<string:name>/_create", methods=['GET'])
+@token_required
+@validate_name
+def config_osimage_create(name=None):
+    """
+    Input - OS Image ID or Name
+    Process - Have the content of the OS Image built, and packed when the build is done.
+              The record itself is made by the POST above; this carries no body because
+              every field was set there.
+    Output - Success or Failure.
+    """
+    access_code=404
+    hastate=HA().get_hastate()
+    if hastate is True:
+        master=HA().get_role()
+        if master is False:
+            response={'message': 'something went wrong.....'}
+            request_id = Status().gen_request_id()
+            status, message = Journal().add_request(function="OSImage.create_image",object=name,masteronly=True,misc=request_id)
+            if status is True:
+                Status().add_message(request_id,"luna","request submitted to master...")
+                Status().mark_messages_read(request_id)
+                access_code=200
+                response = {"message": "request submitted to master...", "request_id": request_id}
+            else:
+                response={'message': message}
+            return response, access_code
+    # below only when we are master
+    # no peer sync queued here, unlike pack and updatecerts: nothing has been packed yet. The
+    # pack that follows the build queues its own, through the route the builder calls.
+    returned = OSImage().create_image(name)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
 @osimage_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
 @token_required
 @validate_name

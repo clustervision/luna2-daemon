@@ -457,3 +457,4 @@ def test_an_architecture_is_one_of_three_words_and_never_empty():
         assert validate_input._st().error, f"{value!r} accepted"
         missing = [w for w in ('x86', 'arm64', 'openpower') if w not in validate_input._st().error]
         assert not missing, f"{validate_input._st().error} does not name {missing}"
+    validate_input._st().error = None

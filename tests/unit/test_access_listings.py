@@ -422,6 +422,35 @@ def test_the_kinds_a_user_may_create_are_what_the_gate_lets_them_create(seeded):
     assert answers['bob']['create_access'] == [], 'a reader creates nothing'
 
 
+def test_the_groups_a_user_holds_hardware_on_are_the_groups_the_gate_takes_a_node_into(seeded):
+    """create_holdings judges a node's create against the first group hardware_holdings names,
+    which holds only while hardware_holdings' group filter and the node-create fences agree:
+    every held group takes a new node at the gate, and every other group refuses one."""
+    from utils.access import Access
+    from utils.database import Database
+    from utils.helper import Helper
+    db = Database()
+    mgr = db.insert('user', Helper().make_rows({'username': 'mgr', 'source': 'local', 'enabled': '1', 'admin': '0', 'delegate': '0'}))
+    amd = db.insert('usergroup', Helper().make_rows({'name': 'amd'}))
+    for usergroup in (seeded.intel, amd):
+        db.insert('usergroupmember', Helper().make_rows({'userid': mgr, 'usergroupid': usergroup, 'role': 'manager', 'source': 'local'}))
+    db.update('usergroup', Helper().make_rows({'hardware': '1'}), [{'column': 'id', 'value': seeded.intel}])
+    db.update('group', Helper().make_rows({'access': '770'}), [{'column': 'name', 'value': 'compute'}])
+    db.insert('group', Helper().make_rows({'name': 'gpu', 'usergroups': str(seeded.intel), 'access': '770'}))
+    db.insert('group', Helper().make_rows({'name': 'readonly', 'usergroups': str(seeded.intel), 'access': '750'}))
+    db.insert('group', Helper().make_rows({'name': 'noflag', 'usergroups': str(amd), 'access': '770'}))
+    db.insert('group', Helper().make_rows({'name': 'unlisted'}))
+    groups = [row['name'] for row in db.get_record(table='group') or []]
+    held = {}
+    for userid in (seeded.alice, seeded.bob, seeded.zed, mgr):
+        held[userid] = Access().hardware_holdings(userid).get('group', [])
+        for group in groups:
+            assert (group in held[userid]) == _gate_allows_a_create(userid, 'node', {'group': group}), (userid, group)
+    assert len(held[mgr]) >= 2 and set(groups) - set(held[mgr]), 'the set must hold and refuse groups to mean something'
+    assert sorted(held[mgr]) == ['compute', 'gpu'], 'readonly lacks w, noflag lacks the hardware flag, unlisted lacks both'
+    assert sorted(held[seeded.zed]) == sorted(groups) and held[seeded.bob] == [] and held[seeded.alice] == []
+
+
 def test_what_a_usergroup_holds_is_the_usergroups_digit_under_each_role(seeded):
     from utils.access import Access
     held = Access().usergroup_holdings(seeded.intel)

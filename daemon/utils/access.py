@@ -533,6 +533,21 @@ class Access():
                 held[table] = found
         return held
 
+    def hardware_holdings(self, userid=None):
+        """
+        Output - per node and group, the names whose hardware fields the user may change, by
+                 the gate's two steps for such a write: w on the row, then the hardware axis.
+        """
+        caller = self.caller(userid)
+        held = {}
+        for table in HARDWARE_FIELDS:
+            rows = Database().get_record(select=['name', 'owners', 'usergroups', 'access'], table=table) or []
+            names = [row['name'] for row in rows
+                     if 'w' in self.bits(caller, table, row) and self.hardware_allowed(caller, row)]
+            if names:
+                held[table] = names
+        return held
+
     def usergroup_holdings(self, usergroupid=None):
         """
         Output - per governed table, every object the usergroup is listed on, with what each

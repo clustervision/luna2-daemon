@@ -346,6 +346,45 @@ def test_what_a_user_holds_equals_what_their_own_listings_give(seeded):
     assert Access().holdings(seeded.zed)['osimage'] == {'mine': 'rwx', 'shared': 'rwx'}, 'the admin flag holds everything'
 
 
+def _gate_allows_a_hardware_write(userid, table, name):
+    """What the gate answers a write naming a hardware field of the row: w, then the hardware axis."""
+    from utils.access import Access, AccessRefused
+    key = {'node': 'newnodename', 'group': 'newgroupname'}[table]
+    context = Flask(__name__).test_request_context('/', method='POST', json={'config': {table: {name: {key: 'x'}}}})
+    context.push()
+    try:
+        row = Access().allowed(userid, table, name, 'w')
+        Access()._hardware(Access().caller(userid), table, name, row)
+        return True
+    except AccessRefused:
+        return False
+    finally:
+        context.pop()
+
+
+def test_the_hardware_a_user_holds_is_what_the_gate_lets_them_change(seeded):
+    """hardware_access names exactly the nodes and groups the gate lets the user write a hardware
+    field of; x on a node, or w without the usergroup's hardware flag, is not that right."""
+    from utils.access import Access, HARDWARE_FIELDS
+    from utils.database import Database
+    from utils.helper import Helper
+    db = Database()
+    mgr = db.insert('user', Helper().make_rows({'username': 'mgr', 'source': 'local', 'enabled': '1', 'admin': '0', 'delegate': '0'}))
+    db.insert('usergroupmember', Helper().make_rows({'userid': mgr, 'usergroupid': seeded.intel, 'role': 'manager', 'source': 'local'}))
+    db.update('node', Helper().make_rows({'access': '770'}), [{'column': 'name', 'value': 'node001'}])
+    assert Access().hardware_holdings(mgr) == {}, 'w on node001, but intel has no hardware flag'
+    assert Access().holdings(mgr)['node']['node001'] == 'rwx'
+    db.update('usergroup', Helper().make_rows({'hardware': '1'}), [{'column': 'id', 'value': seeded.intel}])
+    for userid in (seeded.alice, seeded.bob, seeded.zed, mgr):
+        held = Access().hardware_holdings(userid)
+        for table in HARDWARE_FIELDS:
+            for row in db.get_record(table=table) or []:
+                assert (row['name'] in held.get(table, [])) == _gate_allows_a_hardware_write(userid, table, row['name']), (userid, table, row['name'])
+    assert Access().hardware_holdings(mgr) == {'node': ['node001']}, 'compute is 750: the manager holds no w there'
+    assert Access().hardware_holdings(seeded.bob) == {}, 'a reader holds no w'
+    assert Access().hardware_holdings(seeded.zed) == {'node': ['node001', 'node002'], 'group': ['compute']}
+
+
 def test_what_a_usergroup_holds_is_the_usergroups_digit_under_each_role(seeded):
     from utils.access import Access
     held = Access().usergroup_holdings(seeded.intel)
@@ -365,6 +404,7 @@ def test_the_access_routes_answer_the_user_rootus_and_admin_only(seeded):
         return response.status_code, json.loads(response.data)
     code, body = get('/config/user/bob/_access', seeded.bob)
     assert code == 200 and body['config']['user']['bob']['access']['node'] == {'node001': 'r--'}
+    assert body['config']['user']['bob']['hardware_access'] == {}
     code, body = get('/config/user/alice/_access', seeded.bob)
     assert code == 403 and 'not permitted' in body['message']
     assert get('/config/user/bob/_access', 0)[0] == 200 and get('/config/user/bob/_access', seeded.zed)[0] == 200

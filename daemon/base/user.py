@@ -262,9 +262,10 @@ class User():
             return False, f'User {name} is not available'
         try:
             held = Access().holdings(rows[0]['id'])
+            hardware = Access().hardware_holdings(rows[0]['id'])
         except AccessRefused as exp:
             return False, exp.message
-        return True, {'config': {'user': {name: {'access': held}}}}
+        return True, {'config': {'user': {name: {'access': held, 'hardware_access': hardware}}}}
 
     def digest(self, password=None):
         """

@@ -347,6 +347,26 @@ def config_osimage_pack_on_stream(name=None):
     return {"message": returned[1], "request_id": stream}, 200
 
 
+@osimage_blueprint.route("/config/osimage/<string:name>/_packing", methods=['GET'])
+@token_required
+@validate_name
+def config_osimage_packing(name=None):
+    """
+    Input - OS Image Name
+    Process - Read whether a pack of the image is in the queue, scheduled or running.
+    Output - the request id /config/status/<request_id> follows and the queue row's status
+             (queued or in progress), or both null. Queued says scheduled, not yet started.
+    Packs queue on the master only: ask the master; another controller answers 503.
+    """
+    if HA().get_hastate() is True and HA().get_role() is False:
+        status, response = False, f'Service unavailable: OS image {name} packs are queued on the master, and this controller is not the master'
+    else:
+        status, response = OSImage().pack_in_queue(name)
+    if status is not True:
+        return {'message': response}, Helper().get_access_code(status, response)
+    return response, 200
+
+
 @osimage_blueprint.route("/config/osimage/<string:name>/_cancel", methods=['GET'])
 @token_required
 @validate_name

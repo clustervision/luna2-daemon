@@ -421,6 +421,12 @@
   "kind": "object",
   "name": "<name>"
  },
+ "GET /config/osimage/<string:name>/_packing": {
+  "bit": "r",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
  "GET /config/osimage/<string:name>/_updatecerts": {
   "bit": "w",
   "entity": "osimage",

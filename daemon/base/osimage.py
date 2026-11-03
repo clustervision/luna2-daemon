@@ -915,6 +915,19 @@ class OSImage():
         return status, response
 
 
+    def pack_in_queue(self, name=None):
+        """
+        This method will answer the request id and queue status of the image's own pack while it is
+        in the queue, whether scheduled or running, else both None: the task the boot pause also counts as a pack.
+        A grab, clone or create reaches that task on its own request id, and is answered from then on.
+        """
+        image = Database().get_record(table='osimage', where=f"name = '{name}'")
+        if not image:
+            return False, f"OS image {name} does not exist"
+        task = Queue().tasks_in_queue(subsystem='osimage', task='pack_n_build_osimage', subitem=name, details=True) or {}
+        return True, {'request_id': task.get('request_id'), 'status': task.get('status')}
+
+
     # how long a cancelled worker gets to stop on SIGTERM before it is killed
     CANCEL_GRACE_SECONDS = 5
 

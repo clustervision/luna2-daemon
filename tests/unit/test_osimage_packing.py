@@ -119,3 +119,24 @@ def test_an_image_that_does_not_exist_is_not_reported_idle(get):
     response = get('/config/osimage/nosuch/_packing')
     assert response.status_code == 404, response.data
     assert response.get_json() == {'message': 'OS image nosuch does not exist'}
+
+
+@pytest.mark.parametrize('param,subsystem,status,expected', [
+    ('rocky9', 'osimage', 'in progress', {'request_id': 'r1', 'status': 'in progress'}),
+    ('rocky9', 'osimage', 'queued', {'request_id': 'r1', 'status': 'queued'}),
+    ('alma9', 'osimage', 'in progress', {'request_id': None, 'status': None}),
+    ('rocky9', 'housekeeper', 'in progress', {'request_id': None, 'status': None}),
+])
+def test_a_create_answers_until_its_pack_is_queued(get, param, subsystem, status, expected):
+    queue('create_osimage', param, subsystem=subsystem, status=status)
+    response = get('/config/osimage/rocky9/_packing')
+    assert response.status_code == 200, response.data
+    assert response.get_json() == expected
+
+
+@pytest.mark.parametrize('pack_request_id', ['r1', 'a-later-pack'])
+def test_the_pack_answers_over_an_older_create(get, pack_request_id):
+    queue('create_osimage', 'rocky9', request_id='r1')
+    assert get('/config/osimage/rocky9/_packing').get_json() == {'request_id': 'r1', 'status': 'in progress'}
+    queue('pack_n_build_osimage', 'rocky9', request_id=pack_request_id, status='queued')
+    assert get('/config/osimage/rocky9/_packing').get_json() == {'request_id': pack_request_id, 'status': 'queued'}

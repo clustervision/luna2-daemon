@@ -353,9 +353,11 @@ def config_osimage_pack_on_stream(name=None):
 def config_osimage_packing(name=None):
     """
     Input - OS Image Name
-    Process - Read whether a pack of the image is in the queue, scheduled or running.
-    Output - the request id /config/status/<request_id> follows and the queue row's status
-             (queued or in progress), or both null. Queued says scheduled, not yet started.
+    Process - Read whether a pack of the image is in the queue, scheduled or running, else a create of it.
+    Output - the request id /config/status/<request_id> follows and the queue row's own status
+             (queued, in progress, parked, stuck), the row being the image's pack or else its create,
+             or both null. Queued says scheduled, not yet started. Both null means no pack or create
+             is queued for this image, not that nothing is happening anywhere.
     Packs queue on the master only: ask the master; another controller answers 503.
     """
     if HA().get_hastate() is True and HA().get_role() is False:

@@ -918,13 +918,18 @@ class OSImage():
     def pack_in_queue(self, name=None):
         """
         This method will answer the request id and queue status of the image's own pack while it is
-        in the queue, whether scheduled or running, else both None: the task the boot pause also counts as a pack.
+        in the queue, whether scheduled or running: the task the boot pause also counts as a pack.
         A grab, clone or create reaches that task on its own request id, and is answered from then on.
+        Before that, a create of the image answers, until its pack is in the queue. The status is the
+        queue row's own (queued, in progress, parked, stuck), whether the row is the pack or the create.
+        Both None means no pack or create is queued for this image, not that nothing is happening anywhere.
         """
         image = Database().get_record(table='osimage', where=f"name = '{name}'")
         if not image:
             return False, f"OS image {name} does not exist"
         task = Queue().tasks_in_queue(subsystem='osimage', task='pack_n_build_osimage', subitem=name, details=True) or {}
+        if not task:
+            task = Queue().tasks_in_queue(subsystem='osimage', task='create_osimage', subitem=name, details=True) or {}
         return True, {'request_id': task.get('request_id'), 'status': task.get('status')}
 
 

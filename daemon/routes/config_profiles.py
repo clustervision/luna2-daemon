@@ -85,7 +85,7 @@ def config_profiles_status():
 
 
 @profiles_blueprint.route("/config/profiles/status/<string:name>", methods=['GET'])
-@token_required
+@token_required(requires=('node', 'r'))
 @validate_name
 def config_profile_status_node(name=None):
     """

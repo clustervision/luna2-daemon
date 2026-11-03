@@ -742,7 +742,7 @@ def default_redfishsetup(parser=None):
     ]
     redfishaccount = [
         {'column': 'redfishsetupid', 'value': '1'},
-        {'column': 'name', 'value': 'default'},
+        {'column': 'name', 'value': 'default-redfishaccount'},
         {'column': 'username', 'value': username},
         {'column': 'password', 'value': password},
         {'column': 'role', 'value': role}

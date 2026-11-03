@@ -202,6 +202,11 @@ class RedfishSetup():
             if Database().get_record(table=self.table, where=f"name = '{newname}'"):
                 return False, f'Invalid request: {newname} already present in database'
             data['name'] = newname
+        if accounts:
+            valid, message = self._check_accounts(setupid=setup[0]['id'] if setup else None,
+                                                  accounts=accounts)
+            if not valid:
+                return False, message
         if setup:
             setupid = setup[0]['id']
             if data:
@@ -236,19 +241,24 @@ class RedfishSetup():
         return status, response
 
 
-    def _write_accounts(self, setupid=None, accounts=None):
+    def _check_accounts(self, setupid=None, accounts=None):
         """
-        This method will create or update the accounts under a redfishsetup.
+        This method will check every account entry before anything is written, so a
+        refused request leaves the setup and its accounts as they were.
         """
         account_columns = Database().get_columns('redfishaccount')
+        checked = []
         for entry in accounts:
             if 'name' not in entry.keys():
                 return False, 'Invalid request: account information not complete, name is required'
             if not Helper().compare_list(entry, account_columns):
                 return False, 'Invalid request: Supplied account columns do not match the requirements'
             account_name = entry['name']
-            where = f"redfishsetupid = '{setupid}' AND name = '{account_name}'"
-            existing = Database().get_record(table='redfishaccount', where=where)
+            # an earlier entry of this request creates the account before this one is written
+            existing = account_name in checked
+            if setupid and not existing:
+                where = f"redfishsetupid = '{setupid}' AND name = '{account_name}'"
+                existing = Database().get_record(table='redfishaccount', where=where)
             # a change carries only what is changing: 'give this account the Operator
             # role' says nothing about its password, and demanding one would make the
             # caller send the password back to leave it alone
@@ -257,6 +267,18 @@ class RedfishSetup():
                     if not entry.get(item):
                         return False, (f'Invalid request: account information not complete, '
                                        f'{item} is required')
+            checked.append(account_name)
+        return True, 'accounts checked'
+
+
+    def _write_accounts(self, setupid=None, accounts=None):
+        """
+        This method will create or update the accounts under a redfishsetup.
+        """
+        for entry in accounts:
+            account_name = entry['name']
+            where = f"redfishsetupid = '{setupid}' AND name = '{account_name}'"
+            existing = Database().get_record(table='redfishaccount', where=where)
             if existing:
                 where = [
                     {"column": "redfishsetupid", "value": setupid},

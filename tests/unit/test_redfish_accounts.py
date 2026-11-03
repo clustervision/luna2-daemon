@@ -318,8 +318,28 @@ def test_the_section_makes_a_profile_with_one_account():
     assert {row['column']: row['value'] for row in setup} == {
         'name': 'default-redfishsetup', 'scheme': 'https', 'verify': '0'}
     assert {row['column']: row['value'] for row in account} == {
-        'redfishsetupid': '1', 'name': 'default', 'username': 'rfadmin',
+        'redfishsetupid': '1', 'name': 'default-redfishaccount', 'username': 'rfadmin',
         'password': 'x', 'role': 'Administrator'}
+
+
+def test_every_name_the_section_makes_passes_the_input_validator():
+    """The default profile must be reachable through the API: a reserved name can
+    be neither changed nor removed, and makes the cluster refuse its own export."""
+    import common.validate_input as validate_input
+    from common.bootstrap import default_redfishsetup
+    setup, account = default_redfishsetup(parser_with({'USERNAME': 'rfadmin', 'PASSWORD': 'x'}))
+    setupname = {row['column']: row['value'] for row in setup}['name']
+    accountname = {row['column']: row['value'] for row in account}['name']
+    state = validate_input._st()
+    state.strict_name, state.strict_match, state.skip_list = False, None, []
+    for value, key in ((setupname, 'name'), (accountname, 'account')):
+        state.error = None
+        validate_input.filter_data(value, key)
+        assert not state.error, state.error
+    state.error = None
+    validate_input.parse_item({'config': {'redfishsetup': {setupname: {
+        'name': setupname, 'accounts': [{'name': accountname}]}}}})
+    assert not state.error, state.error
 
 
 def test_an_older_bootstrap_without_the_section_still_starts():

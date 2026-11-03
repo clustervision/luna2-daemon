@@ -385,6 +385,43 @@ def test_the_hardware_a_user_holds_is_what_the_gate_lets_them_change(seeded):
     assert Access().hardware_holdings(seeded.zed) == {'node': ['node001', 'node002'], 'group': ['compute']}
 
 
+def _gate_allows_a_create(userid, table, body):
+    """What the gate answers a write that creates a new object of the kind with this body."""
+    from utils.access import Access, BODY_KEYS
+    context = Flask(__name__).test_request_context('/', method='POST', json={'config': {BODY_KEYS.get(table, table): {'brandnew': body}}})
+    context.push()
+    try:
+        return Access().check(userid, {'kind': 'object', 'entity': table, 'name': 'brandnew', 'bit': 'w'})[0]
+    finally:
+        context.pop()
+
+
+def test_the_kinds_a_user_may_create_are_what_the_gate_lets_them_create(seeded):
+    """create_access names exactly the kinds the gate lets the user create a new object of, with
+    and without the usergroup's hardware flag; a node counts when some group takes it."""
+    from base.user import User
+    from utils.access import GOVERNED
+    from utils.database import Database
+    from utils.helper import Helper
+    db = Database()
+    mgr = db.insert('user', Helper().make_rows({'username': 'mgr', 'source': 'local', 'enabled': '1', 'admin': '0', 'delegate': '0'}))
+    db.insert('usergroupmember', Helper().make_rows({'userid': mgr, 'usergroupid': seeded.intel, 'role': 'manager', 'source': 'local'}))
+    db.update('group', Helper().make_rows({'access': '770'}), [{'column': 'name', 'value': 'compute'}])
+    users = {'alice': seeded.alice, 'bob': seeded.bob, 'zed': seeded.zed, 'mgr': mgr}
+    answers = {}
+    for hardware in ('0', '1'):
+        db.update('usergroup', Helper().make_rows({'hardware': hardware}), [{'column': 'id', 'value': seeded.intel}])
+        for name, userid in users.items():
+            answers[name] = User().access(name)[1]['config']['user'][name]
+            for table in GOVERNED:
+                bodies = [{'group': 'compute'}, {}] if table == 'node' else [{}]
+                gate = any(_gate_allows_a_create(userid, table, body) for body in bodies)
+                assert (table in answers[name].get('create_access', [])) == gate, (name, hardware, table)
+    assert answers['zed']['create_access'] == list(GOVERNED)
+    assert 'node' in answers['mgr']['create_access'] and answers['mgr']['hardware_access']['group'] == ['compute']
+    assert answers['bob']['create_access'] == [], 'a reader creates nothing'
+
+
 def test_what_a_usergroup_holds_is_the_usergroups_digit_under_each_role(seeded):
     from utils.access import Access
     held = Access().usergroup_holdings(seeded.intel)
@@ -405,6 +442,7 @@ def test_the_access_routes_answer_the_user_rootus_and_admin_only(seeded):
     code, body = get('/config/user/bob/_access', seeded.bob)
     assert code == 200 and body['config']['user']['bob']['access']['node'] == {'node001': 'r--'}
     assert body['config']['user']['bob']['hardware_access'] == {}
+    assert body['config']['user']['bob'].get('create_access') == []
     code, body = get('/config/user/alice/_access', seeded.bob)
     assert code == 403 and 'not permitted' in body['message']
     assert get('/config/user/bob/_access', 0)[0] == 200 and get('/config/user/bob/_access', seeded.zed)[0] == 200

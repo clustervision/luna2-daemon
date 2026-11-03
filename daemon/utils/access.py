@@ -548,6 +548,23 @@ class Access():
                 held[table] = names
         return held
 
+    def create_holdings(self, userid=None, groups=None):
+        """
+        Input - a user id, and the groups hardware_holdings names for that user
+        Output - the governed kinds the create rule lets the user create. A node goes into
+                 one of those groups; the networks it names are judged at the create.
+        """
+        caller = self.caller(userid)
+        body = {'group': groups[0]} if groups else {}
+        kinds = []
+        for table in GOVERNED:
+            try:
+                self.may_create(caller, table, body)
+            except AccessRefused:
+                continue
+            kinds.append(table)
+        return kinds
+
     def usergroup_holdings(self, usergroupid=None):
         """
         Output - per governed table, every object the usergroup is listed on, with what each

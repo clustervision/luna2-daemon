@@ -398,10 +398,16 @@ def config_osimage_cancel(name=None):
     Input - OS Image Name
     Process - Cancel an in-flight pack: stop its worker and abort its queue chain. Local and
     transient (it acts on the controller running the pack), so it is not replicated.
+    Without a pack, a create that a builder took may still be building and is cancelled instead.
     Output - Success or Failure.
     """
     access_code=404
     returned = OSImage().cancel_pack(name)
+    if returned[0] is not True:
+        # a pack that was found but could not be stopped keeps its own answer
+        stopped = OSImage().cancel_create(name)
+        if stopped[0] is True:
+            returned = stopped
     status=returned[0]
     response=returned[1]
     if status is True:

@@ -20,6 +20,7 @@ GET route:
 
 import json
 
+import pytest
 from jwt import encode
 
 from cases.route_requirements_cases import app as routes_app
@@ -46,6 +47,34 @@ def test_the_post_route_packs_on_the_supplied_stream(sqlite_db, monkeypatch):
     assert response.status_code == 200, response.data
     assert response.get_json().get('request_id') == 'rid-x', \
         'the pack must report on the stream the caller supplied, not one of its own'
+
+
+@pytest.mark.parametrize('body, ha_master, pack_returns, code, message', [
+    ({}, None, None, 400, 'Invalid request:'),
+    ({'request_id': 'rid-x'}, False, None, 503, 'not the master'),
+    ({'request_id': 'rid-x'}, None, (False, 'pack failed: no such path'), 404,
+     'pack failed: no such path'),
+])
+def test_the_post_route_refusals(sqlite_db, monkeypatch, body, ha_master, pack_returns, code,
+                                 message):
+    """Each refusal keeps its status code, and the message says why the pack did not happen."""
+    from common.constant import CONSTANT
+    import routes.config_osimage as route
+    monkeypatch.setattr(route.HA, 'get_hastate', lambda self: ha_master is not None)
+    monkeypatch.setattr(route.HA, 'get_role', lambda self: ha_master)
+    monkeypatch.setattr(route.OSImage, 'pack', lambda self, name, request_id=None: pack_returns)
+    client = routes_app().test_client()
+    token = encode({'id': 0}, CONSTANT['API']['SECRET_KEY'], 'HS256')
+
+    response = client.post('/config/osimage/img/_pack',
+                           headers={'x-access-tokens': token},
+                           data=json.dumps({'config': {'osimage': {'img': body}}}),
+                           content_type='application/json')
+
+    assert response.status_code == code, response.data
+    assert message in (response.get_json() or {}).get('message', '')
+    if code == 400:
+        assert response.get_json()['message'].startswith(message)
 
 
 def test_the_dedupe_guard_ends_the_supplied_stream(sqlite_db):

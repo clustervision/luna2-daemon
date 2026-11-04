@@ -351,15 +351,17 @@ def config_osimage_pack_on_stream(name=None):
     """
     request_id = (request.data['config']['osimage'][name] or {}).get('request_id')
     if not request_id:
-        return {'message': f'OS image {name} not packed: this call needs the request_id to pack on'}, 400
+        response = f'Invalid request: OS image {name} not packed: this call needs the request_id to pack on'
+        return {'message': response}, Helper().get_access_code(False, response)
     if HA().get_hastate() is True and HA().get_role() is False:
         # No hand-up to the master, unlike the GET: the journal replays a pack with the object
         # alone, so it cannot carry this id, and accepting here would leave the caller's stream
         # silent for ever. A refusal they can see beats a stream that never ends.
-        return {'message': f'OS image {name} not packed: this controller is not the master'}, 503
+        response = f'Service unavailable: OS image {name} not packed: this controller is not the master'
+        return {'message': response}, Helper().get_access_code(False, response)
     returned = OSImage().pack(name, request_id=request_id)
     if returned[0] is not True:
-        return {'message': returned[1]}, 404
+        return {'message': returned[1]}, Helper().get_access_code(False, returned[1])
     stream = returned[2] if len(returned) == 3 else request_id
     if HA().get_hastate() is True:
         Journal().queue_source_sync(name, stream)

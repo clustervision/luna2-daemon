@@ -41,6 +41,7 @@ except Exception:
 
 # Where the builder takes a job, below the addon's /api/v1.
 BUILDER_PATH = '/osimage/create'
+CANCEL_PATH = '/osimage/{name}/actions/cancel'
 
 
 class Plugin():
@@ -83,3 +84,16 @@ class Plugin():
                            f"plugin enabled?"), 'accepted'
         self.logger.info(f"builder accepted the build of osimage {name}: {answer}")
         return True, f"the builder accepted the build of osimage {name}", 'accepted'
+
+    def cancel(self, name=None):
+        """
+        Ask the builder to stop the build of an image. Returns <True|False>,"message": False when
+        there is no builder or it holds no build of that name, so the caller can say what it always did.
+        The builder ends the stream of the build with its own last line.
+        """
+        if trixd_submit is None:
+            return False, f"no builder for osimage {name}"
+        answer = trixd_submit(path=CANCEL_PATH.format(name=name))
+        if answer is None:
+            return False, f"the builder holds no build of osimage {name}"
+        return True, f"cancelled the build of osimage {name}"

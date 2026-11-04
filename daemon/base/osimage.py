@@ -952,6 +952,25 @@ class OSImage():
     # how long a cancelled worker gets to stop on SIGTERM before it is killed
     CANCEL_GRACE_SECONDS = 5
 
+    def cancel_build(self, name=None):
+        """
+        Without a pack worker, a create that a builder took may still be building: ask the create
+        plugin, which knows the builder, to stop it. The builder ends the stream itself, so nothing
+        is written to it here. A plugin without a cancel method, or a builder that holds no build of
+        this image, leaves the answer cancel_pack always gave.
+        """
+        image = Database().get_record(table='osimage', where=f"name = '{name}'")
+        if image:
+            plugin = Helper().plugin_load(self.osimage_plugins, 'osimage/operations/create',
+                                          [name, image[0]['distribution'], image[0]['osrelease']])
+            cancel = getattr(plugin(), 'cancel', None)
+            if cancel:
+                stopped, message = cancel(name=name)
+                if stopped:
+                    return True, message
+        return False, f"no active pack found for osimage {name}"
+
+
     def cancel_pack(self, name=None):
         """
         Cancel an in-flight pack for an image: stop the owning worker's (isolated) process group so
@@ -963,7 +982,7 @@ class OSImage():
         tasks = Database().get_record(table='queue',
             where=f"subsystem='osimage' AND status='in progress' AND param='{name}' AND owner_pid IS NOT NULL AND owner_pid != ''")
         if not tasks:
-            return False, f"no active pack found for osimage {name}"
+            return self.cancel_build(name)
         owner_pid = tasks[0]['owner_pid']
         owner_started = tasks[0].get('owner_started')
         request_id = tasks[0]['request_id']

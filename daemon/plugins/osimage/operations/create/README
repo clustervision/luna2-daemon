@@ -6,6 +6,12 @@
 #                  disk by the time it returns, 'accepted' when a builder has taken the job
 #                  and will call the pack route itself when it is done. A plugin returning
 #                  only <True|False>,"message" is read as 'accepted'.
+#
+#        one method is optional:
+#        - cancel  stops a build that a builder took and has not finished. returns
+#                  <True|False>,"message", False when this plugin holds no such build. The
+#                  builder ends the build's stream, so cancel writes nothing to it. A plugin
+#                  without it leaves 'luna osimage cancel' answering for a pack only.
 
 # Plugin selection based on the following search path and priority:
 #

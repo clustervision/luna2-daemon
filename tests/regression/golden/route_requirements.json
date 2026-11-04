@@ -852,6 +852,10 @@
  "GET /kickstart/install/<string:node>": {
   "kind": "no-token"
  },
+ "GET /monitor/audit": {
+  "entity": "monitor",
+  "kind": "rootus"
+ },
  "GET /monitor/ha": {
   "kind": "no-token"
  },

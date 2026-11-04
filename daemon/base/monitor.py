@@ -37,6 +37,7 @@ from utils.helper import Helper
 from utils.database import Database
 from utils.monitor import Monitor as monitor
 from utils.status import Status
+from utils.audit import Audit
 from utils.queue import Queue
 from utils.redfish import RedfishAccess
 from utils.redfish_accounts import RedfishAccounts
@@ -376,6 +377,15 @@ class Monitor():
                 details['task']+=f" {task['param']}"
                 response.append(details)
         return status, response
+
+
+    def get_audit(self, limit='100', since=''):
+        """
+        This method reads the audit trail, newest first: at most limit lines, from since on
+        """
+        if not str(limit).isdecimal():
+            return False, 'Invalid request: limit must be a whole number'
+        return True, Audit.read(int(limit), since)
 
 
     def get_status(self):

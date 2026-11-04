@@ -35,7 +35,9 @@ __status__      = 'Development'
 
 import logging
 import os
+import re
 import socket
+from collections import deque
 from utils.log import Log
 from common.constant import CONSTANT
 
@@ -43,6 +45,9 @@ from common.constant import CONSTANT
 STATE_CHANGING_SUFFIXES = {'_delete', '_remove', '_unassign', '_pack', '_cancel', '_updatecerts', '_clone',
                            '_osgrab', '_ospush', '_biosgrab', '_biospush', '_firmwarepush', '_redfish',
                            '_provision', '_couple', '_decouple', '_chmod', '_chgrp', '_chown', '_set'}
+
+# a key and its value as record() writes them: quoted when it holds a space or an equals sign
+PAIR = re.compile(r'(\w+)=(?:"([^"]*)"|(\S*))')
 
 
 class Audit():
@@ -124,6 +129,22 @@ class Audit():
         line = 'AUDIT ' + ' '.join(f'{key}={self._quote(value)}' for key, value in fields)
         self.logger().info(line)
         Log.get_logger().debug(line)
+
+    @classmethod
+    def read(cls, limit=100, since=''):
+        """
+        Input - how many lines at most, and the time from which on, as the trail writes it
+                (YYYY-MM-DD HH:MM:SS, compared as text: another form matches no line or every line)
+        Output - the trail's lines, newest first, each as its keys and the time it was written
+        """
+        path = CONSTANT.get('AUDIT', {}).get('LOGFILE') or cls.default_path()
+        if not path or not os.path.exists(path):
+            return []
+        with open(path, encoding='utf-8') as trail:
+            # every line starts with the time it was written, so a line from since on sorts at or after it
+            lines = deque((line for line in trail if line >= since), maxlen=limit)
+        return [{'time': line.split(' AUDIT ')[0], **{key: quoted or bare for key, quoted, bare in PAIR.findall(line)}}
+                for line in reversed(lines)]
 
     @staticmethod
     def _quote(value):

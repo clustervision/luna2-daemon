@@ -419,6 +419,6 @@ class Monitor():
                 elif 'messages' in data:
                     for record in data['messages']:
                         if 'message' in record:
-                            Status().add_message(data['request_id'], '__remote__', record['message'], record.get('remote_request_id'), record.get('remote_host'))
+                            Status().add_message(data['request_id'], '__remote__', record['message'], record.get('remote_request_id'), record.get('remote_host'), record.get('status', 200))
         return status, response
 

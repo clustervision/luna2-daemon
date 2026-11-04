@@ -47,6 +47,7 @@ class Plugin():
 
     def __init__(self):
         self.logger = Log.get_logger()
+        self.output = '/tmp/ospush.out'
 
     def push(self,osimage,image_path,node,grab_filesystems=[],grab_exclude=[],nodry=False):
         # let's build the rsync command line parameters
@@ -60,30 +61,30 @@ class Plugin():
         self.logger.debug(f"excludes = {excludes}, grab_filesystems = {grab_filesystems}, grab_exclude = {grab_exclude}")
         exit_code,message=1,None
         if len(grab_filesystems)>0:
-            Helper().runcommand("truncate -s 0 /tmp/ospush.out")
+            Helper().runcommand(f"truncate -s 0 '{self.output}'")
             exit_code=0
             for grab in grab_filesystems:
                 if exit_code == 0:
                     # /.{grab} anchors the exclude patterns at image_path regardless of how
                     # grab is written; no --delete-after on purpose, a push must not remove node-local state
                     if nodry is True: # nodry is True means it's for real
-                        command=f"rsync -aHvR --numeric-ids --one-file-system {exclude_string} {image_path}/.{grab} {node}:/ >> /tmp/ospush.out"
+                        command=f"rsync -aHvR --numeric-ids --one-file-system {exclude_string} {image_path}/.{grab} {node}:/ >> '{self.output}'"
                     else:
-                        command=f"rsync -aHvnR --numeric-ids --one-file-system {exclude_string} {image_path}/.{grab} {node}:/ >> /tmp/ospush.out"
+                        command=f"rsync -aHvnR --numeric-ids --one-file-system {exclude_string} {image_path}/.{grab} {node}:/ >> '{self.output}'"
                     self.logger.info(command)
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")
         else:
             if nodry is True: # nodry is True means it's for real
-                command=f"rsync -aHv --numeric-ids --delete-after {exclude_string} {image_path}/* {node}:/ > /tmp/ospush.out"
+                command=f"rsync -aHv --numeric-ids --delete-after {exclude_string} {image_path}/* {node}:/ > '{self.output}'"
             else:
-                command=f"rsync -aHnv --numeric-ids --delete-after {exclude_string} {image_path}/* {node}:/ > /tmp/ospush.out"
+                command=f"rsync -aHnv --numeric-ids --delete-after {exclude_string} {image_path}/* {node}:/ > '{self.output}'"
             self.logger.info(command)
             message,exit_code = Helper().runcommand(command,True,3600)
 
         if exit_code != 0:
             if len(message) > 0:
                 message=message[1]
-            return False, f"{message}. See /tmp/ospush.out for details"
+            return False, f"{message}. See {self.output} for details"
 
-        return True, "Success. See /tmp/ospush.out for details"
+        return True, f"Success. See {self.output} for details"

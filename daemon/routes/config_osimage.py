@@ -104,6 +104,25 @@ def config_osimage_member(name=None):
     return response, access_code
 
 
+@osimage_blueprint.route("/config/osimage/<string:name>/osgrab/<string:request_id>", methods=['GET'])
+@token_required
+@validate_name
+def config_osimage_osgrab(name=None, request_id=None):
+    """
+    Input - OS Image Name and the request id of a grab into it
+    Output - the files the grab changes and deletes in the image
+    Grabs run on the master and their output stays there: ask the master, with the request id
+    the grab ran under there; another controller answers 503.
+    """
+    if HA().get_hastate() is True and HA().get_role() is False:
+        status, response = False, f'Service unavailable: grabs into OS image {name} run on the master, and this controller is not the master'
+    else:
+        status, response = OSImage().grab_list(name, request_id)
+    if status is not True:
+        return {'message': response}, Helper().get_access_code(status, response)
+    return dumps(response), 200
+
+
 @osimage_blueprint.route("/config/osimagetag", methods=['GET'])
 @token_required
 def config_osimagetag():

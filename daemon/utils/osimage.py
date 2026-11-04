@@ -52,6 +52,9 @@ from utils.queue import Queue
 from utils.request import Request
 from utils.model import Model
 
+# where a grab writes its rsync output, one file per image and request
+GRAB_OUTPUT = '/tmp/osgrab-{osimage}-{request_id}.out'
+
 
 class OsImage(object):
     """Class for operating with osimages records"""
@@ -256,7 +259,9 @@ class OsImage(object):
                 self.pending_cleanup(image_path,request_id)
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"grabbing osimage {osimage} [{runtype}]")
-                response=os_grab_plugin().grab(
+                grab_plugin=os_grab_plugin()
+                grab_plugin.output=GRAB_OUTPUT.format(osimage=osimage, request_id=request_id)
+                response=grab_plugin.grab(
                                             osimage=osimage,
                                             image_path=image_path,
                                             node=dbnode[0]['nodename'],

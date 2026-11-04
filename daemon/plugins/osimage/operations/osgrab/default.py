@@ -46,6 +46,9 @@ class Plugin():
 
     def __init__(self):
         self.logger = Log.get_logger()
+        # core names a file of the grab's own here, on the instance and not as a keyword,
+        # so a site's plugin with the old grab signature is still called
+        self.output = '/tmp/osgrab.out'
 
     def grab(self,osimage,image_path,node,grab_filesystems=[],grab_exclude=[],nodry=False):
 
@@ -60,34 +63,34 @@ class Plugin():
         self.logger.debug(f"excludes = {excludes}, grab_filesystems = {grab_filesystems}, grab_exclude = {grab_exclude}")
         exit_code,message=1,None
         if len(grab_filesystems)>0:
-            Helper().runcommand("truncate -s 0 /tmp/osgrab.out")
+            Helper().runcommand(f"truncate -s 0 '{self.output}'")
             exit_code=0
             for grab in grab_filesystems:
                 if exit_code == 0:
                     command=None
                     if nodry is True: # nodry is True means it's for real
-                        command=f"mkdir -p {image_path} 2> /dev/null; rsync -aHvR --numeric-ids --one-file-system --delete-after {exclude_string} {node}:/.{grab} {image_path}/ >> /tmp/osgrab.out"
+                        command=f"mkdir -p {image_path} 2> /dev/null; rsync -aHvR --numeric-ids --one-file-system --delete-after {exclude_string} {node}:/.{grab} {image_path}/ >> '{self.output}'"
                     else:
-                        command=f"mkdir -p {image_path} 2> /dev/null; rsync -aHvnR --numeric-ids --one-file-system --delete-after {exclude_string} {node}:/.{grab} {image_path}/ >> /tmp/osgrab.out"
+                        command=f"mkdir -p {image_path} 2> /dev/null; rsync -aHvnR --numeric-ids --one-file-system --delete-after {exclude_string} {node}:/.{grab} {image_path}/ >> '{self.output}'"
                     self.logger.info(command)
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")
         else:
             if nodry is True: # nodry is True means it's for real
-                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aHv --numeric-ids --delete-after {exclude_string} {node}:/* {image_path}/ > /tmp/osgrab.out"
+                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aHv --numeric-ids --delete-after {exclude_string} {node}:/* {image_path}/ > '{self.output}'"
             else:
-                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aHvn --numeric-ids --delete-after {exclude_string} {node}:/* {image_path}/ > /tmp/osgrab.out"
+                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aHvn --numeric-ids --delete-after {exclude_string} {node}:/* {image_path}/ > '{self.output}'"
             self.logger.info(command)
             message,exit_code = Helper().runcommand(command,True,3600)
 
         if exit_code != 0:
             if len(message) > 0:
                 message=message[1]
-            return False,f"{message}. See /tmp/osgrab.out for details"
+            return False,f"{message}. See {self.output} for details"
 
         kernel_version, kernels = newest_kernel(image_path)
         self.logger.debug(f"kernels in {image_path}: {kernels}, registering {kernel_version}")
-        message = "Success. See /tmp/osgrab.out for details"
+        message = f"Success. See {self.output} for details"
         if len(kernels) > 1:
             message += (f"; the image carries {len(kernels)} kernels ({', '.join(kernels)}), "
                         f"the newest, {kernel_version}, is registered")

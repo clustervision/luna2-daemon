@@ -433,6 +433,12 @@
   "kind": "object",
   "name": "<name>"
  },
+ "GET /config/osimage/<string:name>/osgrab/<string:request_id>": {
+  "bit": "r",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
  "GET /config/osimage/<string:name>/osimagetag/<string:tagname>/_delete": {
   "bit": "w",
   "entity": "osimage",

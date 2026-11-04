@@ -39,7 +39,7 @@ from base64 import b64decode, b64encode
 from concurrent.futures import ProcessPoolExecutor
 from common.constant import CONSTANT
 from utils.status import Status
-from utils.osimage import OsImage as OsImager
+from utils.osimage import OsImage as OsImager, GRAB_OUTPUT
 from utils.database import Database
 from utils.log import Log
 from utils.queue import Queue
@@ -183,6 +183,22 @@ class OSImage():
             table_cap = self.table_cap
         )
         return status, response
+
+
+    def grab_list(self, name=None, request_id=None):
+        """
+        Input - OS Image Name and the request id of a grab into it
+        Output - the files the grab changes and deletes in the image, from its rsync output
+        """
+        try:
+            with open(GRAB_OUTPUT.format(osimage=name, request_id=request_id), encoding='utf-8', errors='replace') as output:
+                lines = output.read().splitlines()
+        except OSError:
+            return False, f"no grab of osimage {name} with request id {request_id} on this controller"
+        noise = ('deleting ', 'receiving ', 'sent ', 'total size is ')
+        changed = [re.split(' [-=]> ', line)[0] for line in lines if line and not line.startswith(noise)]
+        return True, {'changed': changed,
+                      'deleted': [line[len('deleting '):] for line in lines if line.startswith('deleting ')]}
 
 
     def get_all_osimagetags(self, name=None):

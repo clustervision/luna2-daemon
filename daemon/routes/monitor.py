@@ -147,6 +147,20 @@ def monitor_queue():
     return response, access_code
 
 
+@monitor_blueprint.route('/monitor/audit', methods=['GET'])
+@token_required
+def monitor_audit():
+    """
+    Input - limit, how many lines (default 100), and since, the time from which on
+    Process - reads the audit trail
+    Output - its lines, newest first, each as its keys
+    """
+    status, response = Monitor().get_audit(request.args.get('limit', '100'), request.args.get('since', ''))
+    if status is not True:
+        return {'message': response}, Helper().get_access_code(status, response)
+    return {'monitor': {'audit': response}}, 200
+
+
 @monitor_blueprint.route('/monitor/status', methods=['GET'])
 @token_required
 def monitor_status():

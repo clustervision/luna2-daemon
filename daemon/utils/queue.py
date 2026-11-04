@@ -255,7 +255,7 @@ class Queue(object):
             return task[0]
         return False
 
-    def tasks_in_queue(self,subsystem=None,task=None,subitem=None,exactmatch=True):
+    def tasks_in_queue(self,subsystem=None,task=None,subitem=None,exactmatch=True,details=False):
         where=""
         task_query, subitem_query, subsystem_query = "", "", ""
         if task:
@@ -268,10 +268,11 @@ class Queue(object):
         if subsystem:
             subsystem_query=f"AND subsystem='{subsystem}'"
         if task_query or subitem_query or subsystem_query:
-            where=f"1=1 {subsystem_query} {task_query} {subitem_query} LIMIT 1"
+            where=f"1=1 {subsystem_query} {task_query} {subitem_query} ORDER BY id ASC LIMIT 1"
         tasks = Database().get_record(table='queue', where=where)
         if tasks:
-            return True
+            # details answers the oldest matching row, whatever its status, so a caller can follow work it did not start
+            return tasks[0] if details else True
         return False
 
     def change_subsystem(self,taskid,subsystem):

@@ -1,7 +1,8 @@
 # OSGRAB PLUGIN - a running node into an image
 #
 #        one defined method is mandatory:
-#        - grab   responsible for the actual collection of data from a running node into an image (path). returns the kernelversion upon success
+#        - grab   responsible for the actual collection of data from a running node into an image (path). returns the kernelversion upon success.
+#                 core sets output on the instance before the call: the file the grab's own output goes to. a plugin may ignore it
 
 # Plugin selection based on the following search path and priority:
 #

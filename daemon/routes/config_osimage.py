@@ -104,6 +104,25 @@ def config_osimage_member(name=None):
     return response, access_code
 
 
+@osimage_blueprint.route("/config/osimage/<string:name>/osgrab/<string:request_id>", methods=['GET'])
+@token_required
+@validate_name
+def config_osimage_osgrab(name=None, request_id=None):
+    """
+    Input - OS Image Name and the request id of a grab into it
+    Output - the files the grab changes and deletes in the image
+    Grabs run on the master and their output stays there: ask the master, with the request id
+    the grab ran under there; another controller answers 503.
+    """
+    if HA().get_hastate() is True and HA().get_role() is False:
+        status, response = False, f'Service unavailable: grabs into OS image {name} run on the master, and this controller is not the master'
+    else:
+        status, response = OSImage().grab_list(name, request_id)
+    if status is not True:
+        return {'message': response}, Helper().get_access_code(status, response)
+    return dumps(response), 200
+
+
 @osimage_blueprint.route("/config/osimagetag", methods=['GET'])
 @token_required
 def config_osimagetag():
@@ -318,6 +337,59 @@ def config_osimage_pack(name=None):
     return response, access_code
 
 
+@osimage_blueprint.route("/config/osimage/<string:name>/_pack", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:osimage'], skip=None)
+def config_osimage_pack_on_stream(name=None):
+    """
+    Input - OS Image Name, and in the body the status stream the pack is to report on
+    Process - Pack the OS Image, with the chain writing to the stream the caller names
+              instead of one of our own. The GET above is this same work for a caller that
+              has no stream yet; it is unchanged, and the method is the whole difference.
+    Output - Success or Failure.
+    """
+    request_id = (request.data['config']['osimage'][name] or {}).get('request_id')
+    if not request_id:
+        response = f'Invalid request: OS image {name} not packed: this call needs the request_id to pack on'
+        return {'message': response}, Helper().get_access_code(False, response)
+    if HA().get_hastate() is True and HA().get_role() is False:
+        # No hand-up to the master, unlike the GET: the journal replays a pack with the object
+        # alone, so it cannot carry this id, and accepting here would leave the caller's stream
+        # silent for ever. A refusal they can see beats a stream that never ends.
+        response = f'Service unavailable: OS image {name} not packed: this controller is not the master'
+        return {'message': response}, Helper().get_access_code(False, response)
+    returned = OSImage().pack(name, request_id=request_id)
+    if returned[0] is not True:
+        return {'message': returned[1]}, Helper().get_access_code(False, returned[1])
+    stream = returned[2] if len(returned) == 3 else request_id
+    if HA().get_hastate() is True:
+        Journal().queue_source_sync(name, stream)
+    return {"message": returned[1], "request_id": stream}, 200
+
+
+@osimage_blueprint.route("/config/osimage/<string:name>/_packing", methods=['GET'])
+@token_required
+@validate_name
+def config_osimage_packing(name=None):
+    """
+    Input - OS Image Name
+    Process - Read whether a pack of the image is in the queue, scheduled or running, else a create of it.
+    Output - the request id /config/status/<request_id> follows and the queue row's own status
+             (queued, in progress, parked, stuck), the row being the image's pack or else its create,
+             or both null. Queued says scheduled, not yet started. Both null means no pack or create
+             is queued for this image, not that nothing is happening anywhere.
+    Packs queue on the master only: ask the master; another controller answers 503.
+    """
+    if HA().get_hastate() is True and HA().get_role() is False:
+        status, response = False, f'Service unavailable: OS image {name} packs are queued on the master, and this controller is not the master'
+    else:
+        status, response = OSImage().pack_in_queue(name)
+    if status is not True:
+        return {'message': response}, Helper().get_access_code(status, response)
+    return response, 200
+
+
 @osimage_blueprint.route("/config/osimage/<string:name>/_cancel", methods=['GET'])
 @token_required
 @validate_name
@@ -374,6 +446,51 @@ def config_osimage_updatecerts(name=None):
             request_id=returned[2]
             if hastate is True:
                 Journal().queue_source_sync(name,request_id)
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@osimage_blueprint.route("/config/osimage/<string:name>/_create", methods=['GET'])
+@token_required
+@validate_name
+def config_osimage_create(name=None):
+    """
+    Input - OS Image ID or Name
+    Process - Have the content of the OS Image built, and packed when the build is done.
+              The record itself is made by the POST above; this carries no body because
+              every field was set there.
+    Output - Success or Failure.
+    """
+    access_code=404
+    hastate=HA().get_hastate()
+    if hastate is True:
+        master=HA().get_role()
+        if master is False:
+            response={'message': 'something went wrong.....'}
+            request_id = Status().gen_request_id()
+            status, message = Journal().add_request(function="OSImage.create_image",object=name,masteronly=True,misc=request_id)
+            if status is True:
+                Status().add_message(request_id,"luna","request submitted to master...")
+                Status().mark_messages_read(request_id)
+                access_code=200
+                response = {"message": "request submitted to master...", "request_id": request_id}
+            else:
+                response={'message': message}
+            return response, access_code
+    # below only when we are master
+    # no peer sync queued here, unlike pack and updatecerts: nothing has been packed yet. The
+    # pack that follows the build queues its own, through the route the builder calls.
+    returned = OSImage().create_image(name)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
             response = {"message": response, "request_id": request_id}
         else:
             response = {'message': response}

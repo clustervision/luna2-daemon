@@ -72,6 +72,7 @@ def client(db):
     from common.constant import CONSTANT
     from common.validate_auth import token_required
     from routes.config_access import access_blueprint
+    from routes.config_osimage import osimage_blueprint
     from routes.config_rack import rack_blueprint
 
     stub = Blueprint('stub', __name__)
@@ -116,6 +117,7 @@ def client(db):
     app.register_blueprint(stub)
     app.register_blueprint(access_blueprint)
     app.register_blueprint(rack_blueprint)
+    app.register_blueprint(osimage_blueprint)
     key = CONSTANT['API']['SECRET_KEY']
 
     class Client:

@@ -397,6 +397,12 @@
   "kind": "object",
   "name": "<name>"
  },
+ "GET /config/osimage/<string:name>/_create": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
  "GET /config/osimage/<string:name>/_delete": {
   "bit": "w",
   "entity": "osimage",
@@ -415,8 +421,20 @@
   "kind": "object",
   "name": "<name>"
  },
+ "GET /config/osimage/<string:name>/_packing": {
+  "bit": "r",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
  "GET /config/osimage/<string:name>/_updatecerts": {
   "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
+  "name": "<name>"
+ },
+ "GET /config/osimage/<string:name>/osgrab/<string:request_id>": {
+  "bit": "r",
   "entity": "osimage",
   "kind": "object",
   "name": "<name>"
@@ -834,6 +852,10 @@
  "GET /kickstart/install/<string:node>": {
   "kind": "no-token"
  },
+ "GET /monitor/audit": {
+  "entity": "monitor",
+  "kind": "rootus"
+ },
  "GET /monitor/ha": {
   "kind": "no-token"
  },
@@ -1205,6 +1227,12 @@
   },
   "entity": "osimage",
   "kind": "override",
+  "name": "<name>"
+ },
+ "POST /config/osimage/<string:name>/_pack": {
+  "bit": "w",
+  "entity": "osimage",
+  "kind": "object",
   "name": "<name>"
  },
  "POST /config/osimage/<string:name>/kernel": {

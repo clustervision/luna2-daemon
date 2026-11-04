@@ -1,0 +1,15 @@
+# OSCREATE PLUGIN - building the content of an image
+#
+#        one defined method is mandatory:
+#        - create  responsible for having the image's content built. returns
+#                  <True|False>,"message",<built|accepted> - 'built' when the content is on
+#                  disk by the time it returns, 'accepted' when a builder has taken the job
+#                  and will call the pack route itself when it is done. A plugin returning
+#                  only <True|False>,"message" is read as 'accepted'.
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 osimage name              e.g. plugins/osimage/operations/create/compute.py
+# 2 distribution              e.g. plugins/osimage/operations/create/redhat.py
+# 3 osrelease                 e.g. plugins/osimage/operations/create/9.py
+# 4 default                   e.g. plugins/osimage/operations/create/default.py

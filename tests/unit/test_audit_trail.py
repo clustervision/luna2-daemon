@@ -418,3 +418,73 @@ def test_the_default_path_is_beside_the_daemon_log(monkeypatch):
     monkeypatch.setitem(constant.CONSTANT, 'LOGGER', {'LEVEL': 'info', 'LOGFILE': '/var/log/luna/luna2-daemon.log'})
     monkeypatch.setitem(constant.CONSTANT, 'AUDIT', {})
     assert Audit.default_path() == '/var/log/luna/luna2-audit.log'
+
+
+# ── reading it back: GET /monitor/audit ─────────────────────────────────────
+
+LINES = ['2026-11-01 10:00:00,000 AUDIT user=alice action="POST /config/node/node001" code=201',
+         '2026-11-01 11:00:00,000 AUDIT user=bob action="POST /config/node/node002" code=403',
+         '2026-11-01 12:00:00,000 AUDIT user=carol action="POST /config/node/node003" code=201']
+
+
+@pytest.fixture
+def monitor(trail, world):
+    from routes.monitor import monitor_blueprint
+    app = Flask(__name__)
+    app.register_blueprint(monitor_blueprint)
+
+    def get(userid, **query):
+        headers = {} if userid is None else {'x-access-tokens': _token(userid)}
+        return app.test_client().get('/monitor/audit', query_string=query, headers=headers)
+    return get
+
+
+@pytest.mark.parametrize('query, users', [
+    ({}, ['carol', 'bob', 'alice']),
+    ({'limit': '2'}, ['carol', 'bob']),
+    ({'since': '2026-11-01 11:00:00'}, ['carol', 'bob']),
+    ({'limit': '0'}, []),
+])
+def test_an_admin_reads_the_trail_newest_first(monitor, trail, query, users):
+    trail.write_text('\n'.join(LINES) + '\n')
+    response = monitor(0, **query)
+    assert response.status_code == 200
+    assert [line['user'] for line in response.json['monitor']['audit']] == users
+
+
+@pytest.mark.parametrize('who, query, code', [('admin', {}, 200), ('dave', {}, 403), (0, {'limit': 'abc'}, 400),
+                                               (None, {}, 401)])
+def test_only_an_admin_reads_the_trail_with_a_whole_number_limit(monitor, db, world, who, query, code):
+    from utils.helper import Helper
+    if who == 'admin':
+        who = db.insert('user', Helper().make_rows({'username': 'zed', 'source': 'local',
+                                                    'enabled': '1', 'admin': '1'}))
+    elif who == 'dave':
+        who = world.dave
+    assert monitor(who, **query).status_code == code
+
+
+def test_a_line_reads_back_as_the_keys_it_was_written_with(monitor):
+    from utils.audit import Audit
+    Audit().record(userid=7, username='bob', source='local', method='GET', path='/config/node/node001/_delete',
+                   requirement={'entity': 'node', 'name': 'node001'}, outcome='refused', code=403,
+                   detail='needs w on node001')
+    response = monitor(0)
+    assert response.status_code == 200
+    line = response.json['monitor']['audit'][0]
+    assert line.pop('time')[:4].isdigit() and line.pop('controller')
+    assert line == {'user': 'bob', 'id': '7', 'source': 'local', 'action': 'GET /config/node/node001/_delete',
+                    'object': 'node node001', 'outcome': 'refused', 'code': '403', 'detail': 'needs w on node001'}
+
+
+def test_no_trail_yet_reads_as_no_lines(monitor, trail):
+    response = monitor(0)
+    assert response.status_code == 200 and not trail.exists()
+    assert response.json['monitor']['audit'] == []
+
+
+def test_an_empty_value_reads_back_empty(monitor, trail):
+    trail.write_text('2026-11-01 13:00:00,000 AUDIT user=dave action="POST /config/node/node001/_chgrp" value= code=200\n')
+    response = monitor(0)
+    assert response.status_code == 200
+    assert response.json['monitor']['audit'][0].get('value') == ''

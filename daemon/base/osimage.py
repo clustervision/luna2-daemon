@@ -39,7 +39,7 @@ from base64 import b64decode, b64encode
 from concurrent.futures import ProcessPoolExecutor
 from common.constant import CONSTANT
 from utils.status import Status
-from utils.osimage import OsImage as OsImager
+from utils.osimage import OsImage as OsImager, GRAB_OUTPUT
 from utils.database import Database
 from utils.log import Log
 from utils.queue import Queue
@@ -107,6 +107,7 @@ class OSImage():
                         record[item]='!!'+record[item]+'!!'
 
                 record['tag'] = tagname or 'default'
+                record['architecture'] = record['architecture'] or 'x86'
                 response['config'][self.table][record['name']] = record
         return status, response
 
@@ -149,6 +150,7 @@ class OSImage():
                     record[item]='!!'+record[item]+'!!'
 
             record['tag'] = tagname or 'default'
+            record['architecture'] = record['architecture'] or 'x86'
             image_tags = []
             all_tags = Database().get_record(table='osimagetag',
                                              where=f"osimageid = '{record_id}'")
@@ -181,6 +183,22 @@ class OSImage():
             table_cap = self.table_cap
         )
         return status, response
+
+
+    def grab_list(self, name=None, request_id=None):
+        """
+        Input - OS Image Name and the request id of a grab into it
+        Output - the files the grab changes and deletes in the image, from its rsync output
+        """
+        try:
+            with open(GRAB_OUTPUT.format(osimage=name, request_id=request_id), encoding='utf-8', errors='replace') as output:
+                lines = output.read().splitlines()
+        except OSError:
+            return False, f"no grab of osimage {name} with request id {request_id} on this controller"
+        noise = ('deleting ', 'receiving ', 'sent ', 'total size is ')
+        changed = [re.split(' [-=]> ', line)[0] for line in lines if line and not line.startswith(noise)]
+        return True, {'changed': changed,
+                      'deleted': [line[len('deleting '):] for line in lines if line.startswith('deleting ')]}
 
 
     def get_all_osimagetags(self, name=None):
@@ -278,7 +296,8 @@ class OSImage():
         items = {
             'grab_filesystems': '/, /boot, /var',
             'grab_exclude': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /opt/*, /var/log/*, /trinity/shared/*, /boot/*, /cm/*, /data/*, /fhgfs/*, /local/*, /scratch/*, /media/*, lost+found/, /tftpboot/*, /etc/aliases.db, /etc/blkid/*, /etc/exports, /etc/fstab, /etc/HOSTNAME, /etc/hostname, /etc/hosts, /etc/lvm/cache/*, /etc/lvm/archive/*, /etc/lvm/backup/*, /etc/mtab, /etc/ntp.conf, /etc/ntp/*, /etc/chrony.conf, /etc/chrony.keys, /etc/chrony/*, /etc/openvpn/*, /etc/postfix/main.cf, /etc/resolv.conf, /etc/sysconfig/network, /etc/sysconfig/network-scripts/*, /etc/NetworkManager/system-connections/*, /etc/network/interfaces.d/*, /etc/udev/rules.d/*-persistent-*, /var/cache/*, /var/lib/dhclient/*, /var/lib/dhcpcd/*, /var/lib/ldap/*, /var/lib/logrotate.status, /var/lib/mlocate/*, /var/lib/nfs/*, /var/lib/ntp/*, /var/lib/chrony/*, /var/lib/rpm/__db.*, /var/lib/sss/*, /var/lib/systemd/random-seed, /var/spool/*, /var/tmp/*',
-            'kernelmodules': 'ipmi_devintf, ipmi_si, ipmi_msghandler'
+            'kernelmodules': 'ipmi_devintf, ipmi_si, ipmi_msghandler',
+            'architecture': 'x86'
         }
         if request_data:
             data = request_data['config']['osimage'][name]
@@ -392,7 +411,8 @@ class OSImage():
             'kerneloptions',
             'kernelversion',
             'distribution',
-            'osrelease'
+            'osrelease',
+            'architecture'
         }
         response = {"message": 'Internal error: OS image copy failed. No sign of life of spawned thread'}
         if request_data:
@@ -830,9 +850,11 @@ class OSImage():
         return status, "Invalid request: osimage push request is missing data"
 
 
-    def pack(self, name=None):
+    def pack(self, name=None, request_id=None):
         """
-        This method will pack requested osimage.
+        This method will pack requested osimage. A caller already being polled on a status
+        stream hands its id in and the chain writes there, so the EOF that ends that stream
+        belongs to this chain; with no id it mints its own, exactly as it always has.
         """
         status=False
         response="unknown state"
@@ -853,7 +875,8 @@ class OSImage():
             where = [{"column": "name", "value": name}]
             row = [{"column": "changed", "value": '0'}]
             Database().update('osimage', row, where)
-        request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+        supplied = request_id
+        request_id = request_id or str(time()) + str(randint(1001, 9999)) + str(getpid())
         queue_id, queue_response = Queue().add_task_to_queue(task='pack_n_build_osimage', param=name,
                                                              subsystem='osimage', request_id=request_id, force=force)
         if not queue_id:
@@ -864,6 +887,12 @@ class OSImage():
             # this means we already have an equal request in the queue
             Queue().log_tasks_in_queue(subsystem='osimage')
             Status().add_message(queue_response, "luna", f"similar task with id {queue_id} is already queued. its progress is listed here")
+            if supplied and supplied != queue_response:
+                # the caller is being polled on its own stream and the deduped chain writes to a
+                # different one, so nothing will ever write here again. say where to look and end
+                # it, or the operator polls for ever.
+                Status().add_message(supplied, "luna", f"a similar task is already queued. its progress is listed under {queue_response}")
+                Status().add_message(supplied, "luna", "EOF")
             response = f"osimage pack for {name} already queued"
             self.logger.info(f"my response [{response}] [{queue_response}]")
             status=True
@@ -900,6 +929,24 @@ class OSImage():
             self.logger.info(f"my response [{response}] [{request_id}]")
             return status, response, request_id
         return status, response
+
+
+    def pack_in_queue(self, name=None):
+        """
+        This method will answer the request id and queue status of the image's own pack while it is
+        in the queue, whether scheduled or running: the task the boot pause also counts as a pack.
+        A grab, clone or create reaches that task on its own request id, and is answered from then on.
+        Before that, a create of the image answers, until its pack is in the queue. The status is the
+        queue row's own (queued, in progress, parked, stuck), whether the row is the pack or the create.
+        Both None means no pack or create is queued for this image, not that nothing is happening anywhere.
+        """
+        image = Database().get_record(table='osimage', where=f"name = '{name}'")
+        if not image:
+            return False, f"OS image {name} does not exist"
+        task = Queue().tasks_in_queue(subsystem='osimage', task='pack_n_build_osimage', subitem=name, details=True) or {}
+        if not task:
+            task = Queue().tasks_in_queue(subsystem='osimage', task='create_osimage', subitem=name, details=True) or {}
+        return True, {'request_id': task.get('request_id'), 'status': task.get('status')}
 
 
     # how long a cancelled worker gets to stop on SIGTERM before it is killed
@@ -1016,6 +1063,67 @@ class OSImage():
         if status:
             status=True
             response = f"osimage certificate update for {name} queued"
+            self.logger.info(f"my response [{response}] [{request_id}]")
+            return status, response, request_id
+        return status, response
+
+
+    def create_image(self, name=None):
+        """
+        This method will have the content of the requested osimage built, and packed once
+        the build is done. Who builds it is a plugin's decision: ours hands the job to the
+        builder beside this controller, a site's copy may build it here and take an hour
+        over it. That is why this is a queue entry and not work done in this thread.
+        """
+        status=False
+        response = {"message": f'Internal error: OS image {name} creation failed. No sign of life of spawned thread'}
+        image = Database().get_record(table='osimage', where=f"name = '{name}'")
+        if not image:
+            return False, f'OS image {name} does not exist'
+        request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+        # noeof, because the EOF on this stream is never this task's to write when it succeeds:
+        # either the pack chain it queues owns it, or the builder that took the job does.
+        queue_id, queue_response = Queue().add_task_to_queue(task='create_osimage', param=name,
+                                                             subsystem='osimage', request_id=request_id,
+                                                             noeof=True)
+        if not queue_id:
+            self.logger.info("config_osimage_create cannot get queue_id")
+            status=False
+            return status, f'Internal error: OS image {name} creation queuing failed'
+        if queue_response != "added":
+            # this means we already have an equal request in the queue
+            Queue().log_tasks_in_queue(subsystem='osimage')
+            Status().add_message(queue_response, "luna", f"similar task with id {queue_id} is already queued. its progress is listed here")
+            response = f"osimage creation for {name} already queued"
+            self.logger.info(f"my response [{response}] [{queue_response}]")
+            status=True
+            return status, response, queue_response
+
+        self.logger.info(f"config_osimage_create added task with id {queue_id} to queue")
+        Queue().log_tasks_in_queue(subsystem='osimage')
+        message = f"queued create osimage {name} with id {queue_id}"
+        Status().add_message(request_id, "luna", message)
+
+        next_id = Queue().next_task_in_queue('osimage')
+        if queue_id == next_id:
+            # we're first in the queue. let's wake up mother
+            executor = ProcessPoolExecutor(max_workers=1)
+            executor.submit(OsImager().osimage_mother_wrapper)
+            executor.shutdown(wait=False)
+        else:
+            next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
+            if queue_id == next_id:
+                # We're not the first mother running... we only do our own stuff
+                executor = ProcessPoolExecutor(max_workers=1)
+                executor.submit(OsImager().osimage_mother_wrapper, request_id)
+                executor.shutdown(wait=False)
+            else:
+                Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
+        sleep(1)
+        status = Database().get_record(table='status', where=f"request_id = '{request_id}'")
+        if status:
+            status=True
+            response = f"osimage creation for {name} queued"
             self.logger.info(f"my response [{response}] [{request_id}]")
             return status, response, request_id
         return status, response

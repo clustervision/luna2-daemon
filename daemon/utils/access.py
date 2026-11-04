@@ -533,6 +533,38 @@ class Access():
                 held[table] = found
         return held
 
+    def hardware_holdings(self, userid=None):
+        """
+        Output - per node and group, the names whose hardware fields the user may change, by
+                 the gate's two steps for such a write: w on the row, then the hardware axis.
+        """
+        caller = self.caller(userid)
+        held = {}
+        for table in HARDWARE_FIELDS:
+            rows = Database().get_record(select=['name', 'owners', 'usergroups', 'access'], table=table) or []
+            names = [row['name'] for row in rows
+                     if 'w' in self.bits(caller, table, row) and self.hardware_allowed(caller, row)]
+            if names:
+                held[table] = names
+        return held
+
+    def create_holdings(self, userid=None, groups=None):
+        """
+        Input - a user id, and the groups hardware_holdings names for that user
+        Output - the governed kinds the create rule lets the user create. A node goes into
+                 one of those groups; the networks it names are judged at the create.
+        """
+        caller = self.caller(userid)
+        body = {'group': groups[0]} if groups else {}
+        kinds = []
+        for table in GOVERNED:
+            try:
+                self.may_create(caller, table, body)
+            except AccessRefused:
+                continue
+            kinds.append(table)
+        return kinds
+
     def usergroup_holdings(self, usergroupid=None):
         """
         Output - per governed table, every object the usergroup is listed on, with what each

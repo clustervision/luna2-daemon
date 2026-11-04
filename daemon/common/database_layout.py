@@ -69,6 +69,7 @@ DATABASE_LAYOUT_osimage = [
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "100"},
 {"column": "distribution",         "datatype": "VARCHAR", "length": "20"},
 {"column": "osrelease",            "datatype": "VARCHAR", "length": "20"},
+{"column": "architecture",         "datatype": "VARCHAR", "length": "20"},
 {"column": "tagid",                "datatype": "INTEGER", "length": "10"},
 {"column": "changed",              "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"},

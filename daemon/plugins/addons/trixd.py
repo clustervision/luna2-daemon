@@ -91,11 +91,8 @@ def _me() -> str:
     try:
         from utils.ha import HA
         from utils.helper import Helper
-        ha = HA()
-        address = ha.get_my_ip()
-        if not address and ha.all_controllers and len(ha.all_controllers) == 1:
-            # The only row is the beacon, which find_me skips while the address is shared.
-            address = ha.find_me(ha.all_controllers)[1]
+        # a single controller holds only the beacon row, which find_me skips while the address is shared
+        address = HA().get_my_ip(lone_beacon=True)
         if not address:
             return '127.0.0.1'
         return f'[{address}]' if Helper().check_if_ipv6(address) else address

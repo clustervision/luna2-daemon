@@ -123,7 +123,14 @@ class HA():
     def get_me(self):
         return self.me
 
-    def get_my_ip(self):
+    def get_my_ip(self, lone_beacon=False):
+        """
+        lone_beacon takes the beacon's address when the beacon is the only controller
+        row: the skip find_me makes for a shared address protects nothing then.
+        """
+        if self.ip is None and lone_beacon and self.all_controllers and \
+                all(controller['beacon'] for controller in self.all_controllers):
+            return self.find_me(self.all_controllers)[1]
         return self.ip
 
     def get_sharedip(self):

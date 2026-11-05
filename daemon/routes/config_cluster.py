@@ -38,6 +38,7 @@ from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter
 from base.cluster import Cluster
+from base.keys import Keys
 from utils.journal import Journal
 from utils.helper import Helper
 
@@ -62,6 +63,15 @@ def config_cluster():
     else:
         response = {'message': response}
     return response, access_code
+
+
+@cluster_blueprint.route('/config/cluster/_keys', methods=['GET'])
+@token_required
+def config_cluster_keys():
+    """
+    This api will send the keys a change of a cluster accepts.
+    """
+    return dumps(Keys().get_keys('cluster')), 200
 
 
 @cluster_blueprint.route("/config/cluster", methods=['POST'])

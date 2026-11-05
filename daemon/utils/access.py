@@ -37,6 +37,9 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+import grp
+import os
+import pwd
 import re
 from flask import g, has_request_context, request
 from utils.database import Database
@@ -272,7 +275,8 @@ class Access():
                 # a program that vouches for people never acts as itself: the flag is the whole
                 # of what it may do, and that happens at the token exchange, not here
                 raise AccessRefused(403, f"using the token of {rows[0]['username']} is not permitted: it is a delegate and may only obtain tokens for others")
-            admin = Helper().make_bool(rows[0]['admin']) is True
+            admin = Helper().make_bool(rows[0]['admin']) is True or (
+                rows[0]['source'] == 'pam' and self.in_admin_group(rows[0]['username']))
             usergroups, hardware = {}, set()
             for row in Database().get_record(table='usergroupmember', where=f"userid = '{userid}'") or []:
                 usergroups[int(row['usergroupid'])] = row['role']
@@ -285,6 +289,20 @@ class Access():
         if has_request_context():
             g.caller = caller
         return caller
+
+    def in_admin_group(self, name):
+        """
+        Output - True when the operating system puts name in [AUTH] ADMIN_GROUP, asked on
+                 each request and never stored, so leaving the group ends it at once.
+        """
+        group = (CONSTANT.get('AUTH', {}).get('ADMIN_GROUP') or '').strip()
+        if not group:
+            return False
+        try:
+            return grp.getgrnam(group).gr_gid in os.getgrouplist(name, pwd.getpwnam(name).pw_gid)
+        except (KeyError, OSError) as exp:
+            self.logger.warning(f"[AUTH] ADMIN_GROUP {group}: cannot tell whether {name} is in it ({exp}), so not admin")
+            return False
 
 
     # ── rows and bits ──────────────────────────────────────────────────────

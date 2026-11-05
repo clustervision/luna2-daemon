@@ -39,6 +39,7 @@ from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.bmcsetup import BMCSetup
+from base.keys import Keys
 from utils.journal import Journal
 from utils.helper import Helper
 
@@ -61,6 +62,15 @@ def config_bmcsetup():
     else:
         response = {'message': response}
     return response, access_code
+
+
+@bmcsetup_blueprint.route('/config/bmcsetup/_keys', methods=['GET'])
+@token_required
+def config_bmcsetup_keys():
+    """
+    This api will send the keys a change of a BMC setup accepts.
+    """
+    return dumps(Keys().get_keys('bmcsetup')), 200
 
 
 @bmcsetup_blueprint.route("/config/bmcsetup/<string:name>", methods=['GET'])

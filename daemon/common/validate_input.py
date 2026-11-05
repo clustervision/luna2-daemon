@@ -87,7 +87,7 @@ REG_EXP = {
     'anything': { 'regexp': r'', 'error': 'anything' }
 }
 RESERVED = {
-    'name': ['default','inventory'],
+    'name': ['default','inventory','_keys'],
     'strictname': ['default','inventory'],
     'anything': ['default']
 }

@@ -40,6 +40,7 @@ from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.osimage import OSImage
+from base.keys import Keys
 from utils.journal import Journal
 from utils.helper import Helper
 from utils.status import Status
@@ -65,6 +66,15 @@ def config_osimage():
     else:
         response = {'message': response}
     return response, access_code
+
+
+@osimage_blueprint.route('/config/osimage/_keys', methods=['GET'])
+@token_required
+def config_osimage_keys():
+    """
+    This api will send the keys a change of an osimage accepts.
+    """
+    return dumps(Keys().get_keys('osimage')), 200
 
 
 @osimage_blueprint.route("/config/osimage/<string:name>", methods=['GET'])

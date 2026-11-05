@@ -88,6 +88,7 @@ def test_a_route_of_an_unknown_shape_is_refused_not_defaulted():
     ('/config/profiles/group/<string:name>', 'POST', {'kind': 'object', 'entity': 'group', 'name': 'node001', 'bit': 'w'}),
     ('/config/osimage/<string:name>/_pack', 'GET', {'kind': 'object', 'entity': 'osimage', 'name': 'node001', 'bit': 'w'}),
     ('/config/group/<string:name>/_member', 'GET', {'kind': 'object', 'entity': 'group', 'name': 'node001', 'bit': 'r'}),
+    ('/config/node/_keys', 'GET', {'kind': 'object', 'entity': 'node', 'name': 'node001', 'bit': 'r'}),
     ('/config/otherdev/<string:name>', 'GET', {'kind': 'object', 'entity': 'otherdevices', 'name': 'node001', 'bit': 'r'}),
     ('/config/cluster', 'POST', {'kind': 'object', 'entity': 'cluster', 'name': 'cluster', 'bit': 'w'}),
     ('/config/user/<string:name>', 'POST', {'kind': 'rootus', 'entity': 'user', 'name': 'node001'}),

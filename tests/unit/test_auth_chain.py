@@ -84,6 +84,7 @@ def _login(username, password):
 # ── fakes for the operating system and the libraries ────────────────────────
 
 OS_USERS = {'ossam': (1500, 1500, ['hpc-intel', 'users']), 'alice': (1501, 1501, ['users'])}
+OS_GROUPS = ['hpc-intel', 'users', 'admins', 'wheel']
 
 
 def _fake_os(monkeypatch, accept='ospass', groups=None):
@@ -109,7 +110,13 @@ def _fake_os(monkeypatch, accept='ospass', groups=None):
                 return types.SimpleNamespace(gr_name=g)
         raise KeyError(gid)
 
+    def getgrnam(name):
+        if name not in OS_GROUPS:
+            raise KeyError(name)
+        return types.SimpleNamespace(gr_name=name, gr_gid=hash(name) % 10000 + 2000)
+
     monkeypatch.setattr(pwd, 'getpwnam', getpwnam)
+    monkeypatch.setattr(grp, 'getgrnam', getgrnam)
     monkeypatch.setattr(os, 'getgrouplist', getgrouplist)
     monkeypatch.setattr(grp, 'getgrgid', getgrgid)
 
@@ -301,3 +308,138 @@ def test_the_configuration_file_account_is_not_a_chain_step(db, monkeypatch):
     _chain(monkeypatch, 'pam')
     _no_pam_library(monkeypatch)
     assert _login('luna', 'luna') == 0
+
+
+# ── the admin group, asked of the operating system on each request ──────────
+
+def _admin_group(monkeypatch, group, chain='local, pam'):
+    from common.constant import CONSTANT
+    monkeypatch.setitem(CONSTANT, 'AUTH', {'CHAIN': chain, 'ADMIN_GROUP': group})
+
+
+def _reads_every_user(userid):
+    """The user table is for rootus and admin users only: 200 for an admin, 403 otherwise."""
+    from common.constant import CONSTANT
+    from routes.config_user import user_blueprint
+    app = Flask(__name__)
+    app.register_blueprint(user_blueprint)
+    token = encode({'id': userid}, CONSTANT['API']['SECRET_KEY'], 'HS256')
+    return app.test_client().get('/config/user', headers={'x-access-tokens': token}).status_code
+
+
+def test_a_pam_member_of_the_admin_group_is_admin_and_a_non_member_is_not(api, db, monkeypatch):
+    _admin_group(monkeypatch, 'admins')
+    _fake_os(monkeypatch, groups=['admins', 'users'])
+    member = _login('ossam', 'ospass')
+    assert _reads_every_user(member) == 200
+    _fake_os(monkeypatch, groups=['users'])
+    other = _login('alice', 'ospass')
+    assert _reads_every_user(other) == 403
+    assert api.show('ossam')['admin'] is False, 'nothing is stored: the flag set by hand stays unset'
+
+
+def test_leaving_the_admin_group_drops_admin_at_the_next_request_without_a_sign_in(api, db, monkeypatch):
+    _admin_group(monkeypatch, 'admins')
+    _fake_os(monkeypatch, groups=['admins'])
+    userid = _login('ossam', 'ospass')
+    assert _reads_every_user(userid) == 200
+    _fake_os(monkeypatch, groups=['users'])
+    assert _reads_every_user(userid) == 403
+    _fake_os(monkeypatch, groups=['admins'])
+    assert _reads_every_user(userid) == 200, 'joining again gives it back the same way'
+
+
+def test_without_the_setting_the_group_grants_nothing(api, db, monkeypatch):
+    _admin_group(monkeypatch, 'admins')
+    _fake_os(monkeypatch, groups=['admins'])
+    userid = _login('ossam', 'ospass')
+    assert _reads_every_user(userid) == 200
+    for unset in ('', '  ', None):
+        _admin_group(monkeypatch, unset)
+        assert _reads_every_user(userid) == 403
+    _chain(monkeypatch, 'local, pam')
+    assert _reads_every_user(userid) == 403
+
+
+def test_changing_the_admin_group_takes_effect_at_once(api, db, monkeypatch):
+    _admin_group(monkeypatch, 'admins')
+    _fake_os(monkeypatch, groups=['admins'])
+    userid = _login('ossam', 'ospass')
+    assert _reads_every_user(userid) == 200
+    _admin_group(monkeypatch, 'wheel')
+    assert _reads_every_user(userid) == 403
+    _admin_group(monkeypatch, 'admins')
+    assert _reads_every_user(userid) == 200
+
+
+def test_a_local_user_is_not_admin_by_a_group_its_os_account_is_in(api, db, monkeypatch):
+    """alice has a Luna password, so she is local, while the OS puts both in admins."""
+    _admin_group(monkeypatch, 'admins')
+    _fake_os(monkeypatch, groups=['admins'])
+    api.user('alice', password='lunapass')
+    local = _login('alice', 'lunapass')
+    pam = _login('ossam', 'ospass')
+    assert _reads_every_user(pam) == 200
+    assert _reads_every_user(local) == 403
+
+
+def test_a_directory_user_is_not_admin_by_a_group_of_the_same_name(api, db, monkeypatch):
+    """alice comes from ldap, in its admins and in the OS admins; ossam, through pam, is the control."""
+    _admin_group(monkeypatch, 'admins', chain='local, ldap, pam')
+    _fake_os(monkeypatch, groups=['admins'])
+    _fake_ldap3(monkeypatch, people={'alice': ('uid=alice,ou=people,dc=example,dc=com', '8f3a-uuid', ['admins'])})
+    directory = _login('alice', 'dirpass')
+    pam = _login('ossam', 'ospass')
+    assert _reads_every_user(pam) == 200
+    assert api.show('alice')['source'] == 'ldap'
+    assert _reads_every_user(directory) == 403
+
+
+def test_an_admin_flagged_by_hand_stays_admin_outside_the_group(api, db, monkeypatch):
+    _admin_group(monkeypatch, 'admins')
+    _fake_os(monkeypatch, groups=['admins'])
+    member = _login('alice', 'ospass')
+    assert _reads_every_user(member) == 200
+    api.user('ossam', source='pam', admin=True)
+    _fake_os(monkeypatch, groups=['users'])
+    flagged = _login('ossam', 'ospass')
+    assert _reads_every_user(flagged) == 200
+    assert _reads_every_user(member) == 403
+
+
+def test_a_lookup_that_fails_is_not_admin_and_not_an_error(api, db, monkeypatch):
+    import pwd
+    _admin_group(monkeypatch, 'admins')
+    _fake_os(monkeypatch, groups=['admins'])
+    userid = _login('ossam', 'ospass')
+    assert _reads_every_user(userid) == 200
+    _admin_group(monkeypatch, 'no-such-group')
+    assert _reads_every_user(userid) == 403
+    _admin_group(monkeypatch, 'admins')
+
+    def gone(name):
+        raise KeyError(name)
+    monkeypatch.setattr(pwd, 'getpwnam', gone)
+    assert _reads_every_user(userid) == 403
+
+    def broken(name, gid):
+        raise OSError('nss unavailable')
+    _fake_os(monkeypatch, groups=['admins'])
+    monkeypatch.setattr(os, 'getgrouplist', broken)
+    assert _reads_every_user(userid) == 403
+
+
+def test_a_person_a_delegate_signs_in_is_admin_by_the_group(api, db, monkeypatch):
+    """The path the trix-daemon takes: the delegate vouches, the person is resolved without a password."""
+    import pwd
+    from common.constant import CONSTANT
+    from base.authentication import Authentication
+    _admin_group(monkeypatch, 'admins')
+    _fake_os(monkeypatch, groups=['admins'])
+    resolved = pwd.getpwnam
+    monkeypatch.setattr(pwd, 'getpwnam', lambda name: types.SimpleNamespace(**vars(resolved(name)), pw_shell='/bin/bash'))
+    api.user('portal', password='portal-pw', delegate=True)
+    status, response = Authentication().get_token({'username': 'portal', 'password': 'portal-pw', 'on_behalf_of': 'ossam'})
+    assert status is True, response
+    person = decode(response['token'], CONSTANT['API']['SECRET_KEY'], algorithms=['HS256'])['id']
+    assert _reads_every_user(person) == 200

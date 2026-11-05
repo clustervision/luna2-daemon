@@ -39,6 +39,7 @@ from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.network import Network
+from base.keys import Keys
 from utils.journal import Journal
 from utils.helper import Helper
 
@@ -62,6 +63,15 @@ def config_network():
     else:
         response = {'message': response}
     return response, access_code
+
+
+@network_blueprint.route('/config/network/_keys', methods=['GET'])
+@token_required
+def config_network_keys():
+    """
+    This api will send the keys a change of a network accepts.
+    """
+    return dumps(Keys().get_keys('network')), 200
 
 
 @network_blueprint.route("/config/network/<string:name>", methods=['GET'])

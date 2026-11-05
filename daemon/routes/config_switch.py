@@ -39,6 +39,7 @@ from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.switch import Switch
+from base.keys import Keys
 from base.interface import Interface
 from utils.journal import Journal
 from utils.helper import Helper
@@ -61,6 +62,15 @@ def config_switch():
     else:
         response = {'message': response}
     return response, access_code
+
+
+@switch_blueprint.route('/config/switch/_keys', methods=['GET'])
+@token_required
+def config_switch_keys():
+    """
+    This api will send the keys a change of a switch accepts.
+    """
+    return dumps(Keys().get_keys('switch')), 200
 
 
 @switch_blueprint.route("/config/switch/<string:name>", methods=['GET'])

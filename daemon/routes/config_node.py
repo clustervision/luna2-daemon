@@ -39,6 +39,7 @@ from utils.log import Log
 from common.validate_auth import token_required, provision_token_required
 from common.validate_input import input_filter, validate_name
 from base.node import Node
+from base.keys import Keys
 from base.interface import Interface
 from base.osimage import OSImage
 from utils.journal import Journal
@@ -65,6 +66,15 @@ def config_node():
     else:
         response = {'message': response}
     return response, access_code
+
+
+@node_blueprint.route('/config/node/_keys', methods=['GET'])
+@token_required
+def config_node_keys():
+    """
+    This api will send the keys a change of a node accepts.
+    """
+    return dumps(Keys().get_keys('node')), 200
 
 
 @node_blueprint.route('/config/node/<string:name>', methods=['GET'])

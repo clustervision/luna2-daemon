@@ -39,6 +39,7 @@ from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.group import Group
+from base.keys import Keys
 from base.interface import Interface
 from base.osimage import OSImage
 from utils.journal import Journal
@@ -66,6 +67,15 @@ def config_group():
     else:
         response = {'message': response}
     return response, access_code
+
+
+@group_blueprint.route('/config/group/_keys', methods=['GET'])
+@token_required
+def config_group_keys():
+    """
+    This api will send the keys a change of a group accepts.
+    """
+    return dumps(Keys().get_keys('group')), 200
 
 
 # BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023

@@ -121,6 +121,9 @@ def _listing_routes():
         parts = rule.rule.strip('/').split('/')
         if answer['kind'] != 'object':
             continue
+        # _keys answers a type's accepted keys, which carry no row to filter
+        if rule.rule.endswith('/_keys'):
+            continue
         # a child's show (dns under network, a tag under its image) is gated by its parent
         plain_show = len(parts) == 3 and parts[2].startswith('<') and parts[1] not in ('dns', 'osimagetag')
         if answer.get('name') is None or plain_show or rule.rule.endswith('/_member'):

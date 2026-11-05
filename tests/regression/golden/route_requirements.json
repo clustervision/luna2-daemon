@@ -106,6 +106,12 @@
   "kind": "object",
   "name": "<name>"
  },
+ "GET /config/bmcsetup/_keys": {
+  "bit": "r",
+  "entity": "bmcsetup",
+  "kind": "object",
+  "name": null
+ },
  "GET /config/cloud": {
   "bit": "r",
   "entity": "cloud",
@@ -125,6 +131,12 @@
   "name": "<name>"
  },
  "GET /config/cluster": {
+  "bit": "r",
+  "entity": "cluster",
+  "kind": "object",
+  "name": "cluster"
+ },
+ "GET /config/cluster/_keys": {
   "bit": "r",
   "entity": "cluster",
   "kind": "object",
@@ -254,6 +266,12 @@
   "kind": "object",
   "name": "<name>"
  },
+ "GET /config/group/_keys": {
+  "bit": "r",
+  "entity": "group",
+  "kind": "object",
+  "name": null
+ },
  "GET /config/network": {
   "bit": "r",
   "entity": "network",
@@ -289,6 +307,12 @@
   "entity": "network",
   "kind": "object",
   "name": "<name>"
+ },
+ "GET /config/network/_keys": {
+  "bit": "r",
+  "entity": "network",
+  "kind": "object",
+  "name": null
  },
  "GET /config/node": {
   "bit": "r",
@@ -358,6 +382,12 @@
   "entity": "node",
   "kind": "object",
   "name": "<name>"
+ },
+ "GET /config/node/_keys": {
+  "bit": "r",
+  "entity": "node",
+  "kind": "object",
+  "name": null
  },
  "GET /config/node/inventory": {
   "bit": "r",
@@ -445,6 +475,12 @@
   "kind": "object",
   "name": "<name>"
  },
+ "GET /config/osimage/_keys": {
+  "bit": "r",
+  "entity": "osimage",
+  "kind": "object",
+  "name": null
+ },
  "GET /config/osimagetag": {
   "bit": "r",
   "entity": "osimage",
@@ -488,6 +524,12 @@
   "entity": "otherdevices",
   "kind": "object",
   "name": "<name>"
+ },
+ "GET /config/otherdev/_keys": {
+  "bit": "r",
+  "entity": "otherdevices",
+  "kind": "object",
+  "name": null
  },
  "GET /config/profiles": {
   "bit": "r",
@@ -733,6 +775,12 @@
   "entity": "switch",
   "kind": "object",
   "name": "<name>"
+ },
+ "GET /config/switch/_keys": {
+  "bit": "r",
+  "entity": "switch",
+  "kind": "object",
+  "name": null
  },
  "GET /config/user": {
   "entity": "user",

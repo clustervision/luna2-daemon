@@ -39,6 +39,7 @@ from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.otherdev import OtherDev
+from base.keys import Keys
 from utils.journal import Journal
 from utils.helper import Helper
 
@@ -60,6 +61,15 @@ def config_otherdev():
     else:
         response = {'message': response}
     return response, access_code
+
+
+@otherdev_blueprint.route('/config/otherdev/_keys', methods=['GET'])
+@token_required
+def config_otherdev_keys():
+    """
+    This api will send the keys a change of an other device accepts.
+    """
+    return dumps(Keys().get_keys('otherdev')), 200
 
 
 @otherdev_blueprint.route("/config/otherdev/<string:name>", methods=['GET'])

@@ -240,7 +240,7 @@ class User():
             return True, {'user': CONSTANT['API']['USERNAME'], 'id': 0, 'source': 'ini',
                           'admin': True, 'usergroups': {}, 'hardware': []}
         try:
-            Access().caller(userid)
+            caller = Access().caller(userid)
         except AccessRefused as exp:
             return False, exp.message
         user = Database().get_record(table='user', where=f"id = '{userid}'")[0]
@@ -248,7 +248,7 @@ class User():
         hardware = [row['name'] for row in Database().get_record(table='usergroup', where="hardware = '1'") or []
                     if row['name'] in usergroups]
         return True, {'user': user['username'], 'id': user['id'], 'source': user['source'],
-                      'admin': Helper().make_bool(user['admin']),
+                      'admin': caller['admin'],
                       'usergroups': usergroups, 'hardware': hardware}
 
 

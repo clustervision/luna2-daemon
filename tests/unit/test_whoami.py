@@ -108,6 +108,26 @@ def test_an_os_user_created_at_login_with_mapped_usergroups(app, db, monkeypatch
     assert body['usergroups'] == {'intel': 'operator'}
 
 
+def test_a_member_of_the_admin_group_is_reported_admin(app, db, monkeypatch):
+    import pwd
+    import grp
+    from common.constant import CONSTANT
+    monkeypatch.setitem(CONSTANT, 'AUTH', {'CHAIN': 'local, pam', 'ADMIN_GROUP': 'admins'})
+    groups = [1500, 2002]
+    monkeypatch.setattr(pwd, 'getpwnam', lambda name: types.SimpleNamespace(pw_name=name, pw_uid=1500, pw_gid=1500))
+    monkeypatch.setattr(os, 'getgrouplist', lambda name, gid: list(groups))
+    monkeypatch.setattr(grp, 'getgrgid', lambda gid: types.SimpleNamespace(gr_name={1500: 'ossam', 2002: 'admins'}[gid]))
+    monkeypatch.setattr(grp, 'getgrnam', lambda name: types.SimpleNamespace(gr_gid={'ossam': 1500, 'admins': 2002}[name]))
+    monkeypatch.setitem(sys.modules, 'pam', types.SimpleNamespace(
+        pam=lambda: types.SimpleNamespace(authenticate=lambda n, p, service='login': p == 'ospass', reason='')))
+    token = _login(app, 'ossam', 'ospass')
+    code, body = _whoami(app, token)
+    assert code == 200
+    assert body['admin'] is True
+    groups.remove(2002)
+    assert _whoami(app, token)[1]['admin'] is False
+
+
 def test_a_token_for_a_deleted_or_disabled_user_is_refused(app, db):
     _admin_post(app, '/config/user/alice', {'config': {'user': {'alice': {'password': 'x'}}}})
     token = _login(app, 'alice', 'x')
